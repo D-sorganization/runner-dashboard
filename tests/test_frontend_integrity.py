@@ -96,6 +96,17 @@ def test_tests_tab_rerun_checks_response_ok_before_triggered_state() -> None:
     assert 'throw new Error("rerun failed")' in rerun_block
 
 
+def test_runner_facing_tables_use_sortable_headers() -> None:
+    content = _read_index()
+
+    assert "function SortTh" in content
+    assert "function sortRows" in content
+    assert 'sortKey: "runner"' in content
+    assert 'sortKey: "waiting"' in content
+    assert 'sortKey: "machine"' in content
+    assert 'sortKey: "when"' in content
+
+
 # ---------------------------------------------------------------------------
 # dangerouslySetInnerHTML safety check
 # ---------------------------------------------------------------------------
