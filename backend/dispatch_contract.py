@@ -358,8 +358,9 @@ def validate_envelope(envelope: CommandEnvelope) -> DispatchValidationResult:
             confirmation_required=True,
         )
 
-    assert confirmation is not None  # narrowed by guard above
-    if action.access is DispatchAccess.PRIVILEGED and not confirmation.approved_by.strip():
+    # The guard above returns early only for PRIVILEGED+None; READ_ONLY actions
+    # may reach this point with confirmation=None, so gate checks on access level.
+    if action.access is DispatchAccess.PRIVILEGED and (confirmation is None or not confirmation.approved_by.strip()):
         return DispatchValidationResult(
             accepted=False,
             reason="confirmation must record approved_by",
@@ -367,7 +368,7 @@ def validate_envelope(envelope: CommandEnvelope) -> DispatchValidationResult:
             confirmation_required=True,
         )
 
-    if action.access is DispatchAccess.PRIVILEGED and not confirmation.approved_at.strip():
+    if action.access is DispatchAccess.PRIVILEGED and (confirmation is None or not confirmation.approved_at.strip()):
         return DispatchValidationResult(
             accepted=False,
             reason="confirmation must record approved_at",
