@@ -487,3 +487,27 @@ mono-repo as an independent repository.
 
 Prior versions tracked in the mono-repo `Repository_Management`. Application
 version history in `VERSION` file (4.0.1 at time of extraction).
+
+---
+
+## 8. Testing
+
+The project test suite lives in `tests/`. Run all tests with:
+
+```
+pytest tests/ -q
+```
+
+Test coverage areas:
+
+- **`tests/test_dispatch_contract.py`** — unit tests for `backend/dispatch_contract.py`:
+  envelope round-trips, confirmation gating for privileged actions, allowlist enforcement.
+- **`tests/test_remote_execution_contract.py`** — unit tests for `backend/remote_execution_contract.py`:
+  private-host and private-URL detection, unknown-target rejection.
+- **`tests/test_agent_remediation.py`** — unit tests for `backend/agent_remediation.py`:
+  `FailureContext` construction, workflow-type classification for lint and test workflows,
+  policy defaults.
+- **`tests/test_frontend_integrity.py`** — static source checks for `frontend/index.html`:
+  required tab function markers, absence of deprecated `HeavyTestsTab`, icon helper symbols.
+
+`pytest>=8.0` and `pytest-asyncio>=0.23` are listed in `requirements.txt`.
