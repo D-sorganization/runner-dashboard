@@ -2726,7 +2726,10 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ repo: repo, run_id: runId }),
           })
-            .then(function (r) { return r.json(); })
+            .then(function (r) {
+              if (!r.ok) throw new Error("rerun failed");
+              return r.json();
+            })
             .then(function () {
               setRerunState(function (prev) {
                 var n = Object.assign({}, prev);
