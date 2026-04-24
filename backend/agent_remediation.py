@@ -500,13 +500,14 @@ def save_policy(
     policy: RemediationPolicy,
     path: Path | str | None = None,
 ) -> Path:
+    import config_schema  # noqa: PLC0415
+
     resolved = Path(path or os.environ.get("AGENT_REMEDIATION_CONFIG", DEFAULT_CONFIG_PATH))
-    resolved.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "schema_version": SCHEMA_VERSION,
         **policy.to_dict(),
     }
-    resolved.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    config_schema.atomic_write_json(resolved, payload)
     return resolved
 
 

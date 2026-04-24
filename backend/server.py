@@ -39,13 +39,14 @@ import httpx
 import psutil
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 BACKEND_DIR = Path(__file__).resolve().parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 import agent_remediation  # noqa: E402
+import config_schema  # noqa: E402
 import deployment_drift  # noqa: E402
 import dispatch_contract  # noqa: E402
 import scheduled_workflows as scheduled_workflow_inventory  # noqa: E402
@@ -184,6 +185,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def _add_security_headers(request: Request, call_next: Any) -> Any:
+    """Inject standard security headers on every response (issue #7)."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' "
+        "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "font-src 'self' data:;"
+    )
+    return response
+
 
 # ─── Startup timestamp ───────────────────────────────────────────────────────
 BOOT_TIME = time.time()
@@ -1006,14 +1027,16 @@ def _validate_runner_schedule(config: dict) -> dict:
 
 
 def _load_runner_schedule_config() -> dict:
-    if RUNNER_SCHEDULE_CONFIG.exists():
-        return _validate_runner_schedule(json.loads(RUNNER_SCHEDULE_CONFIG.read_text(encoding="utf-8")))
-    return _validate_runner_schedule(DEFAULT_RUNNER_SCHEDULE)
+    raw = config_schema.safe_read_json(RUNNER_SCHEDULE_CONFIG, DEFAULT_RUNNER_SCHEDULE)
+    return _validate_runner_schedule(raw)
 
 
 def _write_runner_schedule_config(config: dict) -> None:
-    RUNNER_SCHEDULE_CONFIG.parent.mkdir(parents=True, exist_ok=True)
-    RUNNER_SCHEDULE_CONFIG.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    try:
+        config_schema.validate_runner_schedule_config(config)
+    except ValueError as exc:
+        raise ValueError(str(exc)) from exc
+    config_schema.atomic_write_json(RUNNER_SCHEDULE_CONFIG, config)
 
 
 def _sync_runner_scheduler_state(config: dict) -> dict:
@@ -3290,7 +3313,7 @@ async def get_agent_remediation_config() -> dict:
 
 
 @app.put("/api/agent-remediation/config")
-async def update_agent_remediation_config(request: Request) -> dict:
+async def update_agent_remediation_config(request: Request) -> dict | JSONResponse:
     """Persist the remediation policy so the dashboard can tune auto-routing."""
     body = await request.json()
     if not isinstance(body, dict):
@@ -3298,6 +3321,10 @@ async def update_agent_remediation_config(request: Request) -> dict:
     payload = body.get("policy", body)
     if not isinstance(payload, dict):
         raise HTTPException(status_code=422, detail="policy must be an object")
+    try:
+        config_schema.validate_agent_remediation_config(body)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=422)
 
     current = agent_remediation.load_policy()
     workflow_type_rules = agent_remediation._load_workflow_type_rules(  # noqa: SLF001

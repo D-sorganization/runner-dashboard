@@ -415,6 +415,8 @@ includes process name, expected PID file path, and restart command.
 
 ## 6. Deployment
 
+> **Full operator guide:** [`docs/deployment-model.md`](docs/deployment-model.md)
+
 ### 6.1 Quick Start (Development)
 
 ```bash
@@ -429,7 +431,7 @@ cd runner-dashboard
 Run the full setup script on the target machine:
 
 ```bash
-bash deploy/setup.sh
+bash deploy/setup.sh --runners 4 --machine-name ControlTower --role hub
 ```
 
 `setup.sh` performs:
@@ -447,11 +449,50 @@ bash deploy/update-deployed.sh
 ```
 
 This script:
-1. Pulls latest from `main`.
-2. Restarts `runner-dashboard.service` via systemd.
-3. Updates `deployment.json` with the new version and timestamp.
+1. Installs/updates Python backend dependencies via `pip_install` (from `deploy/lib.sh`).
+2. Creates a timestamped backup of the current deploy directory (`.bak.YYYYMMDD_HHMMSS`)
+   before any files are changed.
+3. Copies updated backend, frontend, helpers, and `local_apps.json`.
+4. Writes fresh `deployment.json` metadata.
+5. Restarts `runner-dashboard.service` via systemd.
+6. Verifies service health and GitHub API connectivity.
 
-### 6.4 systemd Service
+#### Dry-Run Mode
+
+Preview all steps without executing any destructive operations:
+
+```bash
+bash deploy/update-deployed.sh --dry-run
+# or
+DRY_RUN=true bash deploy/update-deployed.sh
+```
+
+#### Artifact-Based Deployment
+
+```bash
+bash deploy/update-deployed.sh --artifact runner-dashboard-v4.0.1.tar.gz
+```
+
+### 6.4 Rollback
+
+Every `update-deployed.sh` run creates an automatic backup before copying files.
+To roll back:
+
+```bash
+# List available backups
+bash deploy/rollback.sh --list
+
+# Roll back to the most recent backup
+bash deploy/rollback.sh
+
+# Roll back to a specific backup
+bash deploy/rollback.sh --to ~/actions-runners/dashboard.bak.20260422_093017
+
+# Preview rollback without executing
+bash deploy/rollback.sh --dry-run
+```
+
+### 6.5 systemd Service
 
 The service unit (`deploy/runner-dashboard.service`) runs:
 
@@ -459,14 +500,36 @@ The service unit (`deploy/runner-dashboard.service`) runs:
 ExecStart=/path/to/venv/bin/uvicorn backend.server:app --host 0.0.0.0 --port 8321
 ```
 
-Log output via: `journalctl -u runner-dashboard -f`
+Secrets are loaded from `~/.config/runner-dashboard/env` (GH_TOKEN, GITHUB_ORG,
+NUM_RUNNERS, DISPLAY_NAME).
 
-### 6.5 Runner Autoscaler Service
+Log output: `sudo journalctl -u runner-dashboard -n 50 --no-pager`
+
+Health check: `curl http://localhost:8321/api/health`
+
+### 6.6 Runner Autoscaler Service
 
 The optional autoscaler service (`deploy/runner-autoscaler.service`) runs
 `backend/runner_autoscaler.py` as a daemon. It monitors queue depth and
 adjusts the active runner count based on the policy defined in
 `config/runner-schedule.json`.
+
+### 6.7 Shared Deploy Library
+
+`deploy/lib.sh` is sourced by all deploy scripts and provides:
+
+- Terminal colours and `ok`/`info`/`warn`/`fail` log helpers
+- Guard assertions: `require_dir`, `require_file`, `require_cmd`
+- `pip_install <pkg...>` — pip3 with `--break-system-packages` when supported
+- `sync_dir <src> <dest>` — rsync with rm/cp fallback
+- `backup_dir <path>` — timestamped `cp -a` backup
+- `dry_run "<description>"` — no-op gate when `DRY_RUN=true`
+
+All new deploy scripts should source it with:
+
+```bash
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+```
 
 ---
 
@@ -487,3 +550,27 @@ mono-repo as an independent repository.
 
 Prior versions tracked in the mono-repo `Repository_Management`. Application
 version history in `VERSION` file (4.0.1 at time of extraction).
+
+---
+
+## 8. Testing
+
+The project test suite lives in `tests/`. Run all tests with:
+
+```
+pytest tests/ -q
+```
+
+Test coverage areas:
+
+- **`tests/test_dispatch_contract.py`** — unit tests for `backend/dispatch_contract.py`:
+  envelope round-trips, confirmation gating for privileged actions, allowlist enforcement.
+- **`tests/test_remote_execution_contract.py`** — unit tests for `backend/remote_execution_contract.py`:
+  private-host and private-URL detection, unknown-target rejection.
+- **`tests/test_agent_remediation.py`** — unit tests for `backend/agent_remediation.py`:
+  `FailureContext` construction, workflow-type classification for lint and test workflows,
+  policy defaults.
+- **`tests/test_frontend_integrity.py`** — static source checks for `frontend/index.html`:
+  required tab function markers, absence of deprecated `HeavyTestsTab`, icon helper symbols.
+
+`pytest>=8.0` and `pytest-asyncio>=0.23` are listed in `requirements.txt`.
