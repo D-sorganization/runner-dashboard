@@ -3,11 +3,11 @@ name: Labels Sync
 # Applies the label manifest in .github/labels.yml to the repository.
 #
 # Idempotent: creates missing labels, updates color/description of existing
-# ones, and leaves labels not listed in the manifest alone (so the existing
-# `security`, `backend`, `critical`, etc. labels are preserved).
+# ones, and leaves labels not listed in the manifest alone (so the
+# existing `security`, `backend`, `critical`, etc. labels are preserved).
 #
-# Run manually after editing labels.yml. Not scheduled — label changes should
-# be intentional.
+# This workflow exists as a stand-alone admin tool (workflow_dispatch) and
+# as a callable building block (workflow_call) used by taxonomy-rollout.yml.
 
 on:
   workflow_dispatch:
@@ -17,9 +17,13 @@ on:
         required: false
         default: "false"
         type: choice
-        options:
-          - "true"
-          - "false"
+        options: ["true", "false"]
+  workflow_call:
+    inputs:
+      dry_run:
+        required: false
+        default: "false"
+        type: string
 
 permissions:
   issues: write
@@ -40,60 +44,8 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run }}
         with:
           script: |
-            const fs = require('fs');
-            const yaml = require('js-yaml');
-
-            const manifest = yaml.load(
-              fs.readFileSync('.github/labels.yml', 'utf8')
-            );
-            const dryRun = process.env.DRY_RUN === 'true';
-
-            const { owner, repo } = context.repo;
-
-            // Page through existing labels.
-            const existing = new Map();
-            for await (const res of github.paginate.iterator(
-              github.rest.issues.listLabelsForRepo,
-              { owner, repo, per_page: 100 }
-            )) {
-              for (const l of res.data) existing.set(l.name, l);
-            }
-
-            let created = 0, updated = 0, skipped = 0;
-
-            for (const entry of manifest) {
-              const cur = existing.get(entry.name);
-              if (!cur) {
-                core.info(`CREATE ${entry.name}`);
-                if (!dryRun) {
-                  await github.rest.issues.createLabel({
-                    owner, repo,
-                    name: entry.name,
-                    color: entry.color,
-                    description: entry.description || '',
-                  });
-                }
-                created++;
-              } else if (
-                cur.color.toLowerCase() !== entry.color.toLowerCase() ||
-                (cur.description || '') !== (entry.description || '')
-              ) {
-                core.info(`UPDATE ${entry.name}`);
-                if (!dryRun) {
-                  await github.rest.issues.updateLabel({
-                    owner, repo,
-                    name: entry.name,
-                    color: entry.color,
-                    description: entry.description || '',
-                  });
-                }
-                updated++;
-              } else {
-                skipped++;
-              }
-            }
-
-            core.notice(
-              `labels-sync: created=${created} updated=${updated} skipped=${skipped} dry_run=${dryRun}`
-            );
-
+            const { sync } = require('./.github/scripts/labels-sync.js');
+            await sync({
+              github, context, core,
+              dryRun: process.env.DRY_RUN === 'true',
+            });

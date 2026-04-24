@@ -129,6 +129,33 @@ correct.
   and re-run dry-run.
 - Re-run with `dry_run=false` when the plan looks right.
 
+### Label-triggered rollout (recommended)
+
+For humans who would rather flip a switch than click through
+workflow-dispatch forms, the rollout is label-driven end-to-end. The
+orchestrator is `.github/workflows/taxonomy-rollout.yml`:
+
+1. Apply the **`rollout:taxonomy`** label to the migration epic (#65).
+2. The orchestrator fires automatically:
+   - swaps the trigger label for `rollout:in-progress`
+   - creates / updates labels from `.github/labels.yml`
+   - runs the backfill in **dry-run** mode
+   - posts the planned diff as a comment on the epic
+3. Review the preview comment.
+4. If it looks right, apply **`rollout:taxonomy-apply`** to the same
+   epic. The orchestrator fires again and:
+   - runs the backfill for real (labels + sub-issue edges)
+   - posts a completion summary table
+   - sets `rollout:done` and removes the in-progress/apply labels
+
+If the preview is wrong, do not apply. Edit the manifest, remove
+`rollout:in-progress`, and restart by re-applying `rollout:taxonomy`.
+
+The whole chain is idempotent — re-running never duplicates labels or
+sub-issue edges, and the manifest is the single source of truth. Manual
+`workflow_dispatch` of `Labels Sync` and `Issue Taxonomy Backfill`
+remains available as an admin escape hatch.
+
 ### Phase 5 — Projects v2 board (optional)
 
 A human org-admin creates one board:

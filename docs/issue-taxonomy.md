@@ -140,7 +140,22 @@ repo today they are aligned. If they diverge in future, split into
 Execution-order bucket, used by the meta-tracking issue #55. Values:
 `wave:1`, `wave:2`, `wave:3`, `wave:4`, `wave:5`.
 
-### 10. Lease (automatic, single-valued)
+### 10. Rollout (label-triggered automation)
+
+These labels drive `Taxonomy Rollout` (`.github/workflows/taxonomy-rollout.yml`).
+Apply to an epic (not ordinary issues) to kick off a migration.
+
+| Label | Meaning |
+|---|---|
+| `rollout:taxonomy` | User-applied. Triggers the taxonomy rollout's **preview** stage (creates labels, runs backfill dry-run, posts preview comment). |
+| `rollout:taxonomy-apply` | User-applied **after reviewing the preview**. Triggers the **apply** stage (real label + sub-issue changes). |
+| `rollout:in-progress` | Workflow-managed. Indicates a rollout has started. Do not apply by hand. |
+| `rollout:done` | Workflow-managed. Indicates a rollout completed successfully. |
+
+The rollout chain is idempotent and reversible — labels are only added,
+sub-issue edges can be unlinked, and the manifest is editable.
+
+### 11. Lease (automatic, single-valued)
 
 Managed by the lease-reaper workflow. Do not set by hand.
 
