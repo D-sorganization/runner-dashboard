@@ -15,8 +15,8 @@ without touching the running dashboard service.
 from __future__ import annotations
 
 import datetime as _dt_mod
-import hmac
 import hashlib
+import hmac
 import json
 import os
 from dataclasses import asdict, dataclass, field
@@ -42,7 +42,7 @@ def _load_signing_secret() -> str:
     key_file = os.path.join(config_dir, "dispatch_signing_key")
 
     if os.path.exists(key_file):
-        with open(key_file, "r") as f:
+        with open(key_file) as f:
             return f.read().strip()
 
     import secrets
@@ -83,7 +83,15 @@ def _validate_timestamp_freshness(timestamp_str: str, ttl_seconds: int = 300) ->
         return TimestampValidationResult.INVALID_FORMAT
 
 
-def _sign_envelope_payload(action: str, source: str, target: str, requested_by: str, issued_at: str, envelope_version: int, secret: str) -> str:
+def _sign_envelope_payload(
+    action: str,
+    source: str,
+    target: str,
+    requested_by: str,
+    issued_at: str,
+    envelope_version: int,
+    secret: str,
+) -> str:
     """Generate HMAC-SHA256 signature over envelope payload."""
     canonical = json.dumps({
         "action": action,
@@ -97,9 +105,20 @@ def _sign_envelope_payload(action: str, source: str, target: str, requested_by: 
     return hmac.new(secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
 
 
-def _verify_envelope_signature(action: str, source: str, target: str, requested_by: str, issued_at: str, envelope_version: int, signature: str, secret: str) -> bool:
+def _verify_envelope_signature(
+    action: str,
+    source: str,
+    target: str,
+    requested_by: str,
+    issued_at: str,
+    envelope_version: int,
+    signature: str,
+    secret: str,
+) -> bool:
     """Verify HMAC-SHA256 signature over envelope payload."""
-    expected = _sign_envelope_payload(action, source, target, requested_by, issued_at, envelope_version, secret)
+    expected = _sign_envelope_payload(
+        action, source, target, requested_by, issued_at, envelope_version, secret
+    )
     return hmac.compare_digest(expected, signature)
 
 
@@ -321,15 +340,10 @@ def validate_envelope_crypto(envelope: CommandEnvelope) -> CryptoValidationResul
     - Timestamp is fresh (issued_at within ±5 minutes)
     - Confirmation timestamp is fresh if confirmation is present (approved_at within ±5 minutes)
     """
-    print(f"DEBUG: validate_envelope_crypto called")
-    print(f"DEBUG: envelope.signature = '{envelope.signature}'")
     if not envelope.signature:
-        print(f"DEBUG: Returning due to no signature")
         return CryptoValidationResult(valid=False, reason="envelope signature missing")
 
-    print(f"DEBUG: Calling envelope.verify_signature()")
     if not envelope.verify_signature():
-        print(f"DEBUG: Returning due to signature verification failure")
         return CryptoValidationResult(valid=False, reason="envelope signature invalid")
 
     issued_at_result = _validate_timestamp_freshness(envelope.issued_at, ttl_seconds=300)
@@ -349,15 +363,11 @@ def validate_envelope_crypto(envelope: CommandEnvelope) -> CryptoValidationResul
                 TimestampValidationResult.TOO_NEW: "confirmation approved_at timestamp in future",
                 TimestampValidationResult.INVALID_FORMAT: "confirmation approved_at timestamp invalid format",
             }
-            return CryptoValidationResult(valid=False, reason=reason_map.get(approved_at_result, "unknown timestamp error"))
+            reason = reason_map.get(approved_at_result, "unknown timestamp error")
+            return CryptoValidationResult(valid=False, reason=reason)
 
     final_reason = "signature and timestamps valid"
-    result = CryptoValidationResult(valid=True, reason=final_reason)
-    # DEBUG
-    print(f"DEBUG: Creating CryptoValidationResult with reason='{final_reason}'")
-    print(f"DEBUG: Result object: {result}")
-    print(f"DEBUG: Result.reason = '{result.reason}'")
-    return result
+    return CryptoValidationResult(valid=True, reason=final_reason)
 
 
 ALLOWLISTED_ACTIONS: dict[str, DispatchAction] = {
@@ -492,42 +502,6 @@ def build_envelope(
         payload=_ensure_dict(payload),
         confirmation=confirmation,
     )
-
-
-@dataclass(frozen=True, slots=True)
-class CryptoValidationResult:
-    """Result of cryptographic envelope validation."""
-    valid: bool
-    reason: str = ""
-
-
-def validate_envelope_crypto(envelope: CommandEnvelope) -> CryptoValidationResult:
-    """Validate envelope signature and timestamp freshness.
-
-    Returns CryptoValidationResult with valid=True if all checks pass.
-    """
-    timestamp_result = _validate_timestamp_freshness(envelope.issued_at, ttl_seconds=300)
-    if timestamp_result != TimestampValidationResult.VALID:
-        return CryptoValidationResult(
-            valid=False,
-            reason=f"invalid issued_at timestamp: {timestamp_result.value}",
-        )
-
-    if not envelope.verify_signature():
-        return CryptoValidationResult(
-            valid=False,
-            reason="invalid envelope signature",
-        )
-
-    if envelope.confirmation:
-        conf_timestamp = _validate_timestamp_freshness(envelope.confirmation.approved_at, ttl_seconds=3600)
-        if conf_timestamp != TimestampValidationResult.VALID:
-            return CryptoValidationResult(
-                valid=False,
-                reason=f"invalid approval timestamp: {conf_timestamp.value}",
-            )
-
-    return CryptoValidationResult(valid=True)
 
 
 def validate_envelope(envelope: CommandEnvelope) -> DispatchValidationResult:
