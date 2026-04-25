@@ -11160,7 +11160,38 @@
         var pending = React.useState("");
         var pendingAction = pending[0],
           setPendingAction = pending[1];
+        var ts = React.useState([]);
+        var tasks = ts[0],
+          setTasks = ts[1];
+        var tl = React.useState(false);
+        var tasksLoading = tl[0],
+          setTasksLoading = tl[1];
+        var dv = React.useState("");
+        var daemonVersion = dv[0],
+          setDaemonVersion = dv[1];
         var isRunning = status.status === "running";
+
+        function fetchTasks() {
+          setTasksLoading(true);
+          fetch("/api/maxwell/tasks?limit=10")
+            .then(function (r) { return r.json(); })
+            .then(function (data) { setTasks(data.tasks || []); })
+            .catch(function () { setTasks([]); })
+            .finally(function () { setTasksLoading(false); });
+        }
+
+        function fetchVersion() {
+          fetch("/api/maxwell/version")
+            .then(function (r) { return r.json(); })
+            .then(function (data) { setDaemonVersion(data.contract || data.daemon || ""); })
+            .catch(function () { setDaemonVersion(""); });
+        }
+
+        React.useEffect(function () {
+          fetchTasks();
+          fetchVersion();
+        }, []);
+
         function doControl(action) {
           setPendingAction(action);
           setControlling(true);
@@ -11185,6 +11216,7 @@
             h(Stat, { label: "Status", value: status.status || "unknown", sub: status.service_detail || "" }),
             h(Stat, { label: "HTTP", value: status.http_reachable ? "reachable" : "offline", sub: status.http_detail || "" }),
             h(Stat, { label: "Binary", value: status.binary_found ? "found" : "missing", sub: status.binary_path || "not on PATH" }),
+            h(Stat, { label: "Contract", value: daemonVersion || "unknown" }),
           ),
           h("div", { style: { display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" } },
             h("button", { className: "btn", onClick: onRefresh, disabled: loading }, I.refresh(12), loading ? "Refreshing..." : "Refresh"),
@@ -11203,6 +11235,29 @@
                 ? h("div", { style: { marginTop: 12, fontSize: 12, color: "var(--text-muted)" } }, "Maxwell-Daemon is not detected on this machine.")
                 : null,
             ),
+          ),
+          h("div", { className: "section" },
+            h("div", { className: "section-header" },
+              h("span", { className: "section-title" }, I.list ? I.list(14) : null, "Recent Tasks")
+            ),
+            h("div", { className: "section-body" },
+              tasksLoading ? h("div", { style: { color: "var(--text-muted)", fontSize: 12 } }, "Loading tasks…") :
+              !status.http_reachable ? h("div", { style: { fontSize: 12, color: "var(--text-muted)" } }, "Maxwell-Daemon offline — no task history") :
+              tasks.length === 0 ? h("div", { style: { fontSize: 12, color: "var(--text-muted)" } }, "No tasks yet") :
+              h("table", { className: "data-table" },
+                h("thead", null, h("tr", null,
+                  h("th", null, "ID"), h("th", null, "Status"), h("th", null, "Repo"), h("th", null, "Created")
+                )),
+                h("tbody", null, tasks.map(function(t) {
+                  return h("tr", { key: t.id },
+                    h("td", null, (t.id||"").slice(0,8)),
+                    h("td", null, t.status || "—"),
+                    h("td", null, t.repo || "—"),
+                    h("td", null, t.created_at ? t.created_at.slice(0,16).replace("T"," ") : "—")
+                  );
+                }))
+              )
+            )
           ),
         );
       }
