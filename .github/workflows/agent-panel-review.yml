@@ -55,7 +55,7 @@ jobs:
     if: >-
       github.event_name == 'issues' &&
       github.event.label.name == 'panel-review'
-    runs-on: ubuntu-latest
+    runs-on: d-sorg-fleet
     steps:
       - uses: actions/checkout@v4
       - uses: actions/github-script@v7
@@ -69,7 +69,7 @@ jobs:
 
   sweep:
     if: github.event_name != 'issues'
-    runs-on: ubuntu-latest
+    runs-on: d-sorg-fleet
     steps:
       - uses: actions/checkout@v4
       - uses: actions/github-script@v7
