@@ -15,6 +15,10 @@ without touching the running dashboard service.
 from __future__ import annotations
 
 import datetime as _dt_mod
+import hmac
+import hashlib
+import json
+import os
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any
@@ -24,6 +28,79 @@ UTC = getattr(_dt_mod, "UTC", _dt_mod.timezone.utc)  # noqa: UP017
 datetime = _dt_mod.datetime
 
 SCHEMA_VERSION = "dispatch-envelope.v1"
+ENVELOPE_VERSION = 1
+
+
+def _load_signing_secret() -> str:
+    """Load DISPATCH_SIGNING_SECRET from environment or generate/save it."""
+    secret = os.environ.get("DISPATCH_SIGNING_SECRET", "").strip()
+    if secret:
+        return secret
+
+    config_base = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
+    config_dir = os.path.join(config_base, "runner-dashboard")
+    key_file = os.path.join(config_dir, "dispatch_signing_key")
+
+    if os.path.exists(key_file):
+        with open(key_file, "r") as f:
+            return f.read().strip()
+
+    import secrets
+    secret = secrets.token_hex(24)
+    os.makedirs(config_dir, exist_ok=True)
+    with open(key_file, "w") as f:
+        f.write(secret)
+    os.chmod(key_file, 0o600)
+    return secret
+
+
+class TimestampValidationResult(StrEnum):
+    """Result of timestamp freshness validation."""
+    VALID = "valid"
+    TOO_OLD = "too_old"
+    TOO_NEW = "too_new"
+    INVALID_FORMAT = "invalid_format"
+
+
+def _validate_timestamp_freshness(timestamp_str: str, ttl_seconds: int = 300) -> TimestampValidationResult:
+    """Validate that timestamp is within ±ttl_seconds of current time."""
+    try:
+        if timestamp_str.endswith("Z"):
+            ts = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        else:
+            ts = datetime.fromisoformat(timestamp_str)
+
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
+
+        now = datetime.now(UTC)
+        delta = abs((now - ts).total_seconds())
+
+        if delta > ttl_seconds:
+            return TimestampValidationResult.TOO_OLD if ts < now else TimestampValidationResult.TOO_NEW
+        return TimestampValidationResult.VALID
+    except (ValueError, AttributeError):
+        return TimestampValidationResult.INVALID_FORMAT
+
+
+def _sign_envelope_payload(action: str, source: str, target: str, requested_by: str, issued_at: str, envelope_version: int, secret: str) -> str:
+    """Generate HMAC-SHA256 signature over envelope payload."""
+    canonical = json.dumps({
+        "action": action,
+        "source": source,
+        "target": target,
+        "requested_by": requested_by,
+        "issued_at": issued_at,
+        "envelope_version": envelope_version,
+    }, separators=(",", ":"), sort_keys=True)
+
+    return hmac.new(secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
+
+
+def _verify_envelope_signature(action: str, source: str, target: str, requested_by: str, issued_at: str, envelope_version: int, signature: str, secret: str) -> bool:
+    """Verify HMAC-SHA256 signature over envelope payload."""
+    expected = _sign_envelope_payload(action, source, target, requested_by, issued_at, envelope_version, secret)
+    return hmac.compare_digest(expected, signature)
 
 
 class DispatchAccess(StrEnum):
@@ -69,6 +146,8 @@ class DispatchConfirmation:
 
     approved_by: str
     approved_at: str
+    envelope_id: str = ""
+    approval_hmac: str = ""
     note: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -79,6 +158,8 @@ class DispatchConfirmation:
         return cls(
             approved_by=_required_string(data, "approved_by"),
             approved_at=_required_string(data, "approved_at"),
+            envelope_id=str(data.get("envelope_id", "")),
+            approval_hmac=str(data.get("approval_hmac", "")),
             note="" if data.get("note") is None else str(data.get("note", "")),
         )
 
@@ -116,7 +197,23 @@ class CommandEnvelope:
     confirmation: DispatchConfirmation | None = None
     envelope_id: str = field(default_factory=lambda: uuid4().hex)
     schema_version: str = SCHEMA_VERSION
+    envelope_version: int = ENVELOPE_VERSION
     issued_at: str = field(default_factory=_utc_now)
+    signature: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.signature:
+            secret = _load_signing_secret()
+            sig = _sign_envelope_payload(
+                self.action,
+                self.source,
+                self.target,
+                self.requested_by,
+                self.issued_at,
+                self.envelope_version,
+                secret,
+            )
+            object.__setattr__(self, "signature", sig)
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -128,7 +225,7 @@ class CommandEnvelope:
     def from_dict(cls, data: dict[str, Any]) -> CommandEnvelope:
         confirmation_data = data.get("confirmation")
         confirmation = DispatchConfirmation.from_dict(confirmation_data) if confirmation_data is not None else None
-        return cls(
+        envelope = cls(
             action=_required_string(data, "action"),
             source=_required_string(data, "source"),
             target=_required_string(data, "target"),
@@ -138,8 +235,30 @@ class CommandEnvelope:
             confirmation=confirmation,
             envelope_id=str(data.get("envelope_id", uuid4().hex)),
             schema_version=str(data.get("schema_version", SCHEMA_VERSION)),
+            envelope_version=int(data.get("envelope_version", ENVELOPE_VERSION)),
             issued_at=str(data.get("issued_at", _utc_now())),
+            signature=str(data.get("signature", "")),
         )
+        return envelope
+
+    def verify_signature(self) -> bool:
+        """Verify that envelope signature is valid."""
+        if not self.signature:
+            return False
+        try:
+            secret = _load_signing_secret()
+            return _verify_envelope_signature(
+                self.action,
+                self.source,
+                self.target,
+                self.requested_by,
+                self.issued_at,
+                self.envelope_version,
+                self.signature,
+                secret,
+            )
+        except Exception:
+            return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -318,6 +437,42 @@ def build_envelope(
         payload=_ensure_dict(payload),
         confirmation=confirmation,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class CryptoValidationResult:
+    """Result of cryptographic envelope validation."""
+    valid: bool
+    reason: str = ""
+
+
+def validate_envelope_crypto(envelope: CommandEnvelope) -> CryptoValidationResult:
+    """Validate envelope signature and timestamp freshness.
+
+    Returns CryptoValidationResult with valid=True if all checks pass.
+    """
+    timestamp_result = _validate_timestamp_freshness(envelope.issued_at, ttl_seconds=300)
+    if timestamp_result != TimestampValidationResult.VALID:
+        return CryptoValidationResult(
+            valid=False,
+            reason=f"invalid issued_at timestamp: {timestamp_result.value}",
+        )
+
+    if not envelope.verify_signature():
+        return CryptoValidationResult(
+            valid=False,
+            reason="invalid envelope signature",
+        )
+
+    if envelope.confirmation:
+        conf_timestamp = _validate_timestamp_freshness(envelope.confirmation.approved_at, ttl_seconds=3600)
+        if conf_timestamp != TimestampValidationResult.VALID:
+            return CryptoValidationResult(
+                valid=False,
+                reason=f"invalid approval timestamp: {conf_timestamp.value}",
+            )
+
+    return CryptoValidationResult(valid=True)
 
 
 def validate_envelope(envelope: CommandEnvelope) -> DispatchValidationResult:
