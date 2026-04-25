@@ -5079,6 +5079,177 @@ async def fleet_orchestration_deploy(request: Request) -> dict:
     }
 
 
+# ─── Diagnostics & Launchers ──────────────────────────────────────────────────
+
+
+@app.get("/api/deployment/git-drift")
+async def get_git_drift() -> dict:
+    """Return git-commit-based drift: compares HEAD against origin/main."""
+    repo_root = Path(__file__).parent.parent
+    result: dict[str, object] = {}
+
+    source = "unknown"
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=repo_root,
+        )
+        source = out.stdout.strip()
+        result["source_commit"] = source[:12]
+    except Exception:
+        result["source_commit"] = "unknown"
+
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "origin/main"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=repo_root,
+        )
+        remote = out.stdout.strip()
+        result["remote_commit"] = remote[:12]
+        result["is_drifted"] = bool(source and remote and source != remote)
+        if result["is_drifted"]:
+            result["drift_details"] = "deployed version differs from origin/main"
+        else:
+            result["drift_details"] = "up to date"
+    except Exception:
+        result["is_drifted"] = False
+        result["remote_commit"] = "unknown"
+        result["drift_details"] = "could not reach origin/main"
+
+    result["process_pid"] = os.getpid()
+    return result
+
+
+@app.get("/api/diagnostics/summary")
+async def get_diagnostics_summary() -> dict:
+    """Consolidated diagnostics for the Diagnostics tab."""
+    summary: dict[str, object] = {}
+
+    # WSL status
+    try:
+        wsl_result = subprocess.run(
+            ["wsl", "-l", "-v"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            encoding="utf-16-le",
+            errors="replace",
+        )
+        summary["wsl_status"] = wsl_result.stdout.strip()
+        summary["wsl_available"] = wsl_result.returncode == 0
+    except Exception:
+        try:
+            wsl_result_raw = subprocess.run(
+                ["wsl", "-l", "-v"],
+                capture_output=True,
+                timeout=10,
+            )
+            summary["wsl_status"] = wsl_result_raw.stdout.decode("utf-16-le", errors="replace").strip()
+            summary["wsl_available"] = wsl_result_raw.returncode == 0
+        except Exception:
+            summary["wsl_status"] = "WSL not available"
+            summary["wsl_available"] = False
+
+    # Dashboard process info
+    proc = psutil.Process(os.getpid())
+    summary["dashboard_pid"] = proc.pid
+    summary["dashboard_memory_mb"] = round(proc.memory_info().rss / 1024 / 1024, 1)
+    summary["dashboard_port"] = PORT
+
+    # Git commit
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=Path(__file__).parent.parent,
+        )
+        summary["git_commit"] = out.stdout.strip() or "unknown"
+    except Exception:
+        summary["git_commit"] = "unknown"
+
+    # Drift info
+    try:
+        drift = await get_git_drift()
+        summary["is_drifted"] = drift.get("is_drifted", False)
+        summary["source_commit"] = drift.get("source_commit", "unknown")
+        summary["remote_commit"] = drift.get("remote_commit", "unknown")
+        summary["drift_details"] = drift.get("drift_details", "")
+    except Exception:
+        summary["is_drifted"] = False
+
+    return summary
+
+
+@app.post("/api/diagnostics/restart-service")
+async def restart_dashboard_service(request: Request) -> dict:
+    """Restart the dashboard systemd service (WSL/Linux only, localhost only)."""
+    client = request.client
+    if not client or client.host not in ("127.0.0.1", "::1"):
+        raise HTTPException(status_code=403, detail="Local access only")
+
+    try:
+        result = subprocess.run(
+            [SYSTEMCTL_BIN, "--user", "restart", "runner-dashboard"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        return {
+            "success": result.returncode == 0,
+            "output": (result.stdout + result.stderr).strip(),
+        }
+    except Exception as exc:
+        log.exception("Failed to restart runner-dashboard service")
+        raise HTTPException(status_code=500, detail="Restart failed") from exc
+
+
+@app.post("/api/launchers/generate")
+async def generate_launchers() -> dict:
+    """Generate Windows PowerShell launcher scripts on the Desktop."""
+    output_dir = Path.home() / "Desktop" / "RunnerDashboard"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    launchers_created: list[str] = []
+
+    script = output_dir / "Open-Dashboard.ps1"
+    script.write_text('Start-Process "http://localhost:8321"\n', encoding="utf-8")
+    launchers_created.append(str(script))
+
+    keepalive = output_dir / "Start-WSL-Keepalive.ps1"
+    keepalive.write_text(
+        'Start-ScheduledTask -TaskName "WSL-Dashboard-Keepalive" -ErrorAction SilentlyContinue\n'
+        'Write-Host "Keepalive task started"\n',
+        encoding="utf-8",
+    )
+    launchers_created.append(str(keepalive))
+
+    restart = output_dir / "Restart-Dashboard-Service.ps1"
+    restart.write_text(
+        'wsl -e bash -c "systemctl --user restart runner-dashboard && echo Service restarted"\n',
+        encoding="utf-8",
+    )
+    launchers_created.append(str(restart))
+
+    diag = output_dir / "Open-Diagnostics.ps1"
+    diag.write_text('Start-Process "http://localhost:8321/#diagnostics"\n', encoding="utf-8")
+    launchers_created.append(str(diag))
+
+    log.info("Generated %d launcher scripts in %s", len(launchers_created), output_dir)
+    return {
+        "output_dir": str(output_dir),
+        "launchers": launchers_created,
+        "message": f"Created {len(launchers_created)} launcher scripts in {output_dir}",
+    }
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
