@@ -42,9 +42,14 @@ async def client(app):
     """Async HTTP client wired directly to the ASGI app."""
     from httpx import ASGITransport, AsyncClient  # noqa: PLC0415
 
+    headers = {
+        "Authorization": "Bearer test-key",
+        "X-Requested-With": "XMLHttpRequest",
+    }
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
+        headers=headers,
     ) as ac:
         yield ac
 
