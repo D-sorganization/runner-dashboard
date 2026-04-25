@@ -11,20 +11,17 @@ execution is done by the caller after receiving an accepted envelope back.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import Awaitable, Callable
 
 import dispatch_contract
 from fastapi import APIRouter, HTTPException, Request
-
-if TYPE_CHECKING:
-    from server import _is_envelope_replay, _record_processed_envelope
 
 router = APIRouter(prefix="/api/fleet/dispatch", tags=["dispatch"])
 
 log = logging.getLogger("dashboard.dispatch")
 
-_is_envelope_replay: object = None
-_record_processed_envelope: object = None
+_is_envelope_replay: Callable[[str], Awaitable[bool]] | None = None
+_record_processed_envelope: Callable[[str], Awaitable[None]] | None = None
 
 
 def set_replay_functions(is_replay_fn, record_fn) -> None:
