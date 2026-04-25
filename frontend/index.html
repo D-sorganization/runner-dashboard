@@ -12960,6 +12960,351 @@
       }
 
 
+      // ── Quick Dispatch Popover (issue #86) ────────────────────────────────────
+      var PROVIDERS_WITH_MODEL = ["claude_code_cli", "codex_cli"];
+
+      function QuickDispatchPopover() {
+        var os = React.useState(false);
+        var open = os[0], setOpen = os[1];
+
+        var rs = React.useState([]);
+        var repoList = rs[0], setRepoList = rs[1];
+
+        var ps = React.useState([]);
+        var providerList = ps[0], setProviderList = ps[1];
+
+        var fms = React.useState({
+          repository: "",
+          provider: "claude_code_cli",
+          model: "claude-opus-4-7",
+          ref: "main",
+          prompt: "",
+        });
+        var form = fms[0], setForm = fms[1];
+
+        var ls = React.useState(false);
+        var loading = ls[0], setLoading = ls[1];
+
+        var es = React.useState(null);
+        var error = es[0], setError = es[1];
+
+        var ss = React.useState(null);
+        var successMsg = ss[0], setSuccessMsg = ss[1];
+
+        var popoverRef = React.useRef(null);
+        var triggerRef = React.useRef(null);
+
+        // Close on outside click
+        React.useEffect(function () {
+          if (!open) return;
+          function onMouseDown(e) {
+            if (
+              popoverRef.current && !popoverRef.current.contains(e.target) &&
+              triggerRef.current && !triggerRef.current.contains(e.target)
+            ) {
+              setOpen(false);
+            }
+          }
+          document.addEventListener("mousedown", onMouseDown);
+          return function () { document.removeEventListener("mousedown", onMouseDown); };
+        }, [open]);
+
+        // Fetch repos and providers when popover opens
+        React.useEffect(function () {
+          if (!open) return;
+          if (repoList.length === 0) {
+            fetch("/api/repos")
+              .then(function (r) { return r.json(); })
+              .then(function (d) {
+                var repos = (d && d.repos) ? d.repos : [];
+                setRepoList(repos);
+                if (repos.length > 0 && !form.repository) {
+                  setForm(function (prev) {
+                    return Object.assign({}, prev, { repository: repos[0].full_name || repos[0].name || "" });
+                  });
+                }
+              })
+              .catch(function () {});
+          }
+          if (providerList.length === 0) {
+            fetch("/api/agents/providers")
+              .then(function (r) { return r.json(); })
+              .then(function (d) {
+                var providers = d && d.providers ? Object.keys(d.providers) : ["claude_code_cli"];
+                setProviderList(providers);
+              })
+              .catch(function () {
+                setProviderList(["claude_code_cli", "jules_api", "codex_cli"]);
+              });
+          }
+        }, [open]);
+
+        function handleToggle() {
+          setOpen(function (prev) { return !prev; });
+          setError(null);
+          setSuccessMsg(null);
+        }
+
+        function handleFormChange(field, value) {
+          setForm(function (prev) { return Object.assign({}, prev, { [field]: value }); });
+        }
+
+        function handleCancel() {
+          setOpen(false);
+          setError(null);
+          setSuccessMsg(null);
+        }
+
+        function handleDispatch() {
+          setError(null);
+          if (!form.repository) {
+            setError("Please select a repository.");
+            return;
+          }
+          if (!form.prompt || form.prompt.trim().length < 10) {
+            setError("Prompt must be at least 10 characters.");
+            return;
+          }
+          setLoading(true);
+          var body = {
+            repository: form.repository,
+            prompt: form.prompt.trim(),
+            provider: form.provider,
+            ref: form.ref || "main",
+            task_kind: "adhoc",
+          };
+          if (PROVIDERS_WITH_MODEL.indexOf(form.provider) !== -1 && form.model.trim()) {
+            body.model = form.model.trim();
+          }
+          fetch("/api/agents/quick-dispatch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+            body: JSON.stringify(body),
+          })
+            .then(function (r) {
+              return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; });
+            })
+            .then(function (result) {
+              setLoading(false);
+              if (!result.ok) {
+                if (result.status === 429) {
+                  setError("Rate limited. Try again in a moment.");
+                } else {
+                  setError((result.data && result.data.detail) || "Dispatch failed.");
+                }
+                return;
+              }
+              setSuccessMsg("✓ Dispatched!");
+              setForm(function (prev) {
+                return Object.assign({}, prev, { prompt: "" });
+              });
+              setTimeout(function () {
+                setOpen(false);
+                setSuccessMsg(null);
+              }, 1800);
+            })
+            .catch(function () {
+              setLoading(false);
+              setError("Network error. Please try again.");
+            });
+        }
+
+        var showModel = PROVIDERS_WITH_MODEL.indexOf(form.provider) !== -1;
+
+        var labelStyle = {
+          fontSize: 12,
+          color: "var(--text-muted)",
+          marginBottom: 3,
+          display: "block",
+        };
+        var inputStyle = {
+          width: "100%",
+          background: "var(--bg-primary)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          padding: "5px 10px",
+          color: "var(--text-primary)",
+          fontSize: 13,
+          outline: "none",
+          boxSizing: "border-box",
+        };
+        var rowStyle = { marginBottom: 10 };
+
+        return h(
+          "div",
+          { style: { position: "relative", display: "inline-block" } },
+          h(
+            "button",
+            {
+              ref: triggerRef,
+              className: "btn btn-blue",
+              style: {
+                fontSize: 13,
+                padding: "6px 12px",
+                fontWeight: 600,
+                background: "rgba(88,166,255,0.15)",
+              },
+              onClick: handleToggle,
+              title: "Open Quick Dispatch",
+            },
+            "⚡ Quick Dispatch ▾",
+          ),
+          open
+            ? h(
+                "div",
+                {
+                  ref: popoverRef,
+                  style: {
+                    position: "fixed",
+                    right: 16,
+                    top: 64,
+                    width: 320,
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                    zIndex: 9000,
+                    padding: 16,
+                  },
+                },
+                h(
+                  "div",
+                  { style: { fontWeight: 700, fontSize: 14, marginBottom: 14, color: "var(--text-primary)" } },
+                  "⚡ Quick Dispatch",
+                ),
+                h(
+                  "div",
+                  { style: rowStyle },
+                  h("label", { style: labelStyle }, "Repository"),
+                  h(
+                    "select",
+                    {
+                      style: inputStyle,
+                      value: form.repository,
+                      onChange: function (e) { handleFormChange("repository", e.target.value); },
+                    },
+                    repoList.length === 0
+                      ? h("option", { value: "" }, "Loading…")
+                      : repoList.map(function (repo) {
+                          var name = repo.full_name || repo.name || repo;
+                          return h("option", { key: name, value: name }, name);
+                        }),
+                  ),
+                ),
+                h(
+                  "div",
+                  { style: rowStyle },
+                  h("label", { style: labelStyle }, "Provider"),
+                  h(
+                    "select",
+                    {
+                      style: inputStyle,
+                      value: form.provider,
+                      onChange: function (e) { handleFormChange("provider", e.target.value); },
+                    },
+                    providerList.length === 0
+                      ? h("option", { value: "claude_code_cli" }, "claude_code_cli")
+                      : providerList.map(function (pid) {
+                          return h("option", { key: pid, value: pid }, pid);
+                        }),
+                  ),
+                ),
+                showModel
+                  ? h(
+                      "div",
+                      { style: rowStyle },
+                      h("label", { style: labelStyle }, "Model"),
+                      h("input", {
+                        type: "text",
+                        style: inputStyle,
+                        value: form.model,
+                        placeholder: "claude-opus-4-7",
+                        onChange: function (e) { handleFormChange("model", e.target.value); },
+                      }),
+                    )
+                  : null,
+                h(
+                  "div",
+                  { style: rowStyle },
+                  h("label", { style: labelStyle }, "Branch ref"),
+                  h("input", {
+                    type: "text",
+                    style: inputStyle,
+                    value: form.ref,
+                    placeholder: "main",
+                    onChange: function (e) { handleFormChange("ref", e.target.value); },
+                  }),
+                ),
+                h(
+                  "div",
+                  { style: rowStyle },
+                  h("label", { style: labelStyle }, "Prompt"),
+                  h("textarea", {
+                    rows: 4,
+                    style: Object.assign({}, inputStyle, { resize: "vertical", fontFamily: "inherit" }),
+                    value: form.prompt,
+                    placeholder: "Describe the task for the agent…",
+                    onChange: function (e) { handleFormChange("prompt", e.target.value); },
+                  }),
+                ),
+                error
+                  ? h(
+                      "div",
+                      {
+                        style: {
+                          fontSize: 12,
+                          color: "var(--accent-red)",
+                          marginBottom: 10,
+                          padding: "6px 10px",
+                          background: "rgba(248,81,73,0.1)",
+                          borderRadius: 4,
+                          border: "1px solid rgba(248,81,73,0.3)",
+                        },
+                      },
+                      error,
+                    )
+                  : null,
+                successMsg
+                  ? h(
+                      "div",
+                      {
+                        style: {
+                          fontSize: 12,
+                          color: "var(--accent-green)",
+                          marginBottom: 10,
+                          padding: "6px 10px",
+                          background: "rgba(63,185,80,0.1)",
+                          borderRadius: 4,
+                          border: "1px solid rgba(63,185,80,0.3)",
+                        },
+                      },
+                      successMsg,
+                    )
+                  : null,
+                h(
+                  "div",
+                  { style: { display: "flex", justifyContent: "flex-end", gap: 8 } },
+                  h(
+                    "button",
+                    { className: "btn", onClick: handleCancel, disabled: loading },
+                    "Cancel",
+                  ),
+                  h(
+                    "button",
+                    {
+                      className: "btn btn-blue",
+                      style: { background: "rgba(88,166,255,0.2)", fontWeight: 600 },
+                      onClick: handleDispatch,
+                      disabled: loading,
+                    },
+                    loading ? "Dispatching…" : "⚡ Dispatch",
+                  ),
+                ),
+              )
+            : null,
+        );
+      }
+
       function App() {
         var ts = React.useState("overview");
         var tab = ts[0],
@@ -14803,6 +15148,7 @@
                 },
                 "Build " + shortSha(deployment.git_sha),
               ),
+              h(QuickDispatchPopover, null),
               h(
                 "button",
                 {

@@ -113,6 +113,25 @@ removed in issue #3 to enforce a single source of truth. A CI test
 (`test_jsx_archive_removed`) prevents re-introduction of a parallel
 implementation.
 
+#### Header Quick Dispatch
+
+The main header contains a **Quick Dispatch** button (⚡ Quick Dispatch ▾),
+flush-right next to the refresh control. Clicking it opens a popover form that
+lets any operator dispatch an ad-hoc agent task to any org repository without
+navigating to a specific tab. The popover provides:
+
+- **Repository** dropdown — populated from `GET /api/repos`
+- **Provider** dropdown — populated from `GET /api/agents/providers`
+- **Model** text field — shown only for providers that support model selection
+  (`claude_code_cli`, `codex_cli`); defaults to `claude-opus-4-7`
+- **Branch ref** text field — defaults to `main`
+- **Prompt** textarea — minimum 10 characters
+- **Dispatch** button — POSTs to `POST /api/agents/quick-dispatch`; shows a
+  loading state, surfaces errors inline, and auto-closes on success
+
+Click-outside closes the popover. Rate-limit errors (HTTP 429) are surfaced
+with a human-readable message.
+
 ### 2.3 Deployment
 
 The dashboard runs as a systemd service (`runner-dashboard.service`) on the
@@ -332,6 +351,13 @@ All endpoints are served under `http://localhost:8321/api/`.
 | POST | `/api/agent-remediation/dispatch` | Dispatch a remediation plan (GAAI/Claude/Codex) |
 | POST | `/api/agent-remediation/dispatch-jules` | Dispatch via Jules API |
 | GET | `/api/agent-remediation/history` | Remediation dispatch history |
+
+### Quick Dispatch
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/agents/providers` | Available agent providers and their availability status |
+| POST | `/api/agents/quick-dispatch` | Dispatch an ad-hoc agent task to any repository |
 
 ### Credentials
 

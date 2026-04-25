@@ -5603,6 +5603,131 @@ async def generate_launchers() -> dict:
     }
 
 
+# ─── Quick Dispatch ──────────────────────────────────────────────────────────
+
+
+_QUICK_DISPATCH_HISTORY_PATH = Path.home() / "actions-runners" / "dashboard" / "quick_dispatch_history.json"
+_PROVIDERS_WITH_MODEL_SELECTION = frozenset({"claude_code_cli", "codex_cli"})
+_quick_dispatch_lock = asyncio.Lock()
+
+
+@app.get("/api/agents/providers")
+async def get_agent_providers() -> dict:
+    """Return available agent providers and their availability status."""
+    availability = agent_remediation.probe_provider_availability()
+    return {
+        "providers": {pid: p.to_dict() for pid, p in agent_remediation.PROVIDERS.items()},
+        "availability": {pid: s.to_dict() for pid, s in availability.items()},
+        "providers_with_model_selection": sorted(_PROVIDERS_WITH_MODEL_SELECTION),
+    }
+
+
+@app.post("/api/agents/quick-dispatch")
+async def quick_dispatch_agent(request: Request) -> dict:
+    """Dispatch an ad-hoc agent task to any repository (issue #86)."""
+    client_ip = request.client.host if request.client else "unknown"
+    check_dispatch_rate(client_ip)
+    body = await request.json()
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="expected object body")
+
+    repository = str(body.get("repository", "")).strip()
+    prompt = str(body.get("prompt", "")).strip()
+    provider = str(body.get("provider", "claude_code_cli")).strip()
+    model = str(body.get("model", "")).strip()
+    ref = str(body.get("ref", "main")).strip() or "main"
+    task_kind = str(body.get("task_kind", "adhoc")).strip()
+
+    if not repository:
+        raise HTTPException(status_code=422, detail="repository is required")
+    if len(prompt) < 10:
+        raise HTTPException(status_code=422, detail="prompt must be at least 10 characters")
+    if provider not in agent_remediation.PROVIDERS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"unknown provider '{provider}'; valid: {sorted(agent_remediation.PROVIDERS)}",
+        )
+
+    # Normalize repository to bare name for workflow inputs
+    repo_name = repository.removeprefix(f"{ORG}/")
+
+    # Load and apply prompt notes if enabled
+    prompt_notes_data: dict[str, object] = {"notes": "", "enabled": True}
+    try:
+        if _PROMPT_NOTES_PATH.exists():
+            prompt_notes_data = json.loads(_PROMPT_NOTES_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+
+    full_prompt = prompt
+    notes_val = str(prompt_notes_data.get("notes", ""))
+    if prompt_notes_data.get("enabled", True) and notes_val.strip():
+        full_prompt = f"{notes_val}\n\n{prompt}"
+
+    # Record in history
+    entry: dict = {}
+    async with _quick_dispatch_lock:
+        try:
+            history: list[dict] = []
+            if _QUICK_DISPATCH_HISTORY_PATH.exists():
+                history = json.loads(_QUICK_DISPATCH_HISTORY_PATH.read_text(encoding="utf-8"))
+            entry = {
+                "id": str(int(datetime.now(UTC).timestamp())),
+                "repository": f"{ORG}/{repo_name}",
+                "provider": provider,
+                "model": model,
+                "ref": ref,
+                "task_kind": task_kind,
+                "prompt": prompt[:500],
+                "status": "dispatched",
+                "created_at": datetime.now(UTC).isoformat(),
+            }
+            history.append(entry)
+            config_schema.atomic_write_json(_QUICK_DISPATCH_HISTORY_PATH, history[-200:])
+        except Exception:
+            pass
+
+    # Build workflow inputs and dispatch
+    workflow_inputs: dict[str, str] = {
+        "target_repository": f"{ORG}/{repo_name}",
+        "branch": ref,
+        "provider": provider,
+        "prompt": full_prompt[:10000],
+        "task_kind": task_kind,
+    }
+    if model and provider in _PROVIDERS_WITH_MODEL_SELECTION:
+        workflow_inputs["model"] = model
+
+    endpoint = f"/repos/{ORG}/Repository_Management/actions/workflows/Jules-Feature-Request.yml/dispatches"
+    payload = {"ref": "main", "inputs": workflow_inputs}
+
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".json", delete=False) as f:
+        json.dump(payload, f)
+        pf = f.name
+    try:
+        code, _, stderr = await run_cmd(
+            ["gh", "api", endpoint, "--method", "POST", "--input", pf],
+            timeout=30,
+            cwd=REPO_ROOT,
+        )
+    finally:
+        with contextlib.suppress(OSError):
+            Path(pf).unlink()
+
+    if code != 0:
+        log.warning("quick_dispatch failed (provider=%s repo=%s): %s", provider, repo_name, stderr.strip()[:200])
+        # Surface the error to the caller
+        raise HTTPException(status_code=502, detail=f"Dispatch workflow failed: {stderr.strip()[:200]}")
+
+    log.info("quick_dispatch accepted: provider=%s repo=%s ref=%s", provider, repo_name, ref)
+    return {
+        "status": "dispatched",
+        "repository": f"{ORG}/{repo_name}",
+        "provider": provider,
+        "entry_id": entry.get("id", ""),
+    }
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
