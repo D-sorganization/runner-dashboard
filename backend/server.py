@@ -815,14 +815,6 @@ async def _expected_dashboard_version_from_hub() -> str | None:
     return expected
 
 
-        log.warning("hub expected-version fetch failed: %s", exc)
-        return None
-    expected = str(payload.get("expected") or "").strip()
-    if not expected or expected == "unknown":
-        return None
-    return expected
-
-
 async def _read_expected_dashboard_version() -> str:
     """Return the hub expected VERSION, falling back to this checkout."""
     return await _expected_dashboard_version_from_hub() or deployment_drift.read_expected_version(EXPECTED_VERSION_FILE)
@@ -4153,7 +4145,7 @@ async def api_quick_dispatch(request: Request) -> dict:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if len(req.prompt.strip()) < 10:
-        raise HTTPException(status_code=400, detail="prompt must be at least 10 characters") from exc
+        raise HTTPException(status_code=400, detail="prompt must be at least 10 characters")
 
     resp = await _quick_dispatch.quick_dispatch(
         req,
@@ -4208,7 +4200,7 @@ async def api_dispatch_to_prs(request: Request) -> dict:
         normalize_repository_fn=_normalize_repository_input,
     )
     if isinstance(result, dict) and "error" in result:
-        raise HTTPException(status_code=result.get("status_code", 400), detail=result["error"]) from exc
+        raise HTTPException(status_code=result.get("status_code", 400), detail=result["error"])
     if isinstance(result, agent_dispatch_router.BulkDispatchResponse):
         return result.model_dump()
     return dict(result)
@@ -4233,7 +4225,7 @@ async def api_dispatch_to_issues(request: Request) -> dict:
         normalize_repository_fn=_normalize_repository_input,
     )
     if isinstance(result, dict) and "error" in result:
-        raise HTTPException(status_code=result.get("status_code", 400), detail=result["error"]) from exc
+        raise HTTPException(status_code=result.get("status_code", 400), detail=result["error"])
     if isinstance(result, agent_dispatch_router.BulkDispatchResponse):
         return result.model_dump()
     return dict(result)
@@ -4362,11 +4354,10 @@ async def assistant_chat(request: Request) -> dict:
     try:
         body = await request.json()
     except Exception:  # noqa: BLE001
-        raise HTTPException(status_code=400, detail="Invalid JSON")
+        raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
     # Validate request
     try:
-        import assistant_contract
         req = assistant_contract.AssistantChatRequest(**body)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=422, detail=str(e)) from e
@@ -4399,10 +4390,9 @@ async def propose_action(request: Request) -> dict:
     try:
         body = await request.json()
     except Exception:  # noqa: BLE001
-        raise HTTPException(status_code=400, detail="Invalid JSON")
+        raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
     try:
-        import assistant_contract
         req = assistant_contract.ActionProposeRequest(**body)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=422, detail=str(e)) from e
@@ -4411,7 +4401,7 @@ async def propose_action(request: Request) -> dict:
     provider_id = req.provider or agent_remediation._get_default_provider_id()
     availability = agent_remediation.probe_provider_availability()
     if provider_id not in availability or not availability[provider_id].available:
-        raise HTTPException(status_code=503, detail=f"Provider '{provider_id}' is unavailable") from e
+        raise HTTPException(status_code=503, detail=f"Provider '{provider_id}' is unavailable")
 
     context_str = json.dumps(req.context.dict(), indent=2)
     full_prompt = (
@@ -4480,21 +4470,20 @@ async def execute_action(request: Request) -> dict:
     try:
         body = await request.json()
     except Exception:  # noqa: BLE001
-        raise HTTPException(status_code=400, detail="Invalid JSON")
+        raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
     try:
-        import assistant_contract
         req = assistant_contract.ActionExecuteRequest(**body)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=422, detail=str(e)) from e
 
     # Check action exists and is pending
     if req.action_id not in _proposed_actions:
-        raise HTTPException(status_code=404, detail="Action not found") from e
+        raise HTTPException(status_code=404, detail="Action not found")
 
     action_record = _proposed_actions[req.action_id]
     if action_record.get("approved"):
-        raise HTTPException(status_code=409, detail="Action already executed") from e
+        raise HTTPException(status_code=409, detail="Action already executed")
 
     if not req.approved:
         # Just mark as rejected
@@ -5723,10 +5712,6 @@ async def save_prompt_template(request: Request) -> dict:
     return {"status": "saved", "name": name}
 
 
-            raise HTTPException(status_code=500, detail=str(e)) from e
-    return {"status": "saved", "name": name}
-
-
 @app.get("/api/settings/prompt-notes")
 async def get_prompt_notes() -> dict:
     """Get the global prompt notes that are automatically injected into every prompt."""
@@ -5755,10 +5740,6 @@ async def update_prompt_notes(request: Request) -> dict:
             data = {"notes": notes, "enabled": enabled}
             config_schema.atomic_write_json(_PROMPT_NOTES_PATH, data)
         except Exception as e:  # noqa: BLE001
-            raise HTTPException(status_code=500, detail=str(e)) from e
-    return {"status": "saved", "notes_length": len(notes), "enabled": enabled}
-
-
             raise HTTPException(status_code=500, detail=str(e)) from e
     return {"status": "saved", "notes_length": len(notes), "enabled": enabled}
 
