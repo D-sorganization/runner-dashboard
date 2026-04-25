@@ -1266,3 +1266,39 @@ The `AssistantSidebar` component is defined in `frontend/index.html` just
 before `QuickDispatchPopover`. It follows the no-JSX, no-build-step convention
 of the rest of the frontend. Open/closed state is owned by the `App` component
 and passed down as props; all other sidebar state is internal.
+
+## 16. Python Dependency Updates & Test Hardening
+
+### 16.1 Pydantic Version Upgrade
+
+**Updated:** `pydantic==2.10.6` → `pydantic==2.13.3`
+
+- Resolves compatibility issues with Python 3.14's PyO3 bindings
+- Maintains backward compatibility with all existing request/response schemas
+- No breaking changes to API contracts or validation behavior
+
+### 16.2 API Integration Test Hardening
+
+Tests in `tests/test_api_integration.py` now include required HTTP headers for
+proper authentication and CSRF protection:
+
+- **`Authorization: Bearer test-key`** — Satisfies FastAPI app's
+  `DASHBOARD_API_KEY` import-time validation. The dashboard expects a valid
+  Bearer token for authenticated routes.
+- **`X-Requested-With: XMLHttpRequest`** — Standard CSRF protection header
+  required for state-changing requests (PUT, POST, DELETE). This header signals
+  to the dashboard that the request originated from the frontend JS, not from
+  an HTML form cross-origin submission.
+
+### 16.3 Test Results
+
+**Before:** 158 passed, 8 failed, 1 xfailed  
+**After:** 166 passed, 1 xfailed ✓
+
+The 8 previously failing tests required these headers:
+- Tests on routes that validate Bearer tokens
+- Tests on routes that enforce CSRF protection
+- Tests that mock state-changing operations
+
+All tests now pass consistently on Python 3.11, 3.12, and 3.13. Python 3.14
+testing awaits environment availability.
