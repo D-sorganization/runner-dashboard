@@ -103,10 +103,10 @@
 # ---------------------------------------------------------------------------
 - name: "rollout:taxonomy"
   color: "6F42C1"
-  description: "Applying this label to the taxonomy migration epic fires the Taxonomy Rollout workflow (creates labels, previews backfill, applies if confirmed)."
+  description: "Triggers Taxonomy Rollout workflow (creates labels, previews backfill)."
 - name: "rollout:taxonomy-apply"
   color: "22863A"
-  description: "Authorizes the Taxonomy Rollout to execute the backfill for real (not just dry-run). Apply only after reviewing the preview comment."
+  description: "Authorizes the Taxonomy Rollout to execute the backfill for real."
 - name: "rollout:in-progress"
   color: "FBCA04"
   description: "Automation has started executing a rollout on this issue. Do not apply manually — managed by the workflow."
