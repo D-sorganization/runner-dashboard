@@ -648,3 +648,37 @@ service when HTTPS is required.
   unexpected or unauthorized agent invocations.
 - Consider binding to `127.0.0.1` and using a reverse proxy with
   authentication if the dashboard is accessible to untrusted network segments.
+
+---
+
+## 10. Prompt Notes and Agent Dispatch Configuration
+
+### 10.1 User-Configurable Prompt Notes
+
+The AI agent dispatch system supports user-defined preamble notes injected
+before every outbound LLM prompt. These are stored in
+`~/.config/runner-dashboard/prompt_notes.json` with the shape:
+
+```json
+{ "enabled": true, "notes": "Always prefer Python 3.11+ idioms." }
+```
+
+The `/api/feature-requests/templates` (GET) route returns the current notes
+alongside prompt templates and engineering standards. The
+`/api/feature-requests` (POST) route merges notes into the prompt before
+dispatch when `enabled` is true and `notes` is non-empty.
+
+### 10.2 Secure Environment Variable Setup
+
+`deploy/configure-env-vars.sh` provides a guided interactive script for
+setting `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, and other required environment
+variables into the WSL systemd unit. It validates token format and writes
+variables to the service override file rather than to shell rc files, reducing
+the risk of secrets leaking through shell history.
+
+### 10.3 Deployment Dependency Management
+
+`deploy/setup.sh` and `deploy/update-deployed.sh` install Python dependencies
+from `backend/requirements.txt` directly (via `pip install -r
+backend/requirements.txt`) rather than a hardcoded list, ensuring the deployed
+dependency set stays in sync with the source of truth automatically.
