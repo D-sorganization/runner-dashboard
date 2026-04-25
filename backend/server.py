@@ -225,9 +225,8 @@ async def _add_security_headers(request: Request, call_next: Any) -> Any:
     # 'strict-dynamic' lets scripts loaded from trusted CDN origins load further
     # dependencies without needing individual allow-list entries.
     # 'unsafe-inline' is retained for style-src because React's CSS-in-JS and
-    # the dashboard's own <style> block rely on inline styles.
-    # TODO: replace 'unsafe-inline' in style-src with a nonce or hashes when
-    # a build step is introduced.
+    # the dashboard's own <style> block rely on inline styles. A build step
+    # would allow switching to nonce or hash-based CSP for style-src.
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'strict-dynamic' "

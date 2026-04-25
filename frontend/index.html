@@ -1225,8 +1225,8 @@
     <div id="root"></div>
 
     <!-- CDN scripts – crossorigin="anonymous" required for SRI enforcement.       -->
-    <!-- TODO(#18): compute and add integrity="sha256-…" hashes for each library  -->
-    <!-- once a pinned-hash workflow is in place, then remove 'strict-dynamic'    -->
+    <!-- SRI integrity hashes should be added per library once versions are       -->
+    <!-- pinned and hashes are computed; remove 'strict-dynamic' after that step. -->
     <!-- from the CSP script-src directive in backend/server.py.                  -->
     <script
       crossorigin="anonymous"
