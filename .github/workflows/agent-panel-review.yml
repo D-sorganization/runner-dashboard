@@ -62,14 +62,9 @@ jobs:
         with:
           script: |
             const script = require('./.github/scripts/panel-review.js');
-            const { data: issue } = await github.rest.issues.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-            });
             await script.postBrief({
               github, context, core,
-              issue,
+              issue: context.payload.issue,
             });
 
   sweep:
