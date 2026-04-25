@@ -621,3 +621,64 @@ The backend injects the following headers on all responses:
 ### 9.3 Destructive Action Confirmation
 Critical fleet operations (runner stop, fleet restart) use a two-step
 inline confirmation UI instead of `window.confirm()`.
+
+### 9.4 Token Handling
+`GH_TOKEN` and `ANTHROPIC_API_KEY` must be supplied as environment variables
+only — never hardcoded in source files or configuration. The recommended setup
+path is the `configure-env-vars.sh` script, which writes tokens to the systemd
+override file so they are not visible in the process environment of child
+processes and are not stored in shell history.
+
+### 9.5 Network Exposure
+The dashboard backend binds to `0.0.0.0:8321` by default so that multi-node
+fleet monitoring works across the local network. Operators who do not need
+cross-node access should bind to `127.0.0.1` instead (set the `HOST`
+environment variable or modify the `systemd` unit file). No TLS is provided
+by the dashboard itself; use a reverse proxy (nginx, Caddy) in front of the
+service when HTTPS is required.
+
+### 9.6 Operator Hardening Checklist
+- Restrict network access to port 8321 via firewall rules (`ufw`, `iptables`,
+  or cloud security groups); do not expose it publicly.
+- Rotate `GH_TOKEN` and `ANTHROPIC_API_KEY` on a regular schedule (at minimum
+  whenever a team member departs).
+- Keep Python dependencies current: run `pip-audit` and `pip install -U -r
+  requirements.txt` during routine maintenance windows.
+- Review agent dispatch logs in the Remediation tab regularly to detect
+  unexpected or unauthorized agent invocations.
+- Consider binding to `127.0.0.1` and using a reverse proxy with
+  authentication if the dashboard is accessible to untrusted network segments.
+
+---
+
+## 10. Prompt Notes and Agent Dispatch Configuration
+
+### 10.1 User-Configurable Prompt Notes
+
+The AI agent dispatch system supports user-defined preamble notes injected
+before every outbound LLM prompt. These are stored in
+`~/.config/runner-dashboard/prompt_notes.json` with the shape:
+
+```json
+{ "enabled": true, "notes": "Always prefer Python 3.11+ idioms." }
+```
+
+The `/api/feature-requests/templates` (GET) route returns the current notes
+alongside prompt templates and engineering standards. The
+`/api/feature-requests` (POST) route merges notes into the prompt before
+dispatch when `enabled` is true and `notes` is non-empty.
+
+### 10.2 Secure Environment Variable Setup
+
+`deploy/configure-env-vars.sh` provides a guided interactive script for
+setting `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, and other required environment
+variables into the WSL systemd unit. It validates token format and writes
+variables to the service override file rather than to shell rc files, reducing
+the risk of secrets leaking through shell history.
+
+### 10.3 Deployment Dependency Management
+
+`deploy/setup.sh` and `deploy/update-deployed.sh` install Python dependencies
+from `backend/requirements.txt` directly (via `pip install -r
+backend/requirements.txt`) rather than a hardcoded list, ensuring the deployed
+dependency set stays in sync with the source of truth automatically.
