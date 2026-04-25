@@ -24,6 +24,27 @@ open PR.
 **Agent priority order** (highest wins redundancy conflicts):
 `user > maxwell-daemon > claude > codex > jules > local > gaai`
 
+## Issue Taxonomy and Dispatch
+
+Before picking up an issue, agents must:
+
+1. Read [`docs/issue-taxonomy.md`](docs/issue-taxonomy.md) — the canonical
+   label taxonomy and dispatch contract.
+2. Confirm the issue is **pickable** per the rules in that doc: state is
+   `open`, no open PR references it, no active `claim:*` lease, and the
+   issue's `complexity:*` label falls within the agent's skill tier.
+3. Respect `judgement:design` and `judgement:contested` — **do not
+   implement** from those issues. They require panel review first (see
+   `.github/workflows/agent-panel-review.yml`).
+4. Respect `panel-review` — on those issues, post an opinion comment in the
+   documented format; do **not** open a PR from them.
+
+**Quick-win lane:** filter `label:quick-win label:complexity:trivial
+label:judgement:objective` for low-risk warmup work.
+
+Migration of existing issues to this taxonomy is tracked in
+[`docs/issue-migration-plan.md`](docs/issue-migration-plan.md).
+
 ## Project Overview
 
 `runner-dashboard` is the web UI control surface for the D-sorganization
