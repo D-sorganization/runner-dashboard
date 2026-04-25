@@ -57,6 +57,7 @@ FLEET_NODES_VAL=""
 HUB_URL_VAL=""
 ARTIFACT_SOURCE=""
 SCHEDULE_CONFIG_VAL="${RUNNER_SCHEDULE_CONFIG:-$HOME/.config/runner-dashboard/runner-schedule.json}"
+PYTHON_BIN="${RUNNER_DASHBOARD_PYTHON:-$(command -v python3.11 || command -v python3)}"
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
@@ -88,13 +89,27 @@ echo "Display:      ${DISPLAY_NAME_VAL}"
 echo "Role:         ${MACHINE_ROLE}"
 echo "Runners:      ${NUM_RUNNERS}"
 echo "Schedule:     ${SCHEDULE_CONFIG_VAL}"
+echo "Python:       ${PYTHON_BIN}"
 [[ -n "$FLEET_NODES_VAL" ]] && echo "Fleet nodes:  ${FLEET_NODES_VAL}"
 echo ""
 
 # ── Step 1: Install Python deps ──────────────────────────────────────────────
 header "Step 1/5: Python Dependencies"
-pip3 install --break-system-packages --quiet fastapi uvicorn psutil httpx PyYAML
-ok "fastapi, uvicorn, psutil, httpx, PyYAML installed"
+REQUIREMENTS_FILE="${SCRIPT_DIR}/backend/requirements.txt"
+if [[ -f "$REQUIREMENTS_FILE" ]]; then
+    PIP_ARGS=(install --quiet -r "$REQUIREMENTS_FILE")
+    if "${PYTHON_BIN}" -m pip install --help 2>/dev/null | grep -q -- '--break-system-packages'; then
+        PIP_ARGS=(install --break-system-packages --quiet -r "$REQUIREMENTS_FILE")
+    fi
+else
+    # Fallback if requirements.txt is somehow absent
+    PIP_ARGS=(install --quiet fastapi pydantic uvicorn psutil httpx PyYAML)
+    if "${PYTHON_BIN}" -m pip install --help 2>/dev/null | grep -q -- '--break-system-packages'; then
+        PIP_ARGS=(install --break-system-packages --quiet fastapi pydantic uvicorn psutil httpx PyYAML)
+    fi
+fi
+"${PYTHON_BIN}" -m pip "${PIP_ARGS[@]}"
+ok "backend dependencies installed from requirements.txt"
 
 # ── Step 2: Deploy dashboard files ───────────────────────────────────────────
 header "Step 2/5: Deploy Dashboard"
@@ -111,6 +126,15 @@ else
     mkdir -p "${DEPLOY_DIR}/config"
     cp -r "${SCRIPT_DIR}/config/." "${DEPLOY_DIR}/config/"
     cp "${SCRIPT_DIR}/local_apps.json" "${DEPLOY_DIR}/local_apps.json"
+    cp "${SCRIPT_DIR}/VERSION" "${DEPLOY_DIR}/VERSION"
+    "${SCRIPT_DIR}/deploy/write-deployment-metadata.sh" "${DEPLOY_DIR}" "${SCRIPT_DIR}"
+
+    # Deploy launcher scripts for PWA recovery
+    cp "${SCRIPT_DIR}/deploy/launcher.sh" "${DEPLOY_DIR}/launcher.sh"
+    sed -i 's/\r$//' "${DEPLOY_DIR}/launcher.sh"
+    chmod +x "${DEPLOY_DIR}/launcher.sh"
+    cp "${SCRIPT_DIR}/deploy/launcher.ps1" "${DEPLOY_DIR}/launcher.ps1"
+    cp "${SCRIPT_DIR}/deploy/register-protocol.ps1" "${DEPLOY_DIR}/register-protocol.ps1"
 
     # Deploy and configure the token refresh script
     REFRESH_SCRIPT="${HOME}/actions-runners/dashboard/refresh-token.sh"
@@ -147,6 +171,9 @@ if not hosts.exists(): sys.exit(0)
 m = re.search(r'oauth_token:\s*(\S+)', hosts.read_text())
 print(m.group(1) if m else '', end='')
 " 2>/dev/null || true)
+fi
+if [[ ! "${AUTO_TOKEN}" =~ ^(gho_|ghp_|ghu_|ghs_|ghr_|github_pat_)[A-Za-z0-9_]{30,}$ ]]; then
+    AUTO_TOKEN=""
 fi
 if [[ -n "${AUTO_TOKEN}" ]]; then
     sed -i '/^GH_TOKEN=/d' "${SECRETS_FILE}"
@@ -219,7 +246,7 @@ Type=simple
 User=${USER}
 WorkingDirectory=${DEPLOY_DIR}
 ExecStartPre=${DEPLOY_DIR}/refresh-token.sh
-ExecStart=/usr/bin/python3 ${DEPLOY_DIR}/backend/server.py
+ExecStart=${PYTHON_BIN} ${DEPLOY_DIR}/backend/server.py
 Restart=always
 RestartSec=5
 Environment=GITHUB_ORG=D-sorganization
@@ -237,8 +264,18 @@ Environment=PATH=/usr/lib/wsl/lib:${HOME}/.local/bin:${HOME}/.cargo/bin:/usr/loc
 EnvironmentFile=-${HOME}/.config/runner-dashboard/env
 
 # Hardening
-NoNewPrivileges=false
-ProtectSystem=false
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+# Allow the dashboard to read/write runner secrets and config from HOME.
+ReadWritePaths=${HOME}/.config/runner-dashboard
 
 [Install]
 WantedBy=multi-user.target
@@ -269,8 +306,39 @@ else
     warn "Service may still be starting. Check: sudo systemctl status runner-dashboard"
 fi
 
-# ── Step 5: Windows port forwarding instructions ─────────────────────────────
-header "Step 5/5: Remote Access"
+# ── Step 5a: Register PWA launcher protocol (Windows only) ─────────────────
+if [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2>/dev/null; then
+    header "Step 5a/5: Register PWA Launcher (Windows)"
+    info "Registering runner-dashboard:// protocol handler for PWA recovery..."
+
+    # Make scripts executable
+    chmod +x "${DEPLOY_DIR}/launcher.sh" 2>/dev/null || true
+
+    # Call PowerShell script from Windows to register protocol
+    if command -v powershell.exe &>/dev/null; then
+        powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${DEPLOY_DIR}/register-protocol.ps1" 2>/dev/null || {
+            warn "Protocol registration requires Windows PowerShell (Admin mode)"
+            warn "Run this in Windows PowerShell as Administrator:"
+            echo ""
+            echo "    ${BOLD}powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$(wslpath -w "${DEPLOY_DIR}")\register-protocol.ps1\"${NC}"
+            echo ""
+        }
+    else
+        warn "PowerShell not found; protocol registration skipped"
+        warn "To register later, run in Windows PowerShell as Administrator:"
+        echo ""
+        echo "    ${BOLD}powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$(wslpath -w "${DEPLOY_DIR}")\register-protocol.ps1\"${NC}"
+        echo ""
+    fi
+else
+    header "Step 5a/5: Register PWA Launcher (macOS/Linux)"
+    info "Making launcher script executable..."
+    chmod +x "${DEPLOY_DIR}/launcher.sh"
+    ok "Launcher ready at: ${DEPLOY_DIR}/launcher.sh"
+fi
+
+# ── Step 5b: Windows port forwarding instructions ─────────────────────────────
+header "Step 5b/5: Remote Access"
 
 WSL_IP=$(hostname -I | awk '{print $1}')
 info "WSL2 IP: ${WSL_IP}"

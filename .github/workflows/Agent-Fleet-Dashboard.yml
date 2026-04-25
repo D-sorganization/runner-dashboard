@@ -20,44 +20,28 @@ concurrency:
 
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    runs-on: d-sorg-fleet
     timeout-minutes: 15
     steps:
-      - name: Check Jules app credentials
-        id: app-creds
-        env:
-          JULES_APP_ID: ${{ secrets.JULES_APP_ID }}
-          JULES_APP_PRIVATE_KEY: ${{ secrets.JULES_APP_PRIVATE_KEY }}
-        run: |
-          if [ -n "$JULES_APP_ID" ] && [ -n "$JULES_APP_PRIVATE_KEY" ]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::JULES_APP_ID/JULES_APP_PRIVATE_KEY are not configured; skipping dashboard refresh."
-          fi
-
       - name: Generate Jules app token
         id: app-token
-        if: steps.app-creds.outputs.configured == 'true'
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v1
         with:
           app-id: ${{ secrets.JULES_APP_ID }}
           private-key: ${{ secrets.JULES_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
-      - uses: actions/checkout@v4
-        if: steps.app-creds.outputs.configured == 'true'
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           token: ${{ steps.app-token.outputs.token }}
 
-      - uses: actions/setup-python@v5
-        if: steps.app-creds.outputs.configured == 'true'
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5
         with:
           python-version: "3.11"
 
       - name: Generate dashboard
-        if: steps.app-creds.outputs.configured == 'true'
-        continue-on-error: true
+        # Fail-open: generation errors emit a warning but allow the commit step to
+        # write a placeholder, so the next cron run can retry cleanly.
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -66,7 +50,6 @@ jobs:
             || echo "::warning::dashboard generation failed; continuing"
 
       - name: Commit if changed
-        if: steps.app-creds.outputs.configured == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -83,13 +66,9 @@ jobs:
 
       - name: Summary
         if: always()
-        env:
-          GENERATED_AT: $(date -Iseconds)
-          APP_CREDS_CONFIGURED: ${{ steps.app-creds.outputs.configured || 'false' }}
         run: |
           {
             echo "## Agent Fleet Dashboard"
             echo ""
-            echo "- **Generated:** $GENERATED_AT"
-            echo "- **App credentials configured:** $APP_CREDS_CONFIGURED"
+            echo "- **Generated:** $(date -Iseconds)"
           } >> "$GITHUB_STEP_SUMMARY"
