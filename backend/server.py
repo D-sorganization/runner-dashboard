@@ -5069,6 +5069,119 @@ async def maxwell_control(request: Request) -> dict:
     return {"status": action + "ed", "action": action, "approved_by": approved_by}
 
 
+# ─── Maxwell-Daemon Proxy Routes ──────────────────────────────────────────────
+
+
+def _maxwell_base_url() -> str:
+    """Return the Maxwell-Daemon base URL from env."""
+    return os.environ.get("MAXWELL_URL", "") or f"http://localhost:{int(os.environ.get('MAXWELL_PORT', 8322))}"
+
+
+@app.get("/api/maxwell/version")
+async def get_maxwell_version() -> dict:
+    """Proxy GET /api/version from Maxwell-Daemon."""
+    path = "/api/version"
+    resp = None
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(f"{_maxwell_base_url()}{path}")
+            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
+            return resp.json()
+    except Exception as e:
+        log.info("maxwell_proxy: path=%s status=%s", path, "error")
+        return {"error": str(e)[:120], "daemon_available": False}
+
+
+@app.get("/api/maxwell/daemon-status")
+async def get_maxwell_daemon_status_detail() -> dict:
+    """Proxy GET /api/status from Maxwell-Daemon (pipeline state)."""
+    path = "/api/status"
+    resp = None
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(f"{_maxwell_base_url()}{path}")
+            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
+            return resp.json()
+    except Exception as e:
+        log.info("maxwell_proxy: path=%s status=%s", path, "error")
+        return {"error": str(e)[:120], "daemon_available": False}
+
+
+@app.get("/api/maxwell/tasks")
+async def get_maxwell_tasks(limit: int = 20, cursor: str | None = None) -> dict:
+    """Proxy GET /api/tasks from Maxwell-Daemon."""
+    path = "/api/tasks"
+    resp = None
+    try:
+        params: dict = {"limit": limit}
+        if cursor is not None:
+            params["cursor"] = cursor
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(f"{_maxwell_base_url()}{path}", params=params)
+            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
+            return resp.json()
+    except Exception as e:
+        log.info("maxwell_proxy: path=%s status=%s", path, "error")
+        return {"error": str(e)[:120], "daemon_available": False}
+
+
+@app.get("/api/maxwell/tasks/{task_id}")
+async def get_maxwell_task_detail(task_id: str) -> dict:
+    """Proxy GET /api/tasks/{task_id} from Maxwell-Daemon."""
+    path = f"/api/tasks/{task_id}"
+    resp = None
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(f"{_maxwell_base_url()}{path}")
+            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
+            return resp.json()
+    except Exception as e:
+        log.info("maxwell_proxy: path=%s status=%s", path, "error")
+        return {"error": str(e)[:120], "daemon_available": False}
+
+
+@app.post("/api/maxwell/dispatch")
+async def maxwell_dispatch_task(request: Request) -> dict:
+    """Proxy POST /api/dispatch to Maxwell-Daemon (forwards body as-is)."""
+    path = "/api/dispatch"
+    resp = None
+    try:
+        body = await request.body()
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.post(
+                f"{_maxwell_base_url()}{path}",
+                content=body,
+                headers={"Content-Type": "application/json"},
+            )
+            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
+            return resp.json()
+    except Exception as e:
+        log.info("maxwell_proxy: path=%s status=%s", path, "error")
+        return {"error": str(e)[:120], "daemon_available": False}
+
+
+@app.post("/api/maxwell/pipeline-control/{action}")
+async def maxwell_pipeline_control(action: str, request: Request) -> dict:
+    """Proxy POST /api/control/{action} to Maxwell-Daemon."""
+    if action not in ("pause", "resume", "abort"):
+        raise HTTPException(status_code=422, detail="action must be pause, resume, or abort")
+    path = f"/api/control/{action}"
+    resp = None
+    try:
+        body = await request.body()
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.post(
+                f"{_maxwell_base_url()}{path}",
+                content=body,
+                headers={"Content-Type": "application/json"},
+            )
+            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
+            return resp.json()
+    except Exception as e:
+        log.info("maxwell_proxy: path=%s status=%s", path, "error")
+        return {"error": str(e)[:120], "daemon_available": False}
+
+
 @app.post("/api/help/chat")
 async def help_chat(request: Request) -> dict:
     """Answer a dashboard help question. Uses local FAQ first, falls back to Claude API if available."""
@@ -5175,6 +5288,15 @@ async def dispatch_assessment(request: Request) -> dict:
     ref = str(body.get("ref", "main")).strip()
     if not repo:
         raise HTTPException(status_code=422, detail="repository required")
+    if not provider:
+        raise HTTPException(status_code=422, detail="provider required")
+
+    log.info(
+        "audit: assessments_dispatch repo=%s provider=%s ref=%s",
+        sanitize_log_value(repo),
+        sanitize_log_value(provider),
+        sanitize_log_value(ref),
+    )
 
     # Try to dispatch via GitHub Actions assessment workflow
     endpoint = f"/repos/{ORG}/Repository_Management/actions/workflows/Jules-Assess-Repo.yml/dispatches"
@@ -5200,7 +5322,6 @@ async def dispatch_assessment(request: Request) -> dict:
             status_code=502,
             detail="Assessment dispatch failed",
         )
-    log.info("assessment_dispatch: repo=%s provider=%s ref=%s", repo, sanitize_log_value(provider), ref)
     return {"status": "dispatched", "repository": repo, "provider": provider}
 
 
@@ -5347,8 +5468,18 @@ async def dispatch_feature_request(request: Request) -> dict:
     provider = str(body.get("provider", "jules_api")).strip()
     prompt = str(body.get("prompt", "")).strip()
     standards = body.get("standards", []) or []
-    if not repo or not prompt:
-        raise HTTPException(status_code=422, detail="repository and prompt required")
+    template_id = str(body.get("template_id", "")).strip()
+    if not repo:
+        raise HTTPException(status_code=422, detail="repository required")
+    if not prompt and not template_id:
+        raise HTTPException(status_code=422, detail="prompt or template_id required")
+
+    log.info(
+        "audit: feature_request_dispatch repo=%s provider=%s branch=%s",
+        sanitize_log_value(repo),
+        sanitize_log_value(provider),
+        sanitize_log_value(branch),
+    )
 
     # Load and apply prompt notes if enabled
     prompt_notes_data: dict[str, object] = {"notes": "", "enabled": True}
@@ -5526,6 +5657,15 @@ async def fleet_orchestration_dispatch(request: Request) -> dict:
     if not repo or not workflow:
         raise HTTPException(status_code=422, detail="repo and workflow are required")
 
+    log.info(
+        "audit: fleet_orchestration_dispatch repo=%s workflow=%s ref=%s target=%s by=%s",
+        sanitize_log_value(repo),
+        sanitize_log_value(workflow),
+        sanitize_log_value(ref),
+        sanitize_log_value(machine_target),
+        sanitize_log_value(approved_by),
+    )
+
     from uuid import uuid4  # noqa: PLC0415
 
     audit_id = uuid4().hex
@@ -5637,6 +5777,13 @@ async def fleet_orchestration_deploy(request: Request) -> dict:
             status_code=403,
             detail="confirmed=true is required to deploy to a fleet machine",
         )
+
+    log.info(
+        "audit: fleet_orchestration_deploy machine=%s action=%s by=%s",
+        sanitize_log_value(machine),
+        sanitize_log_value(action),
+        sanitize_log_value(requested_by),
+    )
 
     from uuid import uuid4  # noqa: PLC0415
 
