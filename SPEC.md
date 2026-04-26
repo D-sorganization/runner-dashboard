@@ -2,7 +2,7 @@
 
 **Spec Version:** 2.2.1
 **Application Version:** 4.0.1 (see `VERSION`)
-**Last Updated:** 2026-04-26
+**Last Updated:** 2026-04-25
 **Status:** Active
 
 ---
@@ -1043,7 +1043,8 @@ an ad-hoc agent task.
   "provider": "claude_code_cli",
   "model": "claude-opus-4-7",
   "ref": "main",
-  "task_kind": "adhoc"
+  "task_kind": "adhoc",
+  "requested_by": "dieter"
 }
 ```
 

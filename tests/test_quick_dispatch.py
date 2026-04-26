@@ -64,6 +64,7 @@ async def test_happy_path_accepted() -> None:
         repository="D-sorganization/runner-dashboard",
         prompt="Fix the failing test in test_api.py",
         provider="claude_code_cli",
+        requested_by="test-user",
     )
     resp = await _call(req)
     assert resp.accepted is True
@@ -80,6 +81,7 @@ async def test_provider_unavailable_rejected() -> None:
         repository="D-sorganization/runner-dashboard",
         prompt="Fix the failing test in test_api.py",
         provider="nonexistent_provider",
+        requested_by="test-user",
     )
     with patch("quick_dispatch.agent_remediation.probe_provider_availability") as mock_avail:
         mock_avail.return_value = {}
@@ -102,6 +104,7 @@ async def test_prompt_too_short_rejected() -> None:
         repository="D-sorganization/runner-dashboard",
         prompt="short",
         provider="claude_code_cli",
+        requested_by="test-user",
     )
     resp = await _call(req)
     assert resp.accepted is False
@@ -116,6 +119,7 @@ async def test_rate_limit_after_10_calls() -> None:
         repository="D-sorganization/runner-dashboard",
         prompt="Fix the failing test in test_api.py",
         provider="claude_code_cli",
+        requested_by="test-user",
     )
     # Make 10 accepted calls
     for _ in range(10):
@@ -142,6 +146,7 @@ async def test_workflow_missing_returns_not_configured() -> None:
         repository="D-sorganization/runner-dashboard",
         prompt="Fix the failing test in test_api.py",
         provider="claude_code_cli",
+        requested_by="test-user",
     )
     resp = await _call(req, run_cmd_fn=run_cmd_fn)
     assert resp.accepted is False
