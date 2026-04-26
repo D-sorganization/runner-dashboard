@@ -48,7 +48,8 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
-from backend.identity import Principal, require_scope  # noqa: B008
+from backend.identity import Principal, require_principal, require_scope  # noqa: B008
+from backend.routers import admin as admin_router
 from backend.routers import auth as auth_router
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -431,11 +432,12 @@ async def _record_processed_envelope(envelope_id: str, ttl_seconds: int = 86400)
 app.include_router(_dispatch_router.router)
 _dispatch_router.set_replay_functions(_is_envelope_replay, _record_processed_envelope)
 app.include_router(_credentials_router.router)
+app.include_router(admin_router.router)
 app.include_router(auth_router.router)
 
 # Agent-launcher control surface (sibling: Repository_Management/launchers/cline_agent_launcher).
 # Subprocess-only — never imports the launcher Python at runtime.
-from backend import agent_launcher_router as _agent_launcher_router  # noqa: E402
+import agent_launcher_router as _agent_launcher_router  # noqa: E402
 
 app.include_router(_agent_launcher_router.router)
 
@@ -1792,10 +1794,22 @@ try {{
 }}
 $result | ConvertTo-Json -Depth 5
 """
-    code, stdout, stderr = await run_cmd(
-        [powershell, "-NoProfile", "-Command", script],
-        timeout=12,
-    )
+    try:
+        code, stdout, stderr = await run_cmd(
+            [powershell, "-NoProfile", "-Command", script],
+            timeout=12,
+        )
+    except OSError as exc:
+        return {
+            "status": "unsupported",
+            "task_name": WSL_KEEPALIVE_TASK_NAME,
+            "task_found": False,
+            "state": None,
+            "actions": [],
+            "startup_vbs_files": [],
+            "legacy_vbs_detected": False,
+            "detail": f"PowerShell execution failed: {exc}",
+        }
 
     if code != 0:
         return {
@@ -6137,7 +6151,7 @@ _ORCHESTRATION_AUDIT_PATH = Path.home() / "actions-runners" / "dashboard" / "orc
 _DEPLOY_ACTIONS = {"sync_workflows", "restart_runner", "update_config"}
 
 
-def _load_orchestration_audit(limit: int = 50) -> list[dict]:
+def _load_orchestration_audit(limit: int = 50, principal: str | None = None) -> list[dict]:
     """Load recent orchestration audit entries from disk."""
     if not _ORCHESTRATION_AUDIT_PATH.exists():
         return []
@@ -6147,6 +6161,8 @@ def _load_orchestration_audit(limit: int = 50) -> list[dict]:
             return []
         entries = json.loads(raw)
         if isinstance(entries, list):
+            if principal:
+                entries = [e for e in entries if e.get("principal") == principal]
             return entries[-limit:]
         return []
     except (OSError, json.JSONDecodeError):
@@ -6162,6 +6178,66 @@ async def _append_orchestration_audit(entry: dict) -> None:
             config_schema.atomic_write_json(_ORCHESTRATION_AUDIT_PATH, existing)
         except OSError as exc:
             log.warning("orchestration audit write failed: %s", exc)
+
+
+@app.get("/api/audit", tags=["fleet"])
+async def get_node_audit_log(
+    request: Request,
+    limit: int = 50,
+    principal: str | None = None,
+    _auth: Principal = Depends(require_principal),
+) -> list[dict]:
+    """Return this node's orchestration audit log."""
+    return _load_orchestration_audit(limit=limit, principal=principal)
+
+
+@app.get("/api/fleet/audit", tags=["fleet"])
+async def get_fleet_audit_log(
+    request: Request,
+    limit: int = 50,
+    principal: str | None = None,
+    _auth: Principal = Depends(require_principal),
+) -> dict:
+    """Return a merged view of orchestration audit logs across the fleet."""
+    local_entries = _load_orchestration_audit(limit=limit, principal=principal)
+    all_entries = list(local_entries)
+
+    async def fetch_remote_audit(name: str, url: str) -> list[dict]:
+        try:
+            params: dict[str, Any] = {"limit": limit}
+            if principal:
+                params["principal"] = principal
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                headers = {}
+                if auth_header := request.headers.get("Authorization"):
+                    headers["Authorization"] = auth_header
+                r = await client.get(f"{url}/api/audit", params=params, headers=headers)
+            if r.status_code == 200:
+                data = r.json()
+                if isinstance(data, list):
+                    return data
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Failed to fetch audit from %s (%s): %s", name, url, exc)
+        return []
+
+    if FLEET_NODES:
+        remotes = await asyncio.gather(*[fetch_remote_audit(n, u) for n, u in FLEET_NODES.items()])
+        for r_entries in remotes:
+            all_entries.extend(r_entries)
+
+    def _parse_ts(entry: dict) -> _dt_mod.datetime:
+        ts_str = entry.get("timestamp") or entry.get("ts") or ""
+        try:
+            return _dt_mod.datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        except ValueError:
+            return _dt_mod.datetime.min.replace(tzinfo=UTC)
+
+    all_entries.sort(key=_parse_ts, reverse=True)
+
+    return {
+        "entries": all_entries[:limit],
+        "count": len(all_entries[:limit]),
+    }
 
 
 @app.get("/api/fleet/orchestration")
@@ -6264,6 +6340,8 @@ async def fleet_orchestration_dispatch(
             reason=f"Dispatch {workflow} on {repo}@{ref}",
             payload={"repo": repo, "workflow": workflow, "ref": ref, "inputs": inputs},
             confirmation=confirmation,
+            principal=principal.id,
+            on_behalf_of=getattr(request.state, "on_behalf_of", None) or "",
         )
         validation = dispatch_contract.validate_envelope(envelope)
         audit_entry_obj = dispatch_contract.build_audit_log_entry(envelope, validation)
@@ -6394,6 +6472,8 @@ async def fleet_orchestration_deploy(
             reason=f"Deploy action {action} to {machine}",
             payload={"deploy_action": action},
             confirmation=confirmation,
+            principal=principal.id,
+            on_behalf_of=getattr(request.state, "on_behalf_of", None) or "",
         )
         validation = dispatch_contract.validate_envelope(envelope)
         audit_entry_obj = dispatch_contract.build_audit_log_entry(envelope, validation)

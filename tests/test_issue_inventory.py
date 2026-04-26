@@ -1,15 +1,17 @@
 """Unit tests for backend/issue_inventory.py (issue #81)."""
 
-from __future__ import annotations  # noqa: E402
+from __future__ import annotations
 
+import datetime as _dt_mod
 import sys  # noqa: E402
-from datetime import UTC, datetime, timedelta  # noqa: E402
-
-UTC = UTC
+from datetime import datetime, timedelta
 from pathlib import Path  # noqa: E402
+from typing import Any  # noqa: E402
 from unittest.mock import AsyncMock, patch  # noqa: E402
 
 import pytest  # noqa: E402
+
+UTC = getattr(_dt_mod, "UTC", _dt_mod.timezone.utc)  # noqa: UP017
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
@@ -128,7 +130,7 @@ class TestParseTaxonomy:
 
 class TestIsPickable:
     def _base_item(self, **kwargs) -> dict:
-        item = {
+        item: dict[str, Any] = {
             "state": "open",
             "agent_claim": None,
             "taxonomy": {
@@ -260,9 +262,7 @@ class TestFetchRepoIssues:
 
     @pytest.mark.asyncio
     async def test_json_error_returns_error(self) -> None:
-        with patch.object(
-            issue_inventory, "_run_gh", new=AsyncMock(return_value=(0, "oops", ""))
-        ):
+        with patch.object(issue_inventory, "_run_gh", new=AsyncMock(return_value=(0, "oops", ""))):
             items, err = await issue_inventory.fetch_repo_issues("org/repo")
         assert items == []
         assert err is not None
@@ -274,9 +274,7 @@ class TestFetchRepoIssues:
 class TestFetchAllIssues:
     @pytest.mark.asyncio
     async def test_per_repo_error_captured(self) -> None:
-        async def fake_fetch(
-            full_name: str, state: str = "open"
-        ) -> tuple[list, str | None]:
+        async def fake_fetch(full_name: str, state: str = "open") -> tuple[list, str | None]:
             if full_name == "org/bad":
                 return [], "org/bad: gh exit 1: not found"
             raw = _make_issue(1, "Good issue")
@@ -290,23 +288,17 @@ class TestFetchAllIssues:
 
     @pytest.mark.asyncio
     async def test_pickable_only_filter(self) -> None:
-        raw_pickable = _make_issue(
-            1, "Pickable", labels=["type:task", "judgement:objective"]
-        )
+        raw_pickable = _make_issue(1, "Pickable", labels=["type:task", "judgement:objective"])
         raw_blocked = _make_issue(2, "Contested", labels=["judgement:contested"])
 
-        async def fake_fetch(
-            full_name: str, state: str = "open"
-        ) -> tuple[list, str | None]:
+        async def fake_fetch(full_name: str, state: str = "open") -> tuple[list, str | None]:
             return [
                 issue_inventory._normalise_issue(raw_pickable, full_name),
                 issue_inventory._normalise_issue(raw_blocked, full_name),
             ], None
 
         with patch.object(issue_inventory, "fetch_repo_issues", side_effect=fake_fetch):
-            result = await issue_inventory.fetch_all_issues(
-                ["org/repo"], pickable_only=True
-            )
+            result = await issue_inventory.fetch_all_issues(["org/repo"], pickable_only=True)
 
         assert all(i["pickable"] for i in result["items"])
 
@@ -317,17 +309,11 @@ class TestFetchAllIssues:
             _make_issue(2, "Routine", labels=["complexity:routine"]),
         ]
 
-        async def fake_fetch(
-            full_name: str, state: str = "open"
-        ) -> tuple[list, str | None]:
-            return [
-                issue_inventory._normalise_issue(i, full_name) for i in issues
-            ], None
+        async def fake_fetch(full_name: str, state: str = "open") -> tuple[list, str | None]:
+            return [issue_inventory._normalise_issue(i, full_name) for i in issues], None
 
         with patch.object(issue_inventory, "fetch_repo_issues", side_effect=fake_fetch):
-            result = await issue_inventory.fetch_all_issues(
-                ["org/repo"], complexity=["trivial"]
-            )
+            result = await issue_inventory.fetch_all_issues(["org/repo"], complexity=["trivial"])
 
         assert result["items"][0]["taxonomy"]["complexity"] == "trivial"
         assert len(result["items"]) == 1
@@ -336,12 +322,8 @@ class TestFetchAllIssues:
     async def test_limit_respected(self) -> None:
         issues = [_make_issue(i, f"Issue {i}") for i in range(20)]
 
-        async def fake_fetch(
-            full_name: str, state: str = "open"
-        ) -> tuple[list, str | None]:
-            return [
-                issue_inventory._normalise_issue(i, full_name) for i in issues
-            ], None
+        async def fake_fetch(full_name: str, state: str = "open") -> tuple[list, str | None]:
+            return [issue_inventory._normalise_issue(i, full_name) for i in issues], None
 
         with patch.object(issue_inventory, "fetch_repo_issues", side_effect=fake_fetch):
             result = await issue_inventory.fetch_all_issues(["org/repo"], limit=5)
@@ -355,17 +337,11 @@ class TestFetchAllIssues:
             _make_issue(2, "Bob issue", assignees=["bob"]),
         ]
 
-        async def fake_fetch(
-            full_name: str, state: str = "open"
-        ) -> tuple[list, str | None]:
-            return [
-                issue_inventory._normalise_issue(i, full_name) for i in issues
-            ], None
+        async def fake_fetch(full_name: str, state: str = "open") -> tuple[list, str | None]:
+            return [issue_inventory._normalise_issue(i, full_name) for i in issues], None
 
         with patch.object(issue_inventory, "fetch_repo_issues", side_effect=fake_fetch):
-            result = await issue_inventory.fetch_all_issues(
-                ["org/repo"], assignee="alice"
-            )
+            result = await issue_inventory.fetch_all_issues(["org/repo"], assignee="alice")
 
         assert len(result["items"]) == 1
         assert "alice" in result["items"][0]["assignees"]

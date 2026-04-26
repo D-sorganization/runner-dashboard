@@ -45,7 +45,7 @@ import yaml
 try:
     import psutil
 except ImportError:  # psutil is optional at import time; raise on use
-    psutil = None
+    psutil = None  # type: ignore[assignment]
 
 log = logging.getLogger("runner-autoscaler")
 logging.basicConfig(

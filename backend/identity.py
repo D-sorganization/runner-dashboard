@@ -143,21 +143,44 @@ def require_principal(
     header_token: str | None = Depends(auth_header),
     cookie_token: str | None = Depends(auth_cookie),
 ) -> Principal:
+    prin = None
     # 1. Check Bearer token
     if header_token and header_token.startswith("Bearer "):
         raw_token = header_token.replace("Bearer ", "")
         prin = identity_manager.verify_token(raw_token)
-        if prin:
-            return prin
 
     # 2. Check session
-    if hasattr(request, "session"):
+    if not prin and hasattr(request, "session"):
         principal_id = request.session.get("principal_id")
         if principal_id and principal_id in identity_manager.principals:
-            return identity_manager.principals[principal_id]
+            prin = identity_manager.principals[principal_id]
 
-    # Fail closed
-    raise HTTPException(status_code=401, detail="Authentication required")
+    if not prin:
+        # Fail closed
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Set default on_behalf_of
+    if hasattr(request.state, "on_behalf_of"):
+        pass  # already set?
+    else:
+        request.state.on_behalf_of = None
+
+    # Check impersonation
+    impersonate_target = request.headers.get("X-Impersonate-Principal")
+    if impersonate_target:
+        # Only admins can impersonate
+        if "admin" in prin.roles:
+            target_prin = identity_manager.principals.get(impersonate_target)
+            if target_prin:
+                # The returned principal is the target. The real user is on_behalf_of.
+                request.state.on_behalf_of = prin.id
+                return target_prin
+            else:
+                raise HTTPException(status_code=400, detail="Impersonation target not found")
+        else:
+            raise HTTPException(status_code=403, detail="Only admins can impersonate")
+
+    return prin
 
 
 SCOPE_PRESETS = {

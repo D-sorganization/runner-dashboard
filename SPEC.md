@@ -794,21 +794,50 @@ All user-supplied content rendered as Markdown is passed through
 `DOMPurify.sanitize()` before `dangerouslySetInnerHTML`. Marked.js is
 configured with `{ mangle: false, headerIds: false, gfm: true }`.
 
-### 9.2 Authorization (Wave 2)
-All mutating `/api/*` endpoints require a Bearer token in the `Authorization` header.
-Tokens are verified against the `Principal` model. Scopes are enforced per-endpoint
-using the `require_scope(scope_name)` dependency.
+### 9.2 Identity, Authorization, Attribution
+
+The dashboard employs a strict Identity and Authorization model to secure access to the fleet.
+
+**Identity Model:**
+A **principal** is either a human or a bot/agent. Both have the same shape:
+- `id`: Unique identifier (e.g., `human:dieter`, `bot:claude`).
+- `type`: `human` or `bot`.
+- `roles`: Assigned roles (`admin`, `operator`, `viewer`, `bot`), which expand into specific action scopes.
+- `quotas`: Resource limits (runners, agent spend, app slots).
+
+Principals are stored in `config/principals.yml`. The system fails closed: requests without a valid principal are rejected (HTTP 401).
+
+**Authorization:**
+All mutating `/api/*` endpoints require a principal.
+- Humans authenticate via session cookies (from GitHub OAuth).
+- Bots authenticate via `Authorization: Bearer <token>`.
+Scopes are enforced per-endpoint using the `require_scope(scope_name)` dependency.
 
 **Scope Presets:**
 - `admin` — Full access to all endpoints.
 - `operator` — Access to runners, workflows, and remediation dispatch.
 - `viewer` — Read-only access (default for unprivileged tokens).
+- `bot` — Scoped for agent tasks (remediation, workflows).
 
-**Audit Logging:**
-Every mutating action is recorded in `DispatchAuditLogEntry` with:
+**Audit Logging & Attribution:**
+Every mutating action is recorded in `DispatchAuditLogEntry` with dual-attribution:
 - `principal` — The ID of the authenticated user/agent.
-- `on_behalf_of` — Optional secondary attribution (e.g. "manual override").
+- `on_behalf_of` — Optional secondary attribution (e.g. when an admin impersonates a bot for debugging, the bot is the principal, and the admin is `on_behalf_of`).
 - `correlation_id` — Propagated across fleet nodes for distributed tracing.
+
+**Admin Impersonation Flow:**
+An admin can act as another principal (like a bot) for debugging. By providing the `X-Impersonate-Principal: <bot_id>` header, the admin adopts the target principal's scopes. The audit log records the target as the `principal` and the admin as `on_behalf_of`.
+
+**Onboarding a New Human:**
+1. Add the human to `config/principals.yml` with `type: human`.
+2. Assign appropriate `roles` (e.g., `operator`, `viewer`).
+3. Set their `quotas`.
+
+**Onboarding a New Bot:**
+1. Add the bot to `config/principals.yml` with `type: bot`.
+2. Assign the `bot` role.
+3. As an admin, generate a service token for the bot: `POST /api/principals/<bot_id>/token`.
+4. Provide the generated token to the bot agent for API access.
 
 ### 9.3 HTTP Security Headers
 The backend injects the following headers on all responses:
@@ -1658,3 +1687,16 @@ principals:
 New principals can be added by editing this file; the dashboard reloads it
 automatically. Service tokens for bot principals can be minted via the
 Identity Manager (`identity_manager.mint_service_token`).
+<!-- spec-trigger-144 -->
+
+### 18.5 Cross-Fleet Coherence & Admin API (Wave 4)
+
+To ensure identity and quotas are respected across the entire fleet:
+- **Cross-Node Principal Propagation**: The \CommandEnvelope\ in \dispatch_contract.py\ includes \principal\, \on_behalf_of\, and \correlation_id\. These fields are now included in the canonical JSON payload used to generate the HMAC-SHA256 signature, ensuring that malicious actors cannot forge identities during cross-node dispatch.
+- **Hub-Side Merged Audit View**: A new endpoint \/api/fleet/audit\ aggregates orchestration audit logs from all nodes in the \FLEET_NODES\ configuration. It supports filtering by \principal\ and merges entries sorted by timestamp. Local audit logs can be retrieved via \/api/audit\.
+- **Admin API**: The \/api/admin/*\ router provides endpoints for managing the identity system:
+  - \GET /api/admin/principals\: List all registered principals and their quotas.
+  - \GET /api/admin/tokens\: List all active service token hashes.
+  - \POST /api/admin/principals/{id}/token\: Mint a new service token for a bot principal.
+  - \DELETE /api/admin/tokens/{token_hash}\: Revoke a service token.
+  - \PATCH /api/admin/principals/{id}/quota\: Update quotas (\max_runners\, \gent_spend_usd_day\, \local_app_slots\) for a specific principal.
