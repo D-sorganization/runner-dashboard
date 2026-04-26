@@ -93,7 +93,10 @@ TOOL_ALLOWLIST: dict[str, dict[str, Any]] = {
                     "type": "string",
                     "description": "Agent provider (e.g. claude_code_cli).",
                 },
-                "prompt": {"type": "string", "description": "Instruction for the agent."},
+                "prompt": {
+                    "type": "string",
+                    "description": "Instruction for the agent.",
+                },
             },
             "required": ["repository", "number", "provider", "prompt"],
         },

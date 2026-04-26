@@ -1,8 +1,8 @@
 """Static regression checks for deploy hardening."""
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: E402
 
-from pathlib import Path
+from pathlib import Path  # noqa: E402
 
 _ROOT = Path(__file__).parent.parent
 _DEPLOY = _ROOT / "deploy"
@@ -19,7 +19,9 @@ def test_shared_deploy_lib_enables_strict_mode() -> None:
 
 def test_update_deployed_requires_successful_backup() -> None:
     content = _read(_DEPLOY / "update-deployed.sh")
-    assert 'backup_dir "$DEPLOY_DIR") || fail "Backup failed; aborting update"' in content
+    assert (
+        'backup_dir "$DEPLOY_DIR") || fail "Backup failed; aborting update"' in content
+    )
     assert 'fail "Backup returned empty path; aborting update"' in content
 
 

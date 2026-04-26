@@ -161,7 +161,7 @@ def parse_usage_sources_config(data: Any) -> list[UsageSourceConfig]:
         sources = data
     if not isinstance(sources, list):
         raise TypeError("usage_sources must be a list")
-    return [item if isinstance(item, UsageSourceConfig) else UsageSourceConfig.from_dict(item) for item in sources]
+    return [(item if isinstance(item, UsageSourceConfig) else UsageSourceConfig.from_dict(item)) for item in sources]
 
 
 def normalize_usage_source(

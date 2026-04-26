@@ -55,7 +55,11 @@ async def _run_gh(args: list[str], timeout: int = 30) -> tuple[int, str, str]:
         return 127, "", "gh CLI not found"
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        return proc.returncode or 0, stdout.decode(errors="replace"), stderr.decode(errors="replace")
+        return (
+            proc.returncode or 0,
+            stdout.decode(errors="replace"),
+            stderr.decode(errors="replace"),
+        )
     except (TimeoutError, asyncio.TimeoutError):  # noqa: UP041
         proc.kill()
         return -1, "", "gh command timed out"

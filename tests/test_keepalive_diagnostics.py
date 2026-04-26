@@ -1,14 +1,14 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: E402
 
-import asyncio
-import json
-import sys
-from pathlib import Path
-from types import SimpleNamespace
+import asyncio  # noqa: E402
+import json  # noqa: E402
+import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
-import server  # noqa: E402
+import server  # noqa: E402  # noqa: E402
 
 
 def _patch_server_windows_os(monkeypatch) -> None:
@@ -23,7 +23,9 @@ def _patch_server_windows_os(monkeypatch) -> None:
     monkeypatch.setattr(server, "os", WindowsOs())
 
 
-def test_windows_wslconfig_path_is_checked_directly(monkeypatch, tmp_path: Path) -> None:
+def test_windows_wslconfig_path_is_checked_directly(
+    monkeypatch, tmp_path: Path
+) -> None:
     _patch_server_windows_os(monkeypatch)
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.delenv("HOMEDRIVE", raising=False)
@@ -54,7 +56,11 @@ def test_windows_scheduled_task_probe_uses_valid_powershell(monkeypatch) -> None
 
     async def fake_run_cmd(cmd, timeout=12):  # noqa: ANN001, ARG001
         captured["script"] = cmd[-1]
-        return 0, json.dumps({"task_found": False, "startup_vbs_files": [], "actions": []}), ""
+        return (
+            0,
+            json.dumps({"task_found": False, "startup_vbs_files": [], "actions": []}),
+            "",
+        )
 
     monkeypatch.setattr(server, "_resolve_powershell_executable", lambda: "powershell")
     monkeypatch.setattr(server, "run_cmd", fake_run_cmd)

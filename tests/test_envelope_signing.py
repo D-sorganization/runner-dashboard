@@ -6,26 +6,26 @@ Covers Phase 1 security hardening:
 - Replay detection via envelope ID deduplication
 """
 
-from __future__ import annotations
+from __future__ import annotations  # noqa: E402
 
-import json
-import os
-import sys
-from datetime import datetime, timedelta, timezone
+import json  # noqa: E402
+import os  # noqa: E402
+import sys  # noqa: E402
+from datetime import UTC, datetime, timedelta  # noqa: E402
 
-UTC = timezone.utc
-from pathlib import Path
-from unittest.mock import patch
+UTC = UTC
+from pathlib import Path  # noqa: E402
+from unittest.mock import patch  # noqa: E402
 
-import pytest
+import pytest  # noqa: E402
 
 # Ensure backend/ is on sys.path before importing
 _BACKEND = Path(__file__).parent.parent / "backend"
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
 
-import dispatch_contract  # noqa: E402
-from dispatch_contract import (  # noqa: E402
+import dispatch_contract  # noqa: E402  # noqa: E402
+from dispatch_contract import (  # noqa: E402  # noqa: E402
     CommandEnvelope,
     DispatchConfirmation,
     TimestampValidationResult,
@@ -182,7 +182,9 @@ class TestEnvelopeSigningAndVerification:
         )
         sig = _sign_envelope_payload(**payload_args, secret="secret-1")
 
-        result = _verify_envelope_signature(**payload_args, secret="secret-2", signature=sig)
+        result = _verify_envelope_signature(
+            **payload_args, secret="secret-2", signature=sig
+        )
         assert result is False
 
 
@@ -252,25 +254,41 @@ class TestTimestampValidation:
 
     def test_timestamp_validation_accepts_older_within_ttl(self):
         """Timestamp 1 minute ago within 5-minute TTL is VALID."""
-        one_min_ago = (datetime.now(UTC) - timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+        one_min_ago = (
+            (datetime.now(UTC) - timedelta(minutes=1))
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
         result = _validate_timestamp_freshness(one_min_ago, ttl_seconds=300)
         assert result == TimestampValidationResult.VALID
 
     def test_timestamp_validation_accepts_future_within_ttl(self):
         """Timestamp 1 minute in future within 5-minute TTL is VALID."""
-        one_min_future = (datetime.now(UTC) + timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+        one_min_future = (
+            (datetime.now(UTC) + timedelta(minutes=1))
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
         result = _validate_timestamp_freshness(one_min_future, ttl_seconds=300)
         assert result == TimestampValidationResult.VALID
 
     def test_timestamp_validation_rejects_too_old(self):
         """Timestamp 10 minutes ago outside 5-minute TTL is TOO_OLD."""
-        ten_min_ago = (datetime.now(UTC) - timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
+        ten_min_ago = (
+            (datetime.now(UTC) - timedelta(minutes=10))
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
         result = _validate_timestamp_freshness(ten_min_ago, ttl_seconds=300)
         assert result == TimestampValidationResult.TOO_OLD
 
     def test_timestamp_validation_rejects_too_new(self):
         """Timestamp 10 minutes in future outside 5-minute TTL is TOO_NEW."""
-        ten_min_future = (datetime.now(UTC) + timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
+        ten_min_future = (
+            (datetime.now(UTC) + timedelta(minutes=10))
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
         result = _validate_timestamp_freshness(ten_min_future, ttl_seconds=300)
         assert result == TimestampValidationResult.TOO_NEW
 
@@ -342,7 +360,11 @@ class TestCryptoValidation:
     def test_crypto_validation_rejects_old_issued_at(self):
         """validate_envelope_crypto rejects timestamp > TTL seconds old."""
         with patch.dict(os.environ, {"DISPATCH_SIGNING_SECRET": "test-secret"}):
-            old_time = (datetime.now(UTC) - timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
+            old_time = (
+                (datetime.now(UTC) - timedelta(minutes=10))
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
             envelope = CommandEnvelope(
                 action="test.action",
                 source="hub",
@@ -385,13 +407,19 @@ class TestCryptoValidation:
             result = validate_envelope_crypto(envelope)
             assert result.valid is True
 
-    @pytest.mark.skip(reason="Implementation doesn't validate old confirmation timestamps on post-creation assignment")
+    @pytest.mark.skip(
+        reason="Implementation doesn't validate old confirmation timestamps on post-creation assignment"
+    )
     def test_crypto_validation_rejects_confirmation_with_old_timestamp(self):
         """validate_envelope_crypto rejects confirmation timestamp > TTL."""
         with patch.dict(os.environ, {"DISPATCH_SIGNING_SECRET": "test-secret"}):
             # This test checks that old confirmation timestamps are rejected
             # Note: current implementation only validates timestamps at envelope creation
-            old_time = (datetime.now(UTC) - timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
+            old_time = (
+                (datetime.now(UTC) - timedelta(minutes=10))
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
             confirmation = DispatchConfirmation(
                 approved_by="bob",
                 approved_at=old_time,

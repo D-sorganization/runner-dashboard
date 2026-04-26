@@ -307,7 +307,7 @@ def get_summary(days: int = 14, group_by: str = "workflow") -> dict[str, Any]:
             "count": g["total"],
             "success": g["success"],
             "failure": g["fail"],
-            "success_rate": round(g["success"] / g["total"] * 100, 1) if g["total"] else 0,
+            "success_rate": (round(g["success"] / g["total"] * 100, 1) if g["total"] else 0),
             "p50_duration": _percentile(g["dur"], 0.50),
             "p95_duration": _percentile(g["dur"], 0.95),
             "p50_queued": _percentile(g["q"], 0.50),

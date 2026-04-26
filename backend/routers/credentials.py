@@ -53,7 +53,13 @@ async def get_credentials(request: Request) -> dict:
         try:
             _excluded = {"SECRET", "PASSWORD", "ANTHROPIC_API_KEY", "DASHBOARD_API_KEY"}
             _safe_env = {k: v for k, v in os.environ.items() if not any(exc in k.upper() for exc in _excluded)}
-            result = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True, timeout=10, env=_safe_env)
+            result = subprocess.run(
+                ["gh", "auth", "status"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                env=_safe_env,
+            )
             gh_auth_ok = result.returncode == 0
             gh_auth_detail = "authenticated" if gh_auth_ok else "not logged in"
         except Exception:
@@ -68,7 +74,7 @@ async def get_credentials(request: Request) -> dict:
             "authenticated": gh_auth_ok,
             "reachable": gh_auth_ok,
             "usable": gh_auth_ok,
-            "status": "ready" if gh_auth_ok else ("not_authed" if gh_binary else "not_installed"),
+            "status": ("ready" if gh_auth_ok else ("not_authed" if gh_binary else "not_installed")),
             "detail": gh_auth_detail,
             "config_source": "system" if gh_binary else "unavailable",
             "docs_url": "https://cli.github.com/",
@@ -88,7 +94,7 @@ async def get_credentials(request: Request) -> dict:
             "reachable": jules_binary is not None,
             "usable": jules_binary is not None,
             "status": "ready" if jules_binary else "not_installed",
-            "detail": f"Found at {jules_binary}" if jules_binary else "jules not found on PATH",
+            "detail": (f"Found at {jules_binary}" if jules_binary else "jules not found on PATH"),
             "config_source": "system" if jules_binary else "unavailable",
             "docs_url": "https://jules.google/docs/",
             "setup_hint": "Install Jules CLI from jules.google",
@@ -107,8 +113,8 @@ async def get_credentials(request: Request) -> dict:
             "reachable": jules_api_key,
             "usable": jules_api_key,
             "status": "ready" if jules_api_key else "missing_key",
-            "detail": "API key present" if jules_api_key else "JULES_API_KEY or GOOGLE_API_KEY not set",
-            "config_source": _env_source("JULES_API_KEY") if jules_api_key else "unavailable",
+            "detail": ("API key present" if jules_api_key else "JULES_API_KEY or GOOGLE_API_KEY not set"),
+            "config_source": (_env_source("JULES_API_KEY") if jules_api_key else "unavailable"),
             "docs_url": "https://jules.google/docs/api/",
             "setup_hint": "Set JULES_API_KEY environment variable",
         }
@@ -126,9 +132,9 @@ async def get_credentials(request: Request) -> dict:
             "authenticated": openai_key,
             "reachable": codex_binary is not None and openai_key,
             "usable": codex_binary is not None and openai_key,
-            "status": "ready"
-            if (codex_binary and openai_key)
-            else ("missing_key" if codex_binary else "not_installed"),
+            "status": (
+                "ready" if (codex_binary and openai_key) else ("missing_key" if codex_binary else "not_installed")
+            ),
             "detail": (
                 "Ready"
                 if (codex_binary and openai_key)
@@ -154,9 +160,9 @@ async def get_credentials(request: Request) -> dict:
             "authenticated": anthropic_key,
             "reachable": claude_binary is not None and anthropic_key,
             "usable": claude_binary is not None and anthropic_key,
-            "status": "ready"
-            if (claude_binary and anthropic_key)
-            else ("missing_key" if claude_binary else "not_installed"),
+            "status": (
+                "ready" if (claude_binary and anthropic_key) else ("missing_key" if claude_binary else "not_installed")
+            ),
             "detail": (
                 "Ready"
                 if (claude_binary and anthropic_key)
@@ -202,7 +208,7 @@ async def get_credentials(request: Request) -> dict:
             "reachable": ollama_binary is not None,
             "usable": ollama_binary is not None,
             "status": "ready" if ollama_binary else "not_installed",
-            "detail": f"Found at {ollama_binary}" if ollama_binary else "ollama not found on PATH",
+            "detail": (f"Found at {ollama_binary}" if ollama_binary else "ollama not found on PATH"),
             "config_source": "system" if ollama_binary else "unavailable",
             "docs_url": "https://ollama.com/",
             "setup_hint": "Install from ollama.com",

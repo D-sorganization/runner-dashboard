@@ -283,7 +283,7 @@ async def quick_dispatch(
         decision="accepted",
         detail="quick-dispatch workflow triggered",
         history_id=history_id,
-        requested_by=req.requested_by if hasattr(req, "requested_by") else "dashboard-operator",
+        requested_by=(req.requested_by if hasattr(req, "requested_by") else "dashboard-operator"),
     )
     await _append_quick_dispatch_history(audit_entry)
 

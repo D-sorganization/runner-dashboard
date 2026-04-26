@@ -1,3 +1,4 @@
+# ruff: noqa: B008
 import os
 import secrets
 
@@ -54,7 +55,10 @@ async def github_callback(request: Request, code: str, state: str):
         # Get user info
         user_resp = await client.get(
             "https://api.github.com/user",
-            headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/json",
+            },
         )
         user_data = user_resp.json()
         github_login = user_data.get("login")

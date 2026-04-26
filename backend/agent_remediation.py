@@ -783,7 +783,10 @@ def plan_dispatch(
     if selected_provider:
         provider = PROVIDERS[selected_provider]
         provider_attempts = _attempts_for_provider(
-            fingerprint, selected_provider, attempts, window_hours=policy.attempt_window_hours
+            fingerprint,
+            selected_provider,
+            attempts,
+            window_hours=policy.attempt_window_hours,
         )
         provider_attempt_count = len(provider_attempts)
         return DispatchDecision(

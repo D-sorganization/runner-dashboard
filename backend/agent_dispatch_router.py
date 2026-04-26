@@ -419,7 +419,13 @@ async def dispatch_to_issues(
         if not req.force:
             not_pickable = _check_issue_pickable(repo, num)
             if not_pickable:
-                pre_rejected.append({"repository": repo, "number": num, "reason": f"not_pickable: {not_pickable}"})
+                pre_rejected.append(
+                    {
+                        "repository": repo,
+                        "number": num,
+                        "reason": f"not_pickable: {not_pickable}",
+                    }
+                )
                 continue
         filtered_targets.append((repo, num))
 

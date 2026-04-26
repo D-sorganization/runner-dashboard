@@ -1,3 +1,4 @@
+# ruff: noqa: B008
 import secrets
 import time
 from pathlib import Path
@@ -92,7 +93,11 @@ class IdentityManager:
         expires_at = time.time() + (expires_in_days * 86400) if expires_in_days else None
 
         record = TokenRecord(
-            token_hash=token_hash, principal_id=principal_id, created_at=time.time(), expires_at=expires_at, name=name
+            token_hash=token_hash,
+            principal_id=principal_id,
+            created_at=time.time(),
+            expires_at=expires_at,
+            name=name,
         )
         self.tokens.append(record)
         self.save_tokens()
@@ -122,7 +127,9 @@ auth_cookie = APIKeyCookie(name="dashboard_session", auto_error=False)
 
 
 def require_principal(
-    request: Request, header_token: str | None = Depends(auth_header), cookie_token: str | None = Depends(auth_cookie)
+    request: Request,
+    header_token: str | None = Depends(auth_header),
+    cookie_token: str | None = Depends(auth_cookie),
 ) -> Principal:
     # 1. Check Bearer token
     if header_token and header_token.startswith("Bearer "):
@@ -139,3 +146,53 @@ def require_principal(
 
     # Fail closed
     raise HTTPException(status_code=401, detail="Authentication required")
+
+
+SCOPE_PRESETS = {
+    "admin": ["*"],
+    "operator": [
+        "workflows.dispatch",
+        "workflows.control",
+        "runners.control",
+        "fleet.control",
+        "remediation.dispatch",
+        "heavy-tests.dispatch",
+        "tests.rerun",
+        "github.dispatch",
+        "assistant.chat",
+        "assistant.execute",
+        "maxwell.control",
+        "assessments.dispatch",
+        "feature-requests.manage",
+        "system.control",
+    ],
+    "viewer": ["assistant.chat"],
+}
+
+
+def require_scope(required_scope: str):
+    def checker(
+        principal: Principal = Depends(require_principal),
+    ) -> Principal:  # noqa: B008
+        principal_scopes = set()
+        for role in principal.roles:
+            if role in SCOPE_PRESETS:
+                principal_scopes.update(SCOPE_PRESETS[role])
+
+        if "*" in principal_scopes:
+            return principal
+
+        for s in principal_scopes:
+            if s == required_scope or (s.endswith("*") and required_scope.startswith(s[:-1])):
+                return principal
+
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "Authorization failed",
+                "required_scope": required_scope,
+                "principal": principal.id,
+            },
+        )
+
+    return checker
