@@ -6339,6 +6339,8 @@ async def fleet_orchestration_dispatch(
             reason=f"Dispatch {workflow} on {repo}@{ref}",
             payload={"repo": repo, "workflow": workflow, "ref": ref, "inputs": inputs},
             confirmation=confirmation,
+            principal=principal.id,
+            on_behalf_of=getattr(request.state, "on_behalf_of", None) or "",
         )
         validation = dispatch_contract.validate_envelope(envelope)
         audit_entry_obj = dispatch_contract.build_audit_log_entry(envelope, validation)
@@ -6469,6 +6471,8 @@ async def fleet_orchestration_deploy(
             reason=f"Deploy action {action} to {machine}",
             payload={"deploy_action": action},
             confirmation=confirmation,
+            principal=principal.id,
+            on_behalf_of=getattr(request.state, "on_behalf_of", None) or "",
         )
         validation = dispatch_contract.validate_envelope(envelope)
         audit_entry_obj = dispatch_contract.build_audit_log_entry(envelope, validation)

@@ -546,6 +546,9 @@ def build_envelope(
     reason: str = "",
     payload: dict[str, Any] | None = None,
     confirmation: DispatchConfirmation | None = None,
+    principal: str = "",
+    on_behalf_of: str = "",
+    correlation_id: str = "",
 ) -> CommandEnvelope:
     return CommandEnvelope(
         action=action,
@@ -555,6 +558,9 @@ def build_envelope(
         reason=reason,
         payload=_ensure_dict(payload),
         confirmation=confirmation,
+        principal=principal,
+        on_behalf_of=on_behalf_of,
+        correlation_id=correlation_id,
     )
 
 

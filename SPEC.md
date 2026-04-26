@@ -794,21 +794,50 @@ All user-supplied content rendered as Markdown is passed through
 `DOMPurify.sanitize()` before `dangerouslySetInnerHTML`. Marked.js is
 configured with `{ mangle: false, headerIds: false, gfm: true }`.
 
-### 9.2 Authorization (Wave 2)
-All mutating `/api/*` endpoints require a Bearer token in the `Authorization` header.
-Tokens are verified against the `Principal` model. Scopes are enforced per-endpoint
-using the `require_scope(scope_name)` dependency.
+### 9.2 Identity, Authorization, Attribution
+
+The dashboard employs a strict Identity and Authorization model to secure access to the fleet.
+
+**Identity Model:**
+A **principal** is either a human or a bot/agent. Both have the same shape:
+- `id`: Unique identifier (e.g., `human:dieter`, `bot:claude`).
+- `type`: `human` or `bot`.
+- `roles`: Assigned roles (`admin`, `operator`, `viewer`, `bot`), which expand into specific action scopes.
+- `quotas`: Resource limits (runners, agent spend, app slots).
+
+Principals are stored in `config/principals.yml`. The system fails closed: requests without a valid principal are rejected (HTTP 401).
+
+**Authorization:**
+All mutating `/api/*` endpoints require a principal.
+- Humans authenticate via session cookies (from GitHub OAuth).
+- Bots authenticate via `Authorization: Bearer <token>`.
+Scopes are enforced per-endpoint using the `require_scope(scope_name)` dependency.
 
 **Scope Presets:**
 - `admin` — Full access to all endpoints.
 - `operator` — Access to runners, workflows, and remediation dispatch.
 - `viewer` — Read-only access (default for unprivileged tokens).
+- `bot` — Scoped for agent tasks (remediation, workflows).
 
-**Audit Logging:**
-Every mutating action is recorded in `DispatchAuditLogEntry` with:
+**Audit Logging & Attribution:**
+Every mutating action is recorded in `DispatchAuditLogEntry` with dual-attribution:
 - `principal` — The ID of the authenticated user/agent.
-- `on_behalf_of` — Optional secondary attribution (e.g. "manual override").
+- `on_behalf_of` — Optional secondary attribution (e.g. when an admin impersonates a bot for debugging, the bot is the principal, and the admin is `on_behalf_of`).
 - `correlation_id` — Propagated across fleet nodes for distributed tracing.
+
+**Admin Impersonation Flow:**
+An admin can act as another principal (like a bot) for debugging. By providing the `X-Impersonate-Principal: <bot_id>` header, the admin adopts the target principal's scopes. The audit log records the target as the `principal` and the admin as `on_behalf_of`.
+
+**Onboarding a New Human:**
+1. Add the human to `config/principals.yml` with `type: human`.
+2. Assign appropriate `roles` (e.g., `operator`, `viewer`).
+3. Set their `quotas`.
+
+**Onboarding a New Bot:**
+1. Add the bot to `config/principals.yml` with `type: bot`.
+2. Assign the `bot` role.
+3. As an admin, generate a service token for the bot: `POST /api/principals/<bot_id>/token`.
+4. Provide the generated token to the bot agent for API access.
 
 ### 9.3 HTTP Security Headers
 The backend injects the following headers on all responses:
