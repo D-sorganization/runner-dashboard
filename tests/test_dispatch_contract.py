@@ -17,15 +17,11 @@ _PRIVILEGED_ACTION = "runner.restart"
 _READ_ONLY_ACTION = "dashboard.status"
 
 
-def _make_confirmation(
-    approved_by: str = "alice", approved_at: str = "2026-04-23T00:00:00Z"
-) -> DispatchConfirmation:
+def _make_confirmation(approved_by: str = "alice", approved_at: str = "2026-04-23T00:00:00Z") -> DispatchConfirmation:
     return DispatchConfirmation(approved_by=approved_by, approved_at=approved_at)
 
 
-def _base_envelope(
-    action: str, confirmation: DispatchConfirmation | None = None
-) -> CommandEnvelope:
+def _base_envelope(action: str, confirmation: DispatchConfirmation | None = None) -> CommandEnvelope:
     return build_envelope(
         action=action,
         source="hub",

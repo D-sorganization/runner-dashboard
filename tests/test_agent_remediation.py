@@ -21,9 +21,7 @@ from agent_remediation import (  # noqa: E402
 # ---------------------------------------------------------------------------
 
 
-def classify_failure(
-    context: FailureContext, policy: RemediationPolicy | None = None
-) -> WorkflowTypeRule:
+def classify_failure(context: FailureContext, policy: RemediationPolicy | None = None) -> WorkflowTypeRule:
     """Thin wrapper so tests can call classify_failure(ctx) as described in the issue."""
     if policy is None:
         policy = load_policy()
@@ -61,9 +59,7 @@ def test_classify_failure_ci_standard_returns_test_type() -> None:
 
 
 def test_classify_failure_ruff_lint_returns_lint_type() -> None:
-    ctx = FailureContext(
-        repository="Foo", workflow_name="ruff lint check", branch="main"
-    )
+    ctx = FailureContext(repository="Foo", workflow_name="ruff lint check", branch="main")
     rule = classify_failure(ctx)
     assert isinstance(rule, WorkflowTypeRule)
     assert rule.workflow_type == "lint"
@@ -106,9 +102,7 @@ def test_failure_context_protected_branch_flag() -> None:
 def _make_availability(*provider_ids: str) -> dict[str, ProviderAvailability]:
     """Helper to create availability map with all requested providers available."""
     return {
-        pid: ProviderAvailability(
-            provider_id=pid, available=True, status="available", detail="ready"
-        )
+        pid: ProviderAvailability(provider_id=pid, available=True, status="available", detail="ready")
         for pid in provider_ids
     }
 
@@ -152,9 +146,7 @@ def test_fallback_provider_chain_uses_fallback_when_primary_exhausted() -> None:
         enabled_providers=("codex_cli", "claude_code_cli", "jules_api"),
         default_provider="codex_cli",  # primary is codex_cli
     )
-    context = FailureContext(
-        repository="foo/bar", workflow_name="CI", branch="main", failure_reason="lint"
-    )
+    context = FailureContext(repository="foo/bar", workflow_name="CI", branch="main", failure_reason="lint")
     availability = _make_availability("codex_cli", "claude_code_cli", "jules_api")
 
     decision = plan_dispatch(
@@ -223,9 +215,7 @@ def test_fallback_provider_chain_exhausted_all_providers() -> None:
         enabled_providers=("codex_cli", "claude_code_cli", "jules_api"),
         default_provider="codex_cli",
     )
-    context = FailureContext(
-        repository="foo/bar", workflow_name="CI", branch="main", failure_reason="lint"
-    )
+    context = FailureContext(repository="foo/bar", workflow_name="CI", branch="main", failure_reason="lint")
     availability = _make_availability("codex_cli", "claude_code_cli", "jules_api")
 
     decision = plan_dispatch(
@@ -370,9 +360,7 @@ def test_per_provider_attempt_count_separate_from_global() -> None:
         enabled_providers=("codex_cli", "claude_code_cli"),
         default_provider="codex_cli",
     )
-    context = FailureContext(
-        repository="foo/bar", workflow_name="CI", branch="main", failure_reason="lint"
-    )
+    context = FailureContext(repository="foo/bar", workflow_name="CI", branch="main", failure_reason="lint")
     availability = _make_availability("codex_cli", "claude_code_cli")
 
     decision = plan_dispatch(

@@ -138,8 +138,16 @@ def _verify_envelope_signature(
 ) -> bool:
     """Verify HMAC-SHA256 signature over envelope payload."""
     expected = _sign_envelope_payload(
-        action, source, target, requested_by, issued_at, envelope_version, secret,
-        principal, on_behalf_of, correlation_id
+        action,
+        source,
+        target,
+        requested_by,
+        issued_at,
+        envelope_version,
+        secret,
+        principal,
+        on_behalf_of,
+        correlation_id,
     )
     return hmac.compare_digest(expected, signature)
 

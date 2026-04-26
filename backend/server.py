@@ -6208,9 +6208,7 @@ async def get_fleet_audit_log(
         return []
 
     if FLEET_NODES:
-        remotes = await asyncio.gather(
-            *[fetch_remote_audit(n, u) for n, u in FLEET_NODES.items()]
-        )
+        remotes = await asyncio.gather(*[fetch_remote_audit(n, u) for n, u in FLEET_NODES.items()])
         for r_entries in remotes:
             all_entries.extend(r_entries)
 

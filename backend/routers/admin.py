@@ -73,6 +73,7 @@ def update_principal_quota(
 
     # Save to principals.yml
     import yaml
+
     with open(identity_manager.principals_path, "w") as f:
         yaml.dump(
             {"principals": [p.model_dump() for p in identity_manager.principals.values()]},

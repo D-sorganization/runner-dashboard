@@ -59,9 +59,7 @@ def test_status_no_state_no_config_returns_empty_agents(runtime, client, monkeyp
 
 def test_status_with_running_scheduler_and_one_agent(runtime, client, monkeypatch):
     (runtime / "config.json").write_text(
-        json.dumps(
-            {"agents": {"address-issues": {"enabled": True, "interval_seconds": 3600}}}
-        ),
+        json.dumps({"agents": {"address-issues": {"enabled": True, "interval_seconds": 3600}}}),
         encoding="utf-8",
     )
     (runtime / "scheduler.pid").write_text(
@@ -104,9 +102,7 @@ def test_status_with_running_scheduler_and_one_agent(runtime, client, monkeypatc
 
 def test_status_lock_alive_when_pid_alive(runtime, client, monkeypatch):
     (runtime / "config.json").write_text(
-        json.dumps(
-            {"agents": {"address-prs": {"enabled": True, "interval_seconds": 3600}}}
-        ),
+        json.dumps({"agents": {"address-prs": {"enabled": True, "interval_seconds": 3600}}}),
         encoding="utf-8",
     )
     (runtime / "locks").mkdir()
@@ -130,9 +126,7 @@ def test_status_corrupt_state_does_not_500(runtime, client, monkeypatch):
     """Status must degrade gracefully — a half-written JSON shouldn't blank
     the dashboard."""
     (runtime / "state.json").write_text("{ this is not json", encoding="utf-8")
-    (runtime / "config.json").write_text(
-        json.dumps({"agents": {"a": {}}}), encoding="utf-8"
-    )
+    (runtime / "config.json").write_text(json.dumps({"agents": {"a": {}}}), encoding="utf-8")
     monkeypatch.setattr(alr, "_is_pid_alive", lambda pid: False)
     r = client.get("/api/agent-launcher/status")
     assert r.status_code == 200
@@ -164,9 +158,7 @@ def test_get_config_503_when_launcher_missing(client, monkeypatch):
 def test_put_config_validates_before_promoting(runtime, client, monkeypatch):
     """A bad config must NOT overwrite the existing config.json."""
     (runtime / "config.json").write_text('{"version": 2}', encoding="utf-8")
-    monkeypatch.setattr(
-        alr, "_run_cli", lambda *a, **kw: (2, "", "model.provider must be one of [...]")
-    )
+    monkeypatch.setattr(alr, "_run_cli", lambda *a, **kw: (2, "", "model.provider must be one of [...]"))
     r = client.put("/api/agent-launcher/config", json={"bad": "config"})
     assert r.status_code == 422
     assert "rejected" in r.json()["detail"].lower()
