@@ -4406,13 +4406,15 @@ async def _route_tool_dispatch(tool_name: str, inputs: dict) -> dict:
         number = inputs.get("number", 0)
         provider = inputs.get("provider", "claude_code_cli")
         prompt = inputs.get("prompt", "")
-        result = await _quick_dispatch.dispatch_to_pr(
-            repository=repo, number=number, provider=provider, prompt=prompt
-        ) if hasattr(_quick_dispatch, "dispatch_to_pr") else {
-            "status": "dispatched",
-            "tool": tool_name,
-            "inputs": inputs,
-        }
+        result = (
+            await _quick_dispatch.dispatch_to_pr(repository=repo, number=number, provider=provider, prompt=prompt)
+            if hasattr(_quick_dispatch, "dispatch_to_pr")
+            else {
+                "status": "dispatched",
+                "tool": tool_name,
+                "inputs": inputs,
+            }
+        )
         return result if isinstance(result, dict) else {"status": "dispatched"}
 
     if tool_name == "dispatch_agent_to_issue":
