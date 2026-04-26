@@ -68,14 +68,16 @@ def _launcher_root() -> Path | None:
     here = Path(__file__).resolve().parent
     candidates: list[Path] = []
     for parent in (here.parent, here.parent.parent, here.parent.parent.parent):
-        candidates.append(
-            parent.parent / "Repository_Management" / "launchers" / "cline_agent_launcher"
-        )
+        candidates.append(parent.parent / "Repository_Management" / "launchers" / "cline_agent_launcher")
     home = Path.home()
     candidates += [
         home / "Repositories" / "Repository_Management" / "launchers" / "cline_agent_launcher",
-        Path("/mnt/c/Users") / os.environ.get("USERNAME", "")
-            / "Repositories" / "Repository_Management" / "launchers" / "cline_agent_launcher",
+        Path("/mnt/c/Users")
+        / os.environ.get("USERNAME", "")
+        / "Repositories"
+        / "Repository_Management"
+        / "launchers"
+        / "cline_agent_launcher",
     ]
     for c in candidates:
         if c.is_dir() and (c / "bin" / "agent_launcher.py").is_file():
@@ -210,7 +212,9 @@ def _is_pid_alive(pid: int) -> bool:
         try:
             r = subprocess.run(
                 ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             return str(pid) in r.stdout
         except (subprocess.SubprocessError, OSError):
@@ -246,15 +250,17 @@ def get_status() -> StatusResponse:
         runs = state.get("agents", {}).get(name, {}).get("runs", [])
         last = runs[-1] if runs else {}
         lock = _read_lock(name) or {}
-        agents.append(AgentStatus(
-            name=name,
-            enabled=bool(agent_cfg.get("enabled", True)),
-            interval_seconds=int(agent_cfg.get("interval_seconds", 3600)),
-            last_run_iso=last.get("started_iso"),
-            last_repo=last.get("repo"),
-            last_window_pid=last.get("window_pid"),
-            lock_alive=bool(lock and _is_pid_alive(int(lock.get("pid", -1)))),
-        ))
+        agents.append(
+            AgentStatus(
+                name=name,
+                enabled=bool(agent_cfg.get("enabled", True)),
+                interval_seconds=int(agent_cfg.get("interval_seconds", 3600)),
+                last_run_iso=last.get("started_iso"),
+                last_repo=last.get("repo"),
+                last_window_pid=last.get("window_pid"),
+                lock_alive=bool(lock and _is_pid_alive(int(lock.get("pid", -1)))),
+            )
+        )
     return StatusResponse(
         runtime_root=str(_runtime_root()),
         scheduler_running=scheduler_alive,
@@ -293,9 +299,7 @@ def get_config() -> dict:
     try:
         return json.loads(stdout)
     except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=500, detail=f"launcher returned invalid JSON: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"launcher returned invalid JSON: {exc}") from exc
 
 
 @router.put("/config", response_model=SimpleResponse)
@@ -349,9 +353,7 @@ def get_repos() -> ReposResponse:
     try:
         d = json.loads(stdout)
     except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=500, detail=f"launcher returned invalid JSON: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"launcher returned invalid JSON: {exc}") from exc
     return ReposResponse(**d)
 
 
