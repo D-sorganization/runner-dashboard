@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta  # noqa: E402
 
 UTC = UTC
 from pathlib import Path  # noqa: E402
+from typing import Any  # noqa: E402
 from unittest.mock import AsyncMock, patch  # noqa: E402
 
 import pytest  # noqa: E402
@@ -127,8 +128,8 @@ class TestParseTaxonomy:
 
 
 class TestIsPickable:
-    def _base_item(self, **kwargs) -> dict:
-        item = {
+    def _base_item(self, **kwargs: Any) -> dict[str, Any]:
+        item: dict[str, Any] = {
             "state": "open",
             "agent_claim": None,
             "taxonomy": {

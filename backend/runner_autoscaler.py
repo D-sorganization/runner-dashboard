@@ -42,7 +42,7 @@ from collections import deque
 try:
     import psutil
 except ImportError:  # psutil is optional at import time; raise on use
-    psutil = None
+    psutil = None  # type: ignore[assignment]
 
 log = logging.getLogger("runner-autoscaler")
 logging.basicConfig(
@@ -76,14 +76,18 @@ POLL_SECONDS = _env_int("AUTOSCALER_POLL_SECONDS", 15)
 MIN_ONLINE = _env_int("AUTOSCALER_MIN_ONLINE", 1)
 MAX_STEP = _env_int("AUTOSCALER_MAX_SCALE_STEP", 1)
 DRY_RUN = bool(_env_int("AUTOSCALER_DRY_RUN", 0))
-RUNNER_SCHEDULER_BIN = os.environ.get("RUNNER_SCHEDULER_BIN", "/usr/local/bin/runner-scheduler")
+RUNNER_SCHEDULER_BIN = os.environ.get(
+    "RUNNER_SCHEDULER_BIN", "/usr/local/bin/runner-scheduler"
+)
 RUNNER_SCHEDULE_CONFIG = os.path.expanduser(
     os.environ.get(
         "RUNNER_SCHEDULE_CONFIG",
         "~/.config/runner-dashboard/runner-schedule.json",
     )
 )
-RUNNER_BASE_DIR = os.path.expanduser(os.environ.get("RUNNER_BASE_DIR", "~/actions-runners"))
+RUNNER_BASE_DIR = os.path.expanduser(
+    os.environ.get("RUNNER_BASE_DIR", "~/actions-runners")
+)
 
 HOSTNAME = platform.node()
 
@@ -110,7 +114,9 @@ def _list_runner_units() -> list[str]:
 
 
 def _unit_is_active(unit: str) -> bool:
-    r = subprocess.run(["systemctl", "is-active", "--quiet", unit], check=False, timeout=5)
+    r = subprocess.run(
+        ["systemctl", "is-active", "--quiet", unit], check=False, timeout=5
+    )
     return r.returncode == 0
 
 
@@ -142,7 +148,9 @@ def _runner_is_busy(unit: str) -> bool:
         proc = psutil.Process(main_pid)
         for child in proc.children(recursive=True):
             try:
-                if "Runner.Worker" in child.name() or "Runner.Worker" in " ".join(child.cmdline()):
+                if "Runner.Worker" in child.name() or "Runner.Worker" in " ".join(
+                    child.cmdline()
+                ):
                     return True
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
@@ -213,6 +221,17 @@ def _scheduled_desired_count(default: int) -> int:
         return default
 
 
+def _active_leases_count() -> int:
+    try:
+        from runner_leases import lease_manager
+
+        active = lease_manager.get_active_leases()
+        return sum(lease.runner_count for lease in active)
+    except Exception as exc:
+        log.debug("lease lookup failed: %s", exc)
+        return 0
+
+
 def _sample() -> tuple[float, float, float, float, float]:
     """Return (cpu_percent, mem_percent, load_per_core, disk_percent, disk_free_gb)."""
     if psutil is None:
@@ -220,7 +239,7 @@ def _sample() -> tuple[float, float, float, float, float]:
     cpu = psutil.cpu_percent(interval=1.0)
     mem = psutil.virtual_memory().percent
     try:
-        load1 = os.getloadavg()[0]
+        load1 = os.getloadavg()[0]  # type: ignore[attr-defined]
     except OSError:
         load1 = 0.0
     cores = psutil.cpu_count(logical=True) or 1
@@ -296,7 +315,9 @@ def main() -> None:
                 and min_disk_free > DISK_MIN_FREE_GB
             )
 
-            scheduled_desired = _scheduled_desired_count(len(units))
+            scheduled_desired = (
+                _scheduled_desired_count(len(units)) + _active_leases_count()
+            )
 
             log.info(
                 "sample cpu=%.1f%% mem=%.1f%% load/core=%.2f disk=%.1f%% free=%.1fGB"
