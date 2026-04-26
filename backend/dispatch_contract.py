@@ -55,7 +55,7 @@ def _load_signing_secret() -> str:
     return secret
 
 
-class _StrEnum(str, enum.Enum):
+class _StrEnum(enum.StrEnum):
     """Python 3.10 compatible StrEnum."""
 
     pass
@@ -99,6 +99,9 @@ def _sign_envelope_payload(
     issued_at: str,
     envelope_version: int,
     secret: str,
+    principal: str = "",
+    on_behalf_of: str = "",
+    correlation_id: str = "",
 ) -> str:
     """Generate HMAC-SHA256 signature over envelope payload."""
     canonical = json.dumps(
@@ -109,6 +112,9 @@ def _sign_envelope_payload(
             "requested_by": requested_by,
             "issued_at": issued_at,
             "envelope_version": envelope_version,
+            "principal": principal,
+            "on_behalf_of": on_behalf_of,
+            "correlation_id": correlation_id,
         },
         separators=(",", ":"),
         sort_keys=True,
@@ -126,9 +132,23 @@ def _verify_envelope_signature(
     envelope_version: int,
     signature: str,
     secret: str,
+    principal: str = "",
+    on_behalf_of: str = "",
+    correlation_id: str = "",
 ) -> bool:
     """Verify HMAC-SHA256 signature over envelope payload."""
-    expected = _sign_envelope_payload(action, source, target, requested_by, issued_at, envelope_version, secret)
+    expected = _sign_envelope_payload(
+        action,
+        source,
+        target,
+        requested_by,
+        issued_at,
+        envelope_version,
+        secret,
+        principal,
+        on_behalf_of,
+        correlation_id,
+    )
     return hmac.compare_digest(expected, signature)
 
 
@@ -244,6 +264,9 @@ class CommandEnvelope:
                 self.issued_at,
                 self.envelope_version,
                 secret,
+                self.principal,
+                self.on_behalf_of,
+                self.correlation_id,
             )
             object.__setattr__(self, "signature", sig)
 
@@ -291,6 +314,9 @@ class CommandEnvelope:
                 self.envelope_version,
                 self.signature,
                 secret,
+                self.principal,
+                self.on_behalf_of,
+                self.correlation_id,
             )
         except Exception:
             return False
