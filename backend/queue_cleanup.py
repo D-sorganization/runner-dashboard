@@ -21,14 +21,15 @@ Common sources of stale runs:
 from __future__ import annotations
 
 import asyncio
+import datetime as _dt
 import json
 import logging
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 log = logging.getLogger(__name__)
 
-UTC = timezone.utc
+UTC = _dt.UTC
 DEFAULT_MIN_AGE_MINUTES: int = 60
 _MAX_REPOS: int = 200
 _MAX_RUNS_PER_REPO: int = 100
@@ -69,7 +70,7 @@ async def _gh(*args: str, timeout: int = 30) -> tuple[int, str, str]:
     )
     try:
         raw_out, raw_err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         proc.kill()
         return 1, "", "timeout"
     return (proc.returncode or 0,
@@ -120,7 +121,7 @@ async def _queued_stale_for_repo(
     repo: str,
     min_age: timedelta,
 ) -> list[StaleRun]:
-    now = datetime.now(UTC)
+    now = _dt.datetime.now(UTC)
     data = await _gh_json(
         "api",
         f"/repos/{org}/{repo}/actions/runs"
@@ -132,7 +133,7 @@ async def _queued_stale_for_repo(
     for run in (data or {}).get("workflow_runs", []):
         raw_ts = run.get("created_at", "")
         try:
-            created = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+            created = _dt.datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
             continue
         age = now - created

@@ -65,8 +65,8 @@ import dispatch_contract as dispatch_contract  # noqa: E402
 import issue_inventory as issue_inventory  # noqa: E402
 import lease_synchronizer as lease_synchronizer  # noqa: E402
 import pr_inventory as pr_inventory  # noqa: E402
-import quick_dispatch as _quick_dispatch  # noqa: E402
 import queue_cleanup as queue_cleanup  # noqa: E402
+import quick_dispatch as _quick_dispatch  # noqa: E402
 import quota_enforcement as quota_enforcement  # noqa: E402
 import scheduled_workflows as scheduled_workflow_inventory  # noqa: E402
 import usage_monitoring as usage_monitoring  # noqa: E402
