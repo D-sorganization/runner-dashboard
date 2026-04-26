@@ -144,7 +144,8 @@ def load_usage_sources_config(
 ) -> list[UsageSourceConfig]:
     """Load usage-source definitions from JSON config or return an empty list."""
 
-    resolved = Path(path or os.environ.get("USAGE_SOURCES_PATH", DEFAULT_USAGE_SOURCES_PATH))
+    config_path = path or os.environ.get("USAGE_SOURCES_PATH") or DEFAULT_USAGE_SOURCES_PATH
+    resolved = Path(config_path)
     if not resolved.exists():
         return []
     data = json.loads(resolved.read_text())

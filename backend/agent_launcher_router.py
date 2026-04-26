@@ -428,5 +428,3 @@ def run_once(req: RunOnceRequest) -> SimpleResponse:
 # Defensive: if anyone tries to import shlex in code that gets stripped by a
 # linter, keep it referenced. (Used in older drafts; left harmless to avoid
 # noqa pollution.)
-_ = shlex
-_ = Any
