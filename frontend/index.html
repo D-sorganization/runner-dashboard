@@ -8019,7 +8019,7 @@
             },
             provider: modalProvider,
             prompt: modalPrompt,
-            confirmation: { approved_by: "dashboard-user" },
+            confirmation: { approved_by: (principal && principal.name) || "anonymous" },
           };
           fetch("/api/prs/dispatch", {
             method: "POST",
@@ -8772,7 +8772,7 @@
               provider: dispatchProvider,
               prompt: dispatchPrompt,
               force: forceDispatch,
-              confirmation: { approved_by: 'dashboard-user' },
+              confirmation: { approved_by: (principal && principal.name) || 'anonymous' },
             }),
           })
             .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
@@ -11322,7 +11322,7 @@
           setControlling(true);
           onControl({
             action: pendingAction,
-            approved_by: "dashboard-operator",
+            approved_by: (principal && principal.name) || "anonymous",
           })
             .then(function (d) {
               setControlStatus({ ok: true, msg: d.status || "Done" });
@@ -12203,7 +12203,7 @@
             workflow: dispatchWorkflow,
             ref: dispatchBranch || "main",
             machine_target: dispatchMachineTarget,
-            approved_by: "dashboard-user",
+            approved_by: (principal && principal.name) || "anonymous",
           })
             .then(function (d) {
               setDispatchSuccess("Dispatched! audit_id=" + (d.audit_id || ""));
@@ -12233,7 +12233,7 @@
             machine: deployMachine,
             action: deployAction,
             confirmed: true,
-            requested_by: "dashboard-user",
+            requested_by: (principal && principal.name) || "anonymous",
           })
             .then(function (d) {
               setDeploySuccess(d.message || "Deployed successfully.");

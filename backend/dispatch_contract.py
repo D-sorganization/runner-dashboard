@@ -15,12 +15,12 @@ without touching the running dashboard service.
 from __future__ import annotations
 
 import datetime as _dt_mod
+import enum
 import hashlib
 import hmac
 import json
 import os
 from dataclasses import asdict, dataclass, field
-from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
@@ -55,8 +55,8 @@ def _load_signing_secret() -> str:
     return secret
 
 
-class _StrEnum(StrEnum):
-    """StrEnum."""
+class _StrEnum(str, enum.Enum):
+    """Python 3.10 compatible StrEnum."""
 
     pass
 
