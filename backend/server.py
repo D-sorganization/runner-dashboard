@@ -67,6 +67,7 @@ from machine_registry import (  # noqa: E402
     load_machine_registry,
     merge_registry_with_live_nodes,
 )
+from principal import init_principals  # noqa: E402
 from report_files import parse_report_metrics, sanitize_report_date  # noqa: E402
 from routers import credentials as _credentials_router  # noqa: E402
 from routers import dispatch as _dispatch_router  # noqa: E402
@@ -209,7 +210,7 @@ class WorkflowDispatchBody(BaseModel):
     workflow_id: Any = None
     ref: str = Field(default="main", max_length=200)
     inputs: dict[str, Any] = Field(default_factory=dict)
-    approved_by: str = Field(default="dashboard-operator", max_length=200)
+    approved_by: str = Field(default="unknown", max_length=200)
 
 
 class HeavyTestDispatchBody(BaseModel):
@@ -470,6 +471,20 @@ async def get_setup_key(request: Request) -> dict:
 
 
 @app.middleware("http")
+async def _principal_middleware(request: Request, call_next: Any) -> Any:
+    """Attach the current principal to request.state (issue #131).
+
+    Reads the X-Principal-Id header and looks up the principal in the loaded
+    registry. Falls back to anonymous when no header is present.
+    """
+    from principal import get_current_principal  # noqa: PLC0415
+
+    request.state.principal = get_current_principal(request)
+    response = await call_next(request)
+    return response
+
+
+@app.middleware("http")
 async def _csrf_check(request: Request, call_next: Any) -> Any:
     """Reject state-changing requests that lack the CSRF sentinel header (issue #30).
 
@@ -518,6 +533,7 @@ async def _add_security_headers(request: Request, call_next: Any) -> Any:
 # ─── Startup timestamp ───────────────────────────────────────────────────────
 BOOT_TIME = time.time()
 _setup_api_key()
+init_principals()
 
 # ─── Response cache ───────────────────────────────────────────────────────────
 # The frontend polls every 10-15 s; without caching, each poll spawns dozens of
@@ -732,9 +748,6 @@ async def proxy_to_hub(request: Request):
                 return {}
             return resp.json()
         except Exception as e:  # noqa: BLE001
-            log.warning("Hub proxy error for %s: %s", request.url.path, e)
-            raise HTTPException(status_code=502, detail="Hub proxy error") from e
-
             log.warning("Hub proxy error for %s: %s", request.url.path, e)
             raise HTTPException(status_code=502, detail="Hub proxy error") from e
 
@@ -2901,7 +2914,7 @@ async def dispatch_workflow(request: Request) -> dict:
     workflow_id = body.get("workflow_id")
     ref = str(body.get("ref", "main")).strip()
     inputs = body.get("inputs", {}) or {}
-    approved_by = str(body.get("approved_by", "dashboard-operator")).strip()
+    approved_by = str(body.get("approved_by", "")).strip()
 
     if not repo or not workflow_id:
         raise HTTPException(status_code=422, detail="repository and workflow_id required")
@@ -6072,7 +6085,7 @@ async def fleet_orchestration_dispatch(request: Request) -> dict:
     ref = str(body.get("ref", "main")).strip() or "main"
     machine_target = str(body.get("machine_target", "")).strip()
     inputs = body.get("inputs") or {}
-    approved_by = str(body.get("approved_by", "dashboard-user")).strip() or "dashboard-user"
+    approved_by = str(body.get("approved_by", "")).strip() or "unknown"
 
     if not repo or not workflow:
         raise HTTPException(status_code=422, detail="repo and workflow are required")
@@ -6183,7 +6196,7 @@ async def fleet_orchestration_deploy(request: Request) -> dict:
     machine = str(body.get("machine", "")).strip()
     action = str(body.get("action", "")).strip()
     confirmed = bool(body.get("confirmed", False))
-    requested_by = str(body.get("requested_by", "dashboard-user")).strip() or "dashboard-user"
+    requested_by = str(body.get("requested_by", "")).strip() or "unknown"
 
     if not machine:
         raise HTTPException(status_code=422, detail="machine is required")
@@ -6402,9 +6415,6 @@ async def restart_dashboard_service(request: Request) -> dict:
             "output": (result.stdout + result.stderr).strip(),
         }
     except Exception as exc:  # noqa: BLE001
-        log.exception("Failed to restart runner-dashboard service")
-        raise HTTPException(status_code=500, detail="Restart failed") from exc
-
         log.exception("Failed to restart runner-dashboard service")
         raise HTTPException(status_code=500, detail="Restart failed") from exc
 

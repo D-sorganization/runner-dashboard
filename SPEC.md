@@ -1,8 +1,8 @@
 # SPEC.md — D-sorganization Runner Dashboard
 
-**Spec Version:** 2.2.0
+**Spec Version:** 2.3.0
 **Application Version:** 4.0.1 (see `VERSION`)
-**Last Updated:** 2026-04-25
+**Last Updated:** 2026-04-26
 **Status:** Active
 
 ---
@@ -846,6 +846,48 @@ The function:
 Every generated prompt also includes the constant
 `PROMPT_UNTRUSTED_SYSTEM_INSTRUCTION` as a preamble, instructing the model
 not to follow any instructions found inside the delimiters.
+
+### 9.8 Identity and Principal Model (Issue #131)
+The dashboard supports a configurable identity and authorization layer via
+`config/principals.yml` and the `backend/principal.py` module.
+
+**Principal types:**
+- `human` — authenticated via GitHub OAuth (future)
+- `bot` — authenticated via service token (future)
+- `service` — internal service accounts (e.g. Maxwell-Daemon, autoscaler)
+
+**`config/principals.yml` schema:**
+```yaml
+principals:
+  - id: alice
+    name: Alice
+    type: human
+    email: alice@example.com
+    roles: [operator, admin]
+    permissions: [fleet:read, fleet:write, agents:dispatch]
+```
+
+**Built-in permissions:** `fleet:read`, `fleet:write`, `agents:dispatch`,
+`agents:read`, `workflows:dispatch`, `workflows:read`, `config:read`,
+`config:write`, `credentials:read`, `system:read`, `system:write`.
+
+**Fail-closed behavior:**
+When `principals.yml` contains more than the two anonymous fallback entries,
+requests without a recognized principal are rejected with HTTP 401 by the
+`require_principal()` FastAPI dependency.
+
+**FastAPI integration:**
+- `_principal_middleware` attaches the current principal to `request.state`
+  by reading the `X-Principal-Id` header
+- `require_principal()` dependency raises 401 for anonymous when real
+  principals are configured
+- `require_role(role)` and `require_permission(perm)` dependency factories
+  raise 403 when the principal lacks the required grant
+
+**No hardcoded identities:**
+All previous hardcoded `"dashboard-user"` / `"dashboard-operator"` strings
+have been removed.  Fallback defaults are `"unknown"` (anonymous human) and
+`"anonymous-bot"` (anonymous bot).
 
 ---
 

@@ -127,7 +127,7 @@ def _make_audit_entry(
         "access": DispatchAccess.PRIVILEGED.value,
         "source": "dashboard",
         "target": repository,
-        "requested_by": "dashboard-operator",
+        "requested_by": "unknown",
         "decision": decision,
         "detail": detail,
         "fingerprint": fingerprint,

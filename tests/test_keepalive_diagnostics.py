@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+
+os.environ.setdefault("DASHBOARD_API_KEY", "test-key")
 
 import server  # noqa: E402
 

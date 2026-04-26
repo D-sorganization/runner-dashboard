@@ -1,0 +1,94 @@
+# Principals configuration — identity and authorization for the runner dashboard.
+#
+# Issue #131: Identity: Wave 1 - Foundation and Principal Model
+#
+# Each entry defines a verified identity that can be attached to requests.
+# The dashboard supports three principal types:
+#
+#   human   — authenticated via GitHub OAuth (login flow)
+#   bot     — authenticated via service token (minted/rotated by the dashboard)
+#   service — internal service accounts (e.g. Maxwell-Daemon, autoscaler)
+#
+# Fields
+# ------
+# id          : Stable unique identifier (required).  GitHub login for humans.
+# name        : Human-readable display name (defaults to id).
+# type        : One of human, bot, service (defaults to service).
+# email       : Optional contact address.
+# roles       : List of role strings.  Built-in roles: operator, viewer, admin.
+# permissions : List of explicit permission strings.
+#
+# Built-in permissions
+# --------------------
+#   fleet:read          — view runners, machines, fleet status
+#   fleet:write         — start/stop runners, fleet control
+#   agents:dispatch     — dispatch AI agent tasks
+#   agents:read         — view agent history, plans
+#   workflows:dispatch  — trigger GitHub Actions workflows
+#   workflows:read      — view workflow runs, queue
+#   config:read         — view configuration
+#   config:write        — modify configuration
+#   credentials:read    — view credential inventory (names only)
+#   system:read         — view system metrics
+#   system:write        — restart services, run diagnostics
+#
+# Fail-closed behaviour
+# ---------------------
+# When principals.yml is present and contains more than the two anonymous
+# fallbacks, requests without a recognised principal are rejected with 401.
+# This is enforced by the ``require_principal()`` FastAPI dependency.
+
+principals:
+  # ── Anonymous fallbacks (always present, used when no auth is configured) ──
+  - id: unknown
+    name: Anonymous Human
+    type: human
+    roles: [viewer]
+    permissions: [fleet:read, agents:read, workflows:read, system:read]
+
+  - id: anonymous-bot
+    name: Anonymous Bot
+    type: bot
+    roles: []
+    permissions: []
+
+  # ── Example human operator (replace with real GitHub logins) ────────────────
+  # - id: dieterolson
+  #   name: Dieter Olson
+  #   type: human
+  #   email: dieter@example.com
+  #   roles: [operator, admin]
+  #   permissions:
+  #     - fleet:read
+  #     - fleet:write
+  #     - agents:dispatch
+  #     - agents:read
+  #     - workflows:dispatch
+  #     - workflows:read
+  #     - config:read
+  #     - config:write
+  #     - credentials:read
+  #     - system:read
+  #     - system:write
+
+  # ── Example service account (e.g. Maxwell-Daemon) ─────────────────────────
+  # - id: maxwell-daemon
+  #   name: Maxwell Daemon
+  #   type: service
+  #   roles: [operator]
+  #   permissions:
+  #     - fleet:read
+  #     - fleet:write
+  #     - agents:dispatch
+  #     - system:read
+  #     - system:write
+
+  # ── Example bot principal (e.g. CI agent) ───────────────────────────────────
+  # - id: ci-agent
+  #   name: CI Agent
+  #   type: bot
+  #   roles: [viewer]
+  #   permissions:
+  #     - fleet:read
+  #     - workflows:read
+  #     - system:read
