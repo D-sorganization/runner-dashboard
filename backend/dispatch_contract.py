@@ -229,6 +229,9 @@ class CommandEnvelope:
     envelope_version: int = ENVELOPE_VERSION
     issued_at: str = field(default_factory=_utc_now)
     signature: str = ""
+    principal: str = ""
+    on_behalf_of: str = ""
+    correlation_id: str = ""
 
     def __post_init__(self) -> None:
         if not self.signature:
@@ -267,6 +270,9 @@ class CommandEnvelope:
             envelope_version=int(data.get("envelope_version", ENVELOPE_VERSION)),
             issued_at=str(data.get("issued_at", _utc_now())),
             signature=str(data.get("signature", "")),
+            principal=str(data.get("principal", "")),
+            on_behalf_of=str(data.get("on_behalf_of", "")),
+            correlation_id=str(data.get("correlation_id", "")),
         )
         return envelope
 
@@ -307,6 +313,11 @@ class DispatchAuditLogEntry:
     payload_snapshot: dict[str, Any]
     recorded_at: str
 
+    principal: str = ""
+    on_behalf_of: str = ""
+    correlation_id: str = ""
+    args_hash: str = ""
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "event_id": self.event_id,
@@ -316,6 +327,10 @@ class DispatchAuditLogEntry:
             "source": self.source,
             "target": self.target,
             "requested_by": self.requested_by,
+            "principal": self.principal,
+            "on_behalf_of": self.on_behalf_of,
+            "correlation_id": self.correlation_id,
+            "args_hash": self.args_hash,
             "decision": self.decision,
             "detail": self.detail,
             "confirmation_state": self.confirmation_state,
@@ -628,6 +643,10 @@ def build_audit_log_entry(
         source=envelope.source,
         target=envelope.target,
         requested_by=envelope.requested_by,
+        principal=envelope.principal,
+        on_behalf_of=envelope.on_behalf_of,
+        correlation_id=envelope.correlation_id,
+        args_hash=hashlib.sha256(json.dumps(envelope.payload, sort_keys=True).encode()).hexdigest(),
         decision="accepted" if validation.accepted else "rejected",
         detail=detail or validation.reason,
         confirmation_state=_confirmation_state(validation, envelope.confirmation),

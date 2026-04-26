@@ -139,3 +139,47 @@ def require_principal(
 
     # Fail closed
     raise HTTPException(status_code=401, detail="Authentication required")
+
+
+SCOPE_PRESETS = {
+    "admin": ["*"],
+    "operator": [
+        "workflows.dispatch",
+        "workflows.control",
+        "runners.control",
+        "fleet.control",
+        "remediation.dispatch",
+        "heavy-tests.dispatch",
+        "tests.rerun",
+        "github.dispatch",
+        "assistant.chat",
+        "assistant.execute",
+        "maxwell.control",
+        "assessments.dispatch",
+        "feature-requests.manage",
+        "system.control"
+    ],
+    "viewer": [
+        "assistant.chat"
+    ]
+}
+
+def require_scope(required_scope: str):
+    def checker(principal: Principal = Depends(require_principal)) -> Principal:
+        principal_scopes = set()
+        for role in principal.roles:
+            if role in SCOPE_PRESETS:
+                principal_scopes.update(SCOPE_PRESETS[role])
+        
+        if "*" in principal_scopes:
+            return principal
+            
+        for s in principal_scopes:
+            if s == required_scope or (s.endswith("*") and required_scope.startswith(s[:-1])):
+                return principal
+                
+        raise HTTPException(
+            status_code=403, 
+            detail={"error": "Authorization failed", "required_scope": required_scope, "principal": principal.id}
+        )
+    return checker
