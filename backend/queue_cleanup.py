@@ -1,5 +1,5 @@
 """
-queue_cleanup.py — Stale-queue detection and bulk cancellation.
+queue_cleanup.py -- Stale-queue detection and bulk cancellation.
 
 Exposes async helpers consumed by server.py's /api/queue/stale and
 /api/queue/purge-stale endpoints.
@@ -18,6 +18,7 @@ Common sources of stale runs:
     the queue was explicitly cancelled
   - GitHub Actions own queuing lag on heavily-loaded orgs
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -33,13 +34,14 @@ UTC = _dt.UTC
 DEFAULT_MIN_AGE_MINUTES: int = 60
 _MAX_REPOS: int = 200
 _MAX_RUNS_PER_REPO: int = 100
-_SCAN_CONCURRENCY: int = 10   # concurrent repo queries during scan
+_SCAN_CONCURRENCY: int = 10  # concurrent repo queries during scan
 _CANCEL_CONCURRENCY: int = 5  # concurrent cancel calls
 
 
 # ---------------------------------------------------------------------------
 # Data
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class StaleRun:
@@ -60,6 +62,7 @@ class StaleRun:
 # gh CLI helpers
 # ---------------------------------------------------------------------------
 
+
 async def _gh(*args: str, timeout: int = 30) -> tuple[int, str, str]:
     """Run a gh CLI subcommand asynchronously; return (returncode, stdout, stderr)."""
     proc = await asyncio.create_subprocess_exec(
@@ -73,9 +76,11 @@ async def _gh(*args: str, timeout: int = 30) -> tuple[int, str, str]:
     except TimeoutError:
         proc.kill()
         return 1, "", "timeout"
-    return (proc.returncode or 0,
-            raw_out.decode("utf-8", errors="replace"),
-            raw_err.decode("utf-8", errors="replace"))
+    return (
+        proc.returncode or 0,
+        raw_out.decode("utf-8", errors="replace"),
+        raw_err.decode("utf-8", errors="replace"),
+    )
 
 
 async def _gh_json(*args: str, default=None, timeout: int = 30):
@@ -96,25 +101,27 @@ async def _gh_json(*args: str, default=None, timeout: int = 30):
 # Repo discovery
 # ---------------------------------------------------------------------------
 
+
 async def list_all_repos(org: str) -> list[str]:
     """Return every non-archived repo name in *org* (up to _MAX_REPOS)."""
     data = await _gh_json(
-        "repo", "list", org,
-        "--limit", str(_MAX_REPOS),
-        "--json", "name,isArchived",
+        "repo",
+        "list",
+        org,
+        "--limit",
+        str(_MAX_REPOS),
+        "--json",
+        "name,isArchived",
         default=[],
         timeout=45,
     )
-    return [
-        r["name"]
-        for r in (data or [])
-        if not r.get("isArchived") and r.get("name")
-    ]
+    return [r["name"] for r in (data or []) if not r.get("isArchived") and r.get("name")]
 
 
 # ---------------------------------------------------------------------------
 # Stale-run detection
 # ---------------------------------------------------------------------------
+
 
 async def _queued_stale_for_repo(
     org: str,
@@ -124,8 +131,7 @@ async def _queued_stale_for_repo(
     now = _dt.datetime.now(UTC)
     data = await _gh_json(
         "api",
-        f"/repos/{org}/{repo}/actions/runs"
-        f"?status=queued&per_page={_MAX_RUNS_PER_REPO}",
+        f"/repos/{org}/{repo}/actions/runs?status=queued&per_page={_MAX_RUNS_PER_REPO}",
         default={},
         timeout=20,
     )
@@ -179,20 +185,21 @@ async def find_stale_runs(
 # Cancellation
 # ---------------------------------------------------------------------------
 
+
 async def _cancel_one(org: str, run: StaleRun) -> bool:
     """POST the GitHub cancel endpoint for one run.  Returns True on success."""
     code, _, stderr = await _gh(
-        "api", "--method", "POST",
+        "api",
+        "--method",
+        "POST",
         f"/repos/{org}/{run.repo}/actions/runs/{run.run_id}/cancel",
         timeout=15,
     )
     if code == 0:
         run.cancelled = True
         return True
-    # 409 = run already completed — no longer in queue, treat as success
-    if ("409" in stderr
-            or "Cannot cancel" in stderr
-            or "already" in stderr.lower()):
+    # 409 = run already completed -- no longer in queue, treat as success
+    if "409" in stderr or "Cannot cancel" in stderr or "already" in stderr.lower():
         run.cancelled = True
         run.cancel_error = "already-finished"
         return True
@@ -224,9 +231,7 @@ async def purge_stale_runs(
                 if await _cancel_one(org, run):
                     cancelled_count += 1
                 else:
-                    errors.append(
-                        f"{run.repo}#{run.run_id}: {run.cancel_error}"
-                    )
+                    errors.append(f"{run.repo}#{run.run_id}: {run.cancel_error}")
 
         await asyncio.gather(*[bounded_cancel(r) for r in stale])
 
