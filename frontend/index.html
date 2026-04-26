@@ -13441,6 +13441,190 @@
         );
       }
 
+      function ClineLauncherTab() {
+        // Self-contained: this tab manages its own polling + actions so it
+        // doesn't bloat the parent state. The launcher's state is on the
+        // user's local FS — the dashboard only mirrors it.
+        var s = React.useState(null);
+        var status = s[0], setStatus = s[1];
+        var r = React.useState(null);
+        var repos = r[0], setRepos = r[1];
+        var l = React.useState(false);
+        var loading = l[0], setLoading = l[1];
+        var er = React.useState("");
+        var error = er[0], setError = er[1];
+        var bs = React.useState({});
+        var busy = bs[0], setBusy = bs[1];
+
+        function fetchStatus() {
+          fetch("/api/agent-launcher/status")
+            .then(function (resp) {
+              if (!resp.ok) throw new Error("HTTP " + resp.status);
+              return resp.json();
+            })
+            .then(function (j) { setStatus(j); setError(""); })
+            .catch(function (e) { setError(String(e)); });
+        }
+
+        function fetchRepos() {
+          setLoading(true);
+          fetch("/api/agent-launcher/repos")
+            .then(function (resp) {
+              if (resp.status === 503) {
+                throw new Error(
+                  "launcher not installed on this machine"
+                );
+              }
+              if (!resp.ok) throw new Error("HTTP " + resp.status);
+              return resp.json();
+            })
+            .then(function (j) { setRepos(j); setError(""); })
+            .catch(function (e) { setError(String(e)); })
+            .finally(function () { setLoading(false); });
+        }
+
+        function action(verb, body) {
+          var key = verb + (body && body.agent ? "/" + body.agent : "");
+          var nb = Object.assign({}, busy); nb[key] = true; setBusy(nb);
+          var opts = { method: "POST" };
+          if (body) {
+            opts.headers = { "Content-Type": "application/json" };
+            opts.body = JSON.stringify(body);
+          }
+          return fetch("/api/agent-launcher/" + verb, opts)
+            .then(function (resp) {
+              return resp.json().then(function (j) {
+                if (!resp.ok) throw new Error(j.detail || "HTTP " + resp.status);
+                return j;
+              });
+            })
+            .then(function () { fetchStatus(); })
+            .catch(function (e) { setError(String(e)); })
+            .finally(function () {
+              var nb2 = Object.assign({}, busy); delete nb2[key]; setBusy(nb2);
+            });
+        }
+
+        React.useEffect(function () {
+          fetchStatus(); fetchRepos();
+          var t = setInterval(fetchStatus, 5000);
+          return function () { clearInterval(t); };
+        }, []);
+
+        var schedRunning = status && status.scheduler_running;
+        var statusBadge = h("span", {
+          className: "section-badge",
+          style: {
+            background: schedRunning ? "rgba(63,185,80,0.15)" : "rgba(248,81,73,0.15)",
+            color: schedRunning ? "var(--accent-green)" : "var(--accent-red)",
+          },
+        }, schedRunning ? "running" : "stopped");
+
+        return h("div", { className: "tab-panel" },
+          // Header + global controls
+          h("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 16 } },
+            h("h2", { style: { margin: 0 } }, "Cline Agent Launcher"),
+            statusBadge,
+            status && status.scheduler_pid
+              ? h("span", { style: { fontSize: 12, color: "var(--text-secondary)" } },
+                  "pid " + status.scheduler_pid)
+              : null,
+          ),
+          error
+            ? h("div", { className: "alert alert-error", style: { marginBottom: 12 } }, error)
+            : null,
+          h("div", { style: { display: "flex", gap: 8, marginBottom: 16 } },
+            h("button", {
+              className: "btn btn-primary",
+              disabled: !!busy["start"] || schedRunning,
+              onClick: function () { action("start"); },
+            }, busy["start"] ? "starting..." : "Start scheduler"),
+            h("button", {
+              className: "btn",
+              disabled: !!busy["stop"] || !schedRunning,
+              onClick: function () { action("stop"); },
+            }, busy["stop"] ? "stopping..." : "Stop scheduler"),
+            h("button", {
+              className: "btn",
+              disabled: loading,
+              onClick: function () { fetchRepos(); fetchStatus(); },
+            }, loading ? "refreshing..." : "Refresh"),
+          ),
+
+          // Agents table
+          h("h3", null, "Agents"),
+          status && status.agents && status.agents.length
+            ? h("table", { className: "data-table", style: { width: "100%" } },
+                h("thead", null, h("tr", null,
+                  h("th", null, "Agent"),
+                  h("th", null, "Enabled"),
+                  h("th", null, "Interval"),
+                  h("th", null, "Last run (UTC)"),
+                  h("th", null, "Last repo"),
+                  h("th", null, "Window PID"),
+                  h("th", null, "Lock"),
+                  h("th", null, "Run now"),
+                )),
+                h("tbody", null, status.agents.map(function (a) {
+                  return h("tr", { key: a.name },
+                    h("td", null, a.name),
+                    h("td", null, a.enabled ? "yes" : "no"),
+                    h("td", null, a.interval_seconds + "s"),
+                    h("td", { style: { fontSize: 12 } }, a.last_run_iso || "-"),
+                    h("td", null, a.last_repo || "-"),
+                    h("td", null, a.last_window_pid || "-"),
+                    h("td", null, a.lock_alive
+                      ? h("span", { style: { color: "var(--accent-yellow)" } }, "alive")
+                      : "-"),
+                    h("td", null,
+                      h("button", {
+                        className: "btn btn-sm",
+                        disabled: !!busy["run-once/" + a.name] || a.lock_alive,
+                        onClick: function () {
+                          action("run-once", { agent: a.name });
+                        },
+                      }, busy["run-once/" + a.name] ? "spawning..." : "Run once"),
+                    ),
+                  );
+                })),
+              )
+            : h("div", { style: { color: "var(--text-secondary)" } },
+                "No agents configured. Edit %LOCALAPPDATA%\\cline_agent_launcher\\config.json"),
+
+          // Discovered repo inventory
+          h("h3", { style: { marginTop: 24 } },
+            "Discovered repositories",
+            repos ? h("span", {
+              className: "section-badge",
+              style: { marginLeft: 8, background: "rgba(136,108,228,0.15)", color: "var(--accent-purple)" },
+            }, repos.count + " " + (repos.org_filter || "")) : null,
+          ),
+          repos && repos.repos && repos.repos.length
+            ? h("div", { style: { fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 } },
+                "WSL distro: " + repos.wsl_distro + ", root: " + repos.repos_root)
+            : null,
+          repos && repos.repos
+            ? h("div", { style: { display: "flex", flexWrap: "wrap", gap: 6 } },
+                repos.repos.map(function (r) {
+                  return h("span", {
+                    key: r.name,
+                    className: "section-badge",
+                    title: r.wsl_path,
+                    style: { background: "var(--bg-tertiary)" },
+                  }, r.name);
+                }))
+            : h("div", { style: { color: "var(--text-secondary)" } },
+                loading ? "discovering..." : "No repos discovered yet."),
+
+          // Notes
+          h("div", { style: { marginTop: 24, padding: 12, background: "var(--bg-tertiary)", borderRadius: 4, fontSize: 12, color: "var(--text-secondary)" } },
+            h("div", null, "Runtime root: " + (status && status.runtime_root || "-")),
+            h("div", null, "Status polls every 5s. Repo discovery is on-demand (Refresh button)."),
+            h("div", null, "Full config editor (model selector, repo multi-select, intervals) ships in a follow-up — for now edit config.json directly and click Refresh."),
+          ),
+        );
+      }
+
       function FeatureRequestsTab(props) {
         var repos = props.repos || [];
         var requests = props.requests || [];
@@ -16914,6 +17098,20 @@
               h(
                 "button",
                 {
+                  className:
+                    "tab-btn" + (tab === "cline-launcher" ? " active" : ""),
+                  role: "tab",
+                  "aria-selected": tab === "cline-launcher",
+                  onClick: function () {
+                    setTab("cline-launcher");
+                  },
+                },
+                I.terminal ? I.terminal(14) : I.server(14),
+                "Cline Launcher",
+              ),
+              h(
+                "button",
+                {
                   className: "tab-btn" + (tab === "maxwell" ? " active" : ""),
                   role: "tab",
                   "aria-selected": tab === "maxwell",
@@ -17224,9 +17422,11 @@
                                                       fetchMaxwellStatus,
                                                     onControl: maxwellControl,
                                                   })
-                                                : tab === "diagnostics"
-                                                  ? h(DiagnosticsTab, null)
-                                                  : null,
+                                                : tab === "cline-launcher"
+                                                  ? h(ClineLauncherTab, null)
+                                                  : tab === "diagnostics"
+                                                    ? h(DiagnosticsTab, null)
+                                                    : null,
             ),
             h(AssistantSidebar, { currentTab: tab, open: asstOpen, onToggle: toggleAsst }),
           ),

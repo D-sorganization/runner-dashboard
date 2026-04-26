@@ -491,7 +491,8 @@ def _load_workflow_type_rules(
 
 
 def load_policy(path: Path | str | None = None) -> RemediationPolicy:
-    resolved = Path(path or os.environ.get("AGENT_REMEDIATION_CONFIG", DEFAULT_CONFIG_PATH))
+    config_path = path or os.environ.get("AGENT_REMEDIATION_CONFIG") or DEFAULT_CONFIG_PATH
+    resolved = Path(config_path)
     if not resolved.exists():
         return RemediationPolicy(
             auto_dispatch_on_failure=True,
@@ -524,7 +525,8 @@ def save_policy(
 ) -> Path:
     import config_schema  # noqa: PLC0415
 
-    resolved = Path(path or os.environ.get("AGENT_REMEDIATION_CONFIG", DEFAULT_CONFIG_PATH))
+    config_path = path or os.environ.get("AGENT_REMEDIATION_CONFIG") or DEFAULT_CONFIG_PATH
+    resolved = Path(config_path)
     payload = {
         "schema_version": SCHEMA_VERSION,
         **policy.to_dict(),

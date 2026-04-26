@@ -421,6 +421,12 @@ _dispatch_router.set_replay_functions(_is_envelope_replay, _record_processed_env
 app.include_router(_credentials_router.router)
 app.include_router(auth_router.router)
 
+# Agent-launcher control surface (sibling: Repository_Management/launchers/cline_agent_launcher).
+# Subprocess-only — never imports the launcher Python at runtime.
+from backend import agent_launcher_router as _agent_launcher_router  # noqa: E402
+
+app.include_router(_agent_launcher_router.router)
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SESSION_SECRET", secrets.token_hex(32)),
@@ -752,7 +758,7 @@ async def run_cmd(cmd: list[str], timeout: int = 30, cwd: Path | None = None) ->
         return 127, "", str(exc)
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        return proc.returncode, stdout.decode(), stderr.decode()
+        return proc.returncode if proc.returncode is not None else -1, stdout.decode(), stderr.decode()
     except (TimeoutError, asyncio.TimeoutError):  # noqa: UP041
         proc.kill()
         return -1, "", "Command timed out"
@@ -824,8 +830,10 @@ def _machine_deployment_state(node: dict, expected_version: str) -> dict:
     """Build a per-machine deployment state record."""
     deployment = _node_deployment_info(node)
     status = deployment_drift.evaluate_drift(deployment, expected_version)
-    registry = node.get("registry") if isinstance(node.get("registry"), dict) else {}
-    health = node.get("health") if isinstance(node.get("health"), dict) else {}
+    node_registry = node.get("registry")
+    registry = node_registry if isinstance(node_registry, dict) else {}
+    node_health = node.get("health")
+    health = node_health if isinstance(node_health, dict) else {}
     last_health_check = health.get("timestamp") or node.get("last_seen")
     last_rollback = None
     if isinstance(registry, dict):
