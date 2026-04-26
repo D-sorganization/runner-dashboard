@@ -7,7 +7,6 @@ import time
 from pathlib import Path
 
 import yaml
-
 from identity import Principal
 from local_app_monitoring import collect_local_apps
 from runner_lease import lease_manager

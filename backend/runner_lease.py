@@ -11,9 +11,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field
-
 from identity import Principal
+from pydantic import BaseModel, Field
 
 log = logging.getLogger("dashboard.runner_lease")
 
