@@ -294,7 +294,13 @@ class TestExecuteTool(unittest.IsolatedAsyncioTestCase):
                 inputs={},
                 confirmation=None,
                 gh_api_fn=AsyncMock(),
-                dispatch_fn=AsyncMock(),
+                run_cmd_fn=AsyncMock(),
+                normalize_repository_fn=lambda x: x,
+                principal="test_principal",
+                on_behalf_of="",
+                correlation_id="",
+                org="D-sorganization",
+                repo_root=".",
             )
 
     async def test_state_changing_without_confirmation_raises(self) -> None:
@@ -310,7 +316,13 @@ class TestExecuteTool(unittest.IsolatedAsyncioTestCase):
                 },
                 confirmation=None,
                 gh_api_fn=AsyncMock(),
-                dispatch_fn=AsyncMock(),
+                run_cmd_fn=AsyncMock(),
+                normalize_repository_fn=lambda x: x,
+                principal="test_principal",
+                on_behalf_of="",
+                correlation_id="",
+                org="D-sorganization",
+                repo_root=".",
             )
 
     async def test_readonly_tool_auto_executes(self) -> None:
@@ -322,7 +334,13 @@ class TestExecuteTool(unittest.IsolatedAsyncioTestCase):
             inputs={},
             confirmation=None,
             gh_api_fn=gh_api_fn,
-            dispatch_fn=AsyncMock(),
+            run_cmd_fn=AsyncMock(),
+            normalize_repository_fn=lambda x: x,
+            principal="test_principal",
+            on_behalf_of="",
+            correlation_id="",
+            org="D-sorganization",
+            repo_root=".",
         )
 
         self.assertTrue(result["result"] is not None)
@@ -345,7 +363,13 @@ class TestExecuteTool(unittest.IsolatedAsyncioTestCase):
             },
             confirmation={"approved_by": "dieter", "note": "confirmed in UI"},
             gh_api_fn=AsyncMock(),
-            dispatch_fn=dispatch_fn,
+            run_cmd_fn=dispatch_fn,
+            normalize_repository_fn=lambda x: x,
+            principal="test_principal",
+            on_behalf_of="",
+            correlation_id="",
+            org="D-sorganization",
+            repo_root=".",
         )
 
         self.assertTrue(result["result"] is not None)
@@ -362,7 +386,13 @@ class TestExecuteTool(unittest.IsolatedAsyncioTestCase):
             inputs={},
             confirmation=None,
             gh_api_fn=gh_api_fn,
-            dispatch_fn=AsyncMock(),
+            run_cmd_fn=AsyncMock(),
+            normalize_repository_fn=lambda x: x,
+            principal="test_principal",
+            on_behalf_of="",
+            correlation_id="",
+            org="D-sorganization",
+            repo_root=".",
         )
 
         self.assertEqual(len(_TOOL_AUDIT_LOG), 1)

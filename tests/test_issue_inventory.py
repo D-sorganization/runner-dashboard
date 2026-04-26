@@ -1,9 +1,10 @@
 """Unit tests for backend/issue_inventory.py (issue #81)."""
 
-from __future__ import annotations  # noqa: E402
+from __future__ import annotations
 
 import sys  # noqa: E402
 from datetime import UTC, datetime, timedelta  # noqa: E402
+from typing import Any  # noqa: E402
 
 UTC = UTC
 from pathlib import Path  # noqa: E402
@@ -128,7 +129,7 @@ class TestParseTaxonomy:
 
 class TestIsPickable:
     def _base_item(self, **kwargs) -> dict:
-        item = {
+        item: dict[str, Any] = {
             "state": "open",
             "agent_claim": None,
             "taxonomy": {

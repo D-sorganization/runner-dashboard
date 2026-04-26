@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+
+UTC = UTC
 """Unit tests for agent_remediation.py — failure context, policy, and workflow classification."""
 
 from agent_remediation import (  # noqa: E402
@@ -126,7 +129,7 @@ def test_fallback_provider_chain_uses_fallback_when_primary_exhausted() -> None:
             provider_id="codex_cli",
             fingerprint=fingerprint,
             status="failed",
-            created_at="2026-04-25T12:00:00Z",
+            created_at=datetime.now(UTC).isoformat(),
         )
         for _ in range(3)
     ] + [
@@ -134,7 +137,7 @@ def test_fallback_provider_chain_uses_fallback_when_primary_exhausted() -> None:
             provider_id="claude_code_cli",
             fingerprint=fingerprint,
             status="failed",
-            created_at="2026-04-25T12:00:00Z",
+            created_at=datetime.now(UTC).isoformat(),
         )
         for _ in range(2)
     ]
@@ -186,7 +189,7 @@ def test_fallback_provider_chain_exhausted_all_providers() -> None:
                 provider_id="codex_cli",
                 fingerprint=fingerprint,
                 status="failed",
-                created_at="2026-04-25T12:00:00Z",
+                created_at=datetime.now(UTC).isoformat(),
             )
             for _ in range(3)
         ]
@@ -195,7 +198,7 @@ def test_fallback_provider_chain_exhausted_all_providers() -> None:
                 provider_id="claude_code_cli",
                 fingerprint=fingerprint,
                 status="failed",
-                created_at="2026-04-25T12:00:00Z",
+                created_at=datetime.now(UTC).isoformat(),
             )
             for _ in range(3)
         ]
@@ -204,7 +207,7 @@ def test_fallback_provider_chain_exhausted_all_providers() -> None:
                 provider_id="jules_api",
                 fingerprint=fingerprint,
                 status="failed",
-                created_at="2026-04-25T12:00:00Z",
+                created_at=datetime.now(UTC).isoformat(),
             )
             for _ in range(3)
         ]
@@ -253,7 +256,7 @@ def test_fallback_provider_chain_uses_fallback_providers_field() -> None:
             provider_id="jules_api",
             fingerprint=fingerprint,
             status="failed",
-            created_at="2026-04-25T12:00:00Z",
+            created_at=datetime.now(UTC).isoformat(),
         )
         for _ in range(3)
     ]
@@ -310,19 +313,19 @@ def test_attempts_for_provider_filters_by_provider_id() -> None:
             provider_id="a",
             fingerprint=fingerprint,
             status="failed",
-            created_at="2026-04-25T12:00:00Z",
+            created_at=datetime.now(UTC).isoformat(),
         ),
         AttemptRecord(
             provider_id="b",
             fingerprint=fingerprint,
             status="failed",
-            created_at="2026-04-25T12:00:00Z",
+            created_at=datetime.now(UTC).isoformat(),
         ),
         AttemptRecord(
             provider_id="a",
             fingerprint=fingerprint,
             status="failed",
-            created_at="2026-04-25T12:00:00Z",
+            created_at=datetime.now(UTC).isoformat(),
         ),
     ]
 
@@ -352,7 +355,7 @@ def test_per_provider_attempt_count_separate_from_global() -> None:
             provider_id="codex_cli",
             fingerprint=fingerprint,
             status="failed",
-            created_at="2026-04-25T12:00:00Z",
+            created_at=datetime.now(UTC).isoformat(),
         )
         for _ in range(3)
     ]
