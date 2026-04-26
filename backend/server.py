@@ -421,6 +421,12 @@ _dispatch_router.set_replay_functions(_is_envelope_replay, _record_processed_env
 app.include_router(_credentials_router.router)
 app.include_router(auth_router.router)
 
+# Agent-launcher control surface (sibling: Repository_Management/launchers/cline_agent_launcher).
+# Subprocess-only — never imports the launcher Python at runtime.
+from backend import agent_launcher_router as _agent_launcher_router  # noqa: E402
+
+app.include_router(_agent_launcher_router.router)
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SESSION_SECRET", secrets.token_hex(32)),
