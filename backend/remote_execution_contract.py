@@ -6,7 +6,7 @@ import datetime as _dt_mod
 import ipaddress
 import re
 from dataclasses import asdict, dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -27,8 +27,6 @@ PRIVATE_NETWORKS = (
     ipaddress.ip_network("fc00::/7"),
 )
 
-
-from enum import StrEnum
 
 class _StrEnum(StrEnum):
     """StrEnum."""

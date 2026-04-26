@@ -22,8 +22,8 @@ _BACKEND = Path(__file__).parent.parent / "backend"
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
 
-import dispatch_contract
-from dispatch_contract import (
+import dispatch_contract  # noqa: E402
+from dispatch_contract import (  # noqa: E402
     CommandEnvelope,
     DispatchConfirmation,
     TimestampValidationResult,
@@ -162,7 +162,7 @@ class TestEnvelopeSigningAndVerification:
             envelope_version=1,
             secret=secret,
         )
-        sig = _sign_envelope_payload(**payload_args)
+        _sign_envelope_payload(**payload_args)
         tampered_sig = "0" * 64  # Completely different signature
 
         result = _verify_envelope_signature(**payload_args, signature=tampered_sig)
