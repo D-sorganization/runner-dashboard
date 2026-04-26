@@ -21,7 +21,9 @@ from uuid import uuid4
 
 import agent_remediation
 import config_schema
+import quota_enforcement
 from dispatch_contract import DispatchAccess
+from identity import identity_manager
 from pydantic import BaseModel, Field
 
 UTC = getattr(_dt_mod, "UTC", _dt_mod.timezone.utc)  # noqa: UP017
@@ -71,6 +73,9 @@ class QuickDispatchRequest(BaseModel):
     ref: str = Field(default="main", max_length=200)
     task_kind: str = Field(default="adhoc", max_length=100)
     requested_by: str = Field(default="dashboard-operator", max_length=200)
+    principal: str = Field(default="", max_length=200)
+    on_behalf_of: str = Field(default="", max_length=200)
+    correlation_id: str = Field(default="", max_length=100)
 
 
 class QuickDispatchResponse(BaseModel):
@@ -119,6 +124,9 @@ def _make_audit_entry(
     detail: str,
     history_id: str,
     requested_by: str = "dashboard-operator",
+    principal: str = "",
+    on_behalf_of: str = "",
+    correlation_id: str = "",
     *,
     forced: bool = False,
 ) -> dict[str, Any]:
@@ -130,6 +138,9 @@ def _make_audit_entry(
         "source": "dashboard",
         "target": repository,
         "requested_by": requested_by,
+        "principal": principal,
+        "on_behalf_of": on_behalf_of,
+        "correlation_id": correlation_id,
         "decision": decision,
         "detail": detail,
         "fingerprint": fingerprint,
@@ -222,6 +233,9 @@ async def quick_dispatch(
             "task_kind": req.task_kind or "adhoc",
             "fingerprint": fingerprint,
             "envelope_id": envelope_id,
+            "principal": req.principal or "",
+            "on_behalf_of": req.on_behalf_of or "",
+            "correlation_id": req.correlation_id or "",
         },
     }
 
@@ -274,6 +288,24 @@ async def quick_dispatch(
             reason=f"dispatch_failed: gh exited with code {code}",
         )
 
+    # ── Record spend and lease (Wave 3) ───────────────────────────────────────
+    if req.principal:
+        quota_enforcement.quota_enforcement.add_spend(req.principal, 0.10)
+        principal_obj = identity_manager.get_principal(req.principal)
+        if principal_obj:
+            from runner_lease import lease_manager  # noqa: PLC0415
+
+            try:
+                lease_manager.acquire_lease(
+                    principal=principal_obj,
+                    runner_id=f"virtual-{envelope_id}",
+                    duration_seconds=3600,  # Default 1h lease
+                    task_id=envelope_id,
+                    metadata={"source": "quick_dispatch", "repo": full_repository},
+                )
+            except (ValueError, PermissionError) as exc:
+                log.warning("Failed to acquire virtual lease for %s: %s", req.principal, exc)
+
     # ── Persist audit log entry ───────────────────────────────────────────────
     audit_entry = _make_audit_entry(
         envelope_id=envelope_id,
@@ -283,7 +315,10 @@ async def quick_dispatch(
         decision="accepted",
         detail="quick-dispatch workflow triggered",
         history_id=history_id,
-        requested_by=(req.requested_by if hasattr(req, "requested_by") else "dashboard-operator"),
+        requested_by=req.requested_by,
+        principal=req.principal,
+        on_behalf_of=req.on_behalf_of,
+        correlation_id=req.correlation_id,
     )
     await _append_quick_dispatch_history(audit_entry)
 

@@ -31,7 +31,9 @@ from uuid import uuid4
 
 import agent_remediation
 import config_schema
+import quota_enforcement
 from dispatch_contract import DispatchAccess
+from identity import identity_manager
 from pydantic import BaseModel, Field
 
 UTC = getattr(_dt_mod, "UTC", _dt_mod.timezone.utc)  # noqa: UP017
@@ -80,6 +82,7 @@ class PRDispatchRequest(BaseModel):
     provider: str = Field(default="claude_code_cli", max_length=100)
     prompt: str = Field(default="", max_length=10_000)
     model: str = Field(default="", max_length=200)
+    principal: str = Field(default="", max_length=200)
     confirmation: DispatchConfirmationBody = Field(default_factory=DispatchConfirmationBody)
 
 
@@ -88,6 +91,7 @@ class IssueDispatchRequest(BaseModel):
     provider: str = Field(default="claude_code_cli", max_length=100)
     prompt: str = Field(default="", max_length=10_000)
     model: str = Field(default="", max_length=200)
+    principal: str = Field(default="", max_length=200)
     force: bool = False
     confirmation: DispatchConfirmationBody = Field(default_factory=DispatchConfirmationBody)
 
@@ -306,6 +310,25 @@ async def dispatch_to_prs(
         return {"error": targets_or_err, "status_code": 422}
     targets = targets_or_err
 
+    # Wave 3: Quota truncation (Fair Sharing)
+    rejected_due_to_quota: list[tuple[str, int]] = []
+    if req.principal:
+        principal_obj = identity_manager.get_principal(req.principal)
+        if principal_obj:
+            from runner_lease import lease_manager  # noqa: PLC0415
+
+            active_leases = lease_manager.get_active_leases(principal_obj.id)
+            remaining = max(0, principal_obj.quotas.max_runners - len(active_leases))
+            if len(targets) > remaining:
+                rejected_due_to_quota = targets[remaining:]
+                targets = targets[:remaining]
+                log.info(
+                    "Principal %s bulk PR dispatch truncated: %d targets accepted, %d rejected due to quota",
+                    req.principal,
+                    len(targets),
+                    len(rejected_due_to_quota),
+                )
+
     # ── Fan-out dispatch ──────────────────────────────────────────────────────
     semaphore = asyncio.Semaphore(DISPATCH_CONCURRENCY)
     tasks = [
@@ -341,6 +364,26 @@ async def dispatch_to_prs(
                 envelope_ids.append(env_id)
             if fp:
                 fingerprints.append(fp)
+            # Wave 3: Acquire virtual lease
+            if req.principal and env_id:
+                principal_obj = identity_manager.get_principal(req.principal)
+                if principal_obj:
+                    from runner_lease import lease_manager  # noqa: PLC0415
+
+                    try:
+                        lease_manager.acquire_lease(
+                            principal=principal_obj,
+                            runner_id=f"virtual-{env_id}",
+                            duration_seconds=3600,
+                            task_id=env_id,
+                            metadata={"source": "agent_dispatch_router", "repo": repo, "number": num},
+                        )
+                    except (ValueError, PermissionError) as exc:
+                        log.warning("Failed to acquire virtual lease for %s: %s", req.principal, exc)
+
+    # Handle quota rejected targets
+    for repo, num in rejected_due_to_quota:
+        rejected.append({"repository": repo, "number": num, "reason": "quota_exceeded: max_runners reached"})
 
     # ── Audit log ─────────────────────────────────────────────────────────────
     audit_entry: dict[str, Any] = {
@@ -354,6 +397,10 @@ async def dispatch_to_prs(
         "fingerprints": fingerprints,
         "recorded_at": _utc_now(),
     }
+    # ── Record spend (Wave 3) ─────────────────────────────────────────────────
+    if req.principal and accepted_count > 0:
+        quota_enforcement.quota_enforcement.add_spend(req.principal, accepted_count * 0.10)
+
     await _append_history(audit_entry, _PR_DISPATCH_HISTORY_PATH, _pr_dispatch_history_lock)
 
     return BulkDispatchResponse(
@@ -412,6 +459,25 @@ async def dispatch_to_issues(
         return {"error": targets_or_err, "status_code": 422}
     targets = targets_or_err
 
+    # Wave 3: Quota truncation (Fair Sharing)
+    rejected_due_to_quota: list[tuple[str, int]] = []
+    if req.principal:
+        principal_obj = identity_manager.get_principal(req.principal)
+        if principal_obj:
+            from runner_lease import lease_manager  # noqa: PLC0415
+
+            active_leases = lease_manager.get_active_leases(principal_obj.id)
+            remaining = max(0, principal_obj.quotas.max_runners - len(active_leases))
+            if len(targets) > remaining:
+                rejected_due_to_quota = targets[remaining:]
+                targets = targets[:remaining]
+                log.info(
+                    "Principal %s bulk issue dispatch truncated: %d targets accepted, %d rejected due to quota",
+                    req.principal,
+                    len(targets),
+                    len(rejected_due_to_quota),
+                )
+
     # ── Pickability pre-filter ────────────────────────────────────────────────
     pre_rejected: list[dict[str, Any]] = []
     filtered_targets: list[tuple[str, int]] = []
@@ -466,6 +532,26 @@ async def dispatch_to_issues(
                 envelope_ids.append(env_id)
             if fp:
                 fingerprints.append(fp)
+            # Wave 3: Acquire virtual lease
+            if req.principal and env_id:
+                principal_obj = identity_manager.get_principal(req.principal)
+                if principal_obj:
+                    from runner_lease import lease_manager  # noqa: PLC0415
+
+                    try:
+                        lease_manager.acquire_lease(
+                            principal=principal_obj,
+                            runner_id=f"virtual-{env_id}",
+                            duration_seconds=3600,
+                            task_id=env_id,
+                            metadata={"source": "agent_dispatch_router", "repo": repo, "number": num},
+                        )
+                    except (ValueError, PermissionError) as exc:
+                        log.warning("Failed to acquire virtual lease for %s: %s", req.principal, exc)
+
+    # Handle quota rejected targets
+    for repo, num in rejected_due_to_quota:
+        rejected.append({"repository": repo, "number": num, "reason": "quota_exceeded: max_runners reached"})
 
     # ── Audit log ─────────────────────────────────────────────────────────────
     audit_entry: dict[str, Any] = {
@@ -480,6 +566,10 @@ async def dispatch_to_issues(
         "forced": req.force,
         "recorded_at": _utc_now(),
     }
+    # ── Record spend (Wave 3) ─────────────────────────────────────────────────
+    if req.principal and accepted_count > 0:
+        quota_enforcement.quota_enforcement.add_spend(req.principal, accepted_count * 0.10)
+
     await _append_history(audit_entry, _ISSUE_DISPATCH_HISTORY_PATH, _issue_dispatch_history_lock)
 
     return BulkDispatchResponse(

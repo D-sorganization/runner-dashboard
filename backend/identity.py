@@ -6,7 +6,15 @@ from pathlib import Path
 import yaml
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import APIKeyCookie, APIKeyHeader
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class Quota(BaseModel):
+    """Per-principal resource quotas."""
+
+    max_runners: int = Field(default=2, ge=0)
+    agent_spend_usd_day: float = Field(default=10.0, ge=0.0)
+    local_app_slots: int = Field(default=1, ge=0)
 
 
 class Principal(BaseModel):
@@ -16,6 +24,7 @@ class Principal(BaseModel):
     roles: list[str] = []
     github_username: str | None = None
     email: str | None = None
+    quotas: Quota = Field(default_factory=Quota)
 
 
 class TokenRecord(BaseModel):
@@ -54,6 +63,9 @@ class IdentityManager:
         for p in data["principals"]:
             prin = Principal(**p)
             self.principals[prin.id] = prin
+
+    def get_principal(self, principal_id: str) -> Principal | None:
+        return self.principals.get(principal_id)
 
     def load_tokens(self):
         if not self.tokens_path.exists():
@@ -167,6 +179,11 @@ SCOPE_PRESETS = {
         "system.control",
     ],
     "viewer": ["assistant.chat"],
+    "bot": [
+        "remediation.dispatch",
+        "workflows.dispatch",
+        "heavy-tests.dispatch",
+    ],
 }
 
 

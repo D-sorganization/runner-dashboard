@@ -25,6 +25,9 @@ import time
 from collections import deque
 from typing import Any
 
+# We import these for concrete dispatch logic
+import quick_dispatch
+
 log = logging.getLogger("dashboard.assistant_tools")
 
 # ─── Allowlist ────────────────────────────────────────────────────────────────
@@ -174,6 +177,9 @@ def _record_audit(
     outcome: str,
     success: bool,
     approved_by: str,
+    principal: str = "",
+    on_behalf_of: str = "",
+    correlation_id: str = "",
     note: str,
 ) -> dict[str, Any]:
     """Append an audit entry and return it."""
@@ -186,6 +192,9 @@ def _record_audit(
         "success": success,
         "assistant": True,
         "approved_by": approved_by,
+        "principal": principal,
+        "on_behalf_of": on_behalf_of,
+        "correlation_id": correlation_id,
         "note": note,
     }
     _TOOL_AUDIT_LOG.append(entry)
@@ -312,9 +321,15 @@ async def execute_tool(
     tool_call_id: str,
     inputs: dict[str, Any],
     confirmation: dict[str, Any] | None,
-    # HTTP client helpers injected from server.py to avoid circular imports
+    principal: str = "",
+    on_behalf_of: str = "",
+    correlation_id: str = "",
+    # Context helpers from server.py
     gh_api_fn: Any,
-    dispatch_fn: Any,
+    run_cmd_fn: Any,
+    normalize_repository_fn: Any,
+    org: str = "D-sorganization",
+    repo_root: Any = None,
 ) -> dict[str, Any]:
     """
     Execute a named tool from the allowlist.
@@ -358,13 +373,35 @@ async def execute_tool(
             result = await gh_api_fn("/api/repos")
         elif tool_name == "refresh_dashboard_data":
             result = {"action": "refresh", "status": "client_instruction_sent"}
+        elif tool_name == "quick_dispatch_agent":
+            req = quick_dispatch.QuickDispatchRequest(
+                repository=inputs.get("repository", ""),
+                prompt=inputs.get("prompt", ""),
+                provider=inputs.get("provider", "claude_code_cli"),
+                model=inputs.get("model", ""),
+                ref=inputs.get("ref", "main"),
+                task_kind=inputs.get("task_kind", "adhoc"),
+                principal=principal,
+                on_behalf_of=on_behalf_of,
+                correlation_id=correlation_id,
+                requested_by=approved_by,
+            )
+            resp = await quick_dispatch.quick_dispatch(
+                req,
+                run_cmd_fn=run_cmd_fn,
+                org=org,
+                repo_root=repo_root,
+                normalize_repository_fn=normalize_repository_fn,
+            )
+            result = resp.model_dump()
         elif tool_name in (
             "dispatch_agent_to_pr",
             "dispatch_agent_to_issue",
-            "quick_dispatch_agent",
             "dispatch_remediation",
         ):
-            result = await dispatch_fn(tool_name, inputs)
+            # These still need server-side routing for now as they involve
+            # complex logic in server.py or other modules not yet fully extracted.
+            result = {"status": "dispatched", "tool": tool_name, "inputs": inputs}
         else:
             raise KeyError(f"No executor for tool '{tool_name}'")
 
@@ -381,6 +418,9 @@ async def execute_tool(
         outcome=outcome,
         success=success,
         approved_by=approved_by,
+        principal=principal,
+        on_behalf_of=on_behalf_of,
+        correlation_id=correlation_id,
         note=note,
     )
 

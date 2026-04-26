@@ -74,6 +74,8 @@ class ToolConfirmation(BaseModel):
     """Operator confirmation block for state-changing tool calls."""
 
     approved_by: str = Field(default="operator", max_length=200)
+    on_behalf_of: str | None = Field(default=None, max_length=200)
+    correlation_id: str | None = Field(default=None, max_length=100)
     note: str = Field(default="", max_length=1000)
 
 
