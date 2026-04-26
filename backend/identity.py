@@ -161,7 +161,7 @@ def require_principal(
 
     # Set default on_behalf_of
     if hasattr(request.state, "on_behalf_of"):
-        pass # already set?
+        pass  # already set?
     else:
         request.state.on_behalf_of = None
 
