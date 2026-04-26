@@ -45,35 +45,37 @@ import psutil
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from identity import Principal, require_scope  # noqa: B008
+from backend.identity import Principal, require_scope  # noqa: B008
 from pydantic import BaseModel, Field
-from routers import auth as auth_router
+from backend.routers import auth as auth_router
 from starlette.middleware.sessions import SessionMiddleware
 
 BACKEND_DIR = Path(__file__).resolve().parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-import agent_dispatch_router  # noqa: E402
-import agent_remediation  # noqa: E402
-import assistant_contract  # noqa: E402
-import assistant_tools  # noqa: E402
-import config_schema  # noqa: E402
-import deployment_drift  # noqa: E402
-import dispatch_contract  # noqa: E402
-import issue_inventory  # noqa: E402
-import pr_inventory  # noqa: E402
-import quick_dispatch as _quick_dispatch  # noqa: E402
-import scheduled_workflows as scheduled_workflow_inventory  # noqa: E402
-import usage_monitoring  # noqa: E402
-from local_app_monitoring import collect_local_apps  # noqa: E402
-from machine_registry import (  # noqa: E402
+import backend.agent_dispatch_router as agent_dispatch_router  # noqa: E402
+import backend.agent_remediation as agent_remediation  # noqa: E402
+import backend.assistant_contract as assistant_contract  # noqa: E402
+import backend.assistant_tools as assistant_tools  # noqa: E402
+import backend.config_schema as config_schema  # noqa: E402
+import backend.deployment_drift as deployment_drift  # noqa: E402
+import backend.dispatch_contract as dispatch_contract  # noqa: E402
+import backend.issue_inventory as issue_inventory  # noqa: E402
+import backend.lease_synchronizer as lease_synchronizer  # noqa: E402
+import backend.pr_inventory as pr_inventory  # noqa: E402
+import backend.quick_dispatch as _quick_dispatch  # noqa: E402
+import backend.quota_enforcement as quota_enforcement  # noqa: E402
+import backend.scheduled_workflows as scheduled_workflow_inventory  # noqa: E402
+import backend.usage_monitoring as usage_monitoring  # noqa: E402
+from backend.local_app_monitoring import collect_local_apps  # noqa: E402
+from backend.machine_registry import (  # noqa: E402
     load_machine_registry,
     merge_registry_with_live_nodes,
 )
-from report_files import parse_report_metrics, sanitize_report_date  # noqa: E402
-from routers import credentials as _credentials_router  # noqa: E402
-from routers import dispatch as _dispatch_router  # noqa: E402
+from backend.report_files import parse_report_metrics, sanitize_report_date  # noqa: E402
+from backend.routers import credentials as _credentials_router  # noqa: E402
+from backend.routers import dispatch as _dispatch_router  # noqa: E402
 
 # datetime.UTC added in Python 3.11; fall back to timezone.utc on older runtimes.
 UTC = getattr(_dt_mod, "UTC", _dt_mod.timezone.utc)  # noqa: UP017
@@ -3468,7 +3470,7 @@ async def get_issues(
         org_repos = await _get_recent_org_repos(limit=50)
         repos = [r["full_name"] for r in org_repos]
 
-    return await issue_inventory.fetch_all_issues(
+    issues = await issue_inventory.fetch_all_issues(
         repos,
         state=state,
         labels=list(label) if label else None,
@@ -3479,6 +3481,12 @@ async def get_issues(
         judgement=list(judgement) if judgement else None,
         limit=limit,
     )
+
+    # Wave 3: Sync GitHub leases with internal state
+    if isinstance(issues, list):
+        await lease_synchronizer.sync_github_leases(issues)
+
+    return issues
 
 
 # ─── Daily Reports API ──────────────────────────────────────────────────────
@@ -4069,6 +4077,12 @@ async def dispatch_agent_remediation(
         raise HTTPException(status_code=422, detail="expected object body")
 
     context = agent_remediation.FailureContext.from_dict(body)
+
+    # Wave 3: Quota and Fair Sharing
+    allowed, reason = quota_enforcement.quota_enforcement.check_dispatch_quota(principal, estimated_cost=0.10)
+    if not allowed:
+        raise HTTPException(status_code=403, detail=f"Quota exceeded: {reason}")
+
     repo_name, full_repository = _normalize_repository_input(context.repository)
     context = agent_remediation.FailureContext(
         repository=repo_name,
@@ -4169,6 +4183,21 @@ async def dispatch_agent_remediation(
             status_code=502,
             detail="Failed to dispatch remediation workflow",
         )
+
+    # Wave 3: Record spend and lease
+    quota_enforcement.quota_enforcement.add_spend(principal.id, 0.10)
+    try:
+        from runner_lease import lease_manager  # noqa: PLC0415
+        lease_manager.acquire_lease(
+            principal=principal,
+            # We don't have an envelope_id here, use fingerprint
+            runner_id=f"virtual-{decision.fingerprint}",
+            duration_seconds=3600,
+            task_id=decision.fingerprint,
+            metadata={"source": "agent_remediation", "repo": full_repository},
+        )
+    except (ValueError, PermissionError) as exc:
+        log.warning("Failed to acquire virtual lease for %s: %s", principal.id, exc)
     result = {
         "status": "dispatched",
         "workflow": "Agent-CI-Remediation.yml",
@@ -4210,11 +4239,17 @@ async def api_quick_dispatch(
     try:
         req = _quick_dispatch.QuickDispatchRequest(**body)
         req.requested_by = principal.id
+        req.principal = principal.id
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if len(req.prompt.strip()) < 10:
         raise HTTPException(status_code=400, detail="prompt must be at least 10 characters")
+
+    # Wave 3: Quota and Fair Sharing
+    allowed, reason = quota_enforcement.quota_enforcement.check_dispatch_quota(principal, estimated_cost=0.10)
+    if not allowed:
+        raise HTTPException(status_code=403, detail=f"Quota exceeded: {reason}")
 
     resp = await _quick_dispatch.quick_dispatch(
         req,
@@ -4265,8 +4300,14 @@ async def api_dispatch_to_prs(
         raise HTTPException(status_code=422, detail="expected object body")
     try:
         req = agent_dispatch_router.PRDispatchRequest(**body)
+        req.principal = principal.id
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    # Wave 3: Quota and Fair Sharing
+    allowed, reason = quota_enforcement.quota_enforcement.check_dispatch_quota(principal, estimated_cost=0.10)
+    if not allowed:
+        raise HTTPException(status_code=403, detail=f"Quota exceeded: {reason}")
 
     result = await agent_dispatch_router.dispatch_to_prs(
         req,
@@ -4294,8 +4335,14 @@ async def api_dispatch_to_issues(
         raise HTTPException(status_code=422, detail="expected object body")
     try:
         req = agent_dispatch_router.IssueDispatchRequest(**body)
+        req.principal = principal.id
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    # Wave 3: Quota and Fair Sharing
+    allowed, reason = quota_enforcement.quota_enforcement.check_dispatch_quota(principal, estimated_cost=0.10)
+    if not allowed:
+        raise HTTPException(status_code=403, detail=f"Quota exceeded: {reason}")
 
     result = await agent_dispatch_router.dispatch_to_issues(
         req,
@@ -4489,54 +4536,6 @@ async def assistant_chat(request: Request, *, principal: Principal = Depends(req
 # ─── Tool Execute API (Issue #89) ─────────────────────────────────────────────
 
 
-async def _route_tool_dispatch(tool_name: str, inputs: dict) -> dict:
-    """Route a state-changing tool call to the appropriate server endpoint."""
-    if tool_name == "dispatch_agent_to_pr":
-        # Delegate to the existing dispatch endpoint logic
-        repo = inputs.get("repository", "")
-        number = inputs.get("number", 0)
-        provider = inputs.get("provider", "claude_code_cli")
-        prompt = inputs.get("prompt", "")
-        result = (
-            await _quick_dispatch.dispatch_to_pr(repository=repo, number=number, provider=provider, prompt=prompt)
-            if hasattr(_quick_dispatch, "dispatch_to_pr")
-            else {
-                "status": "dispatched",
-                "tool": tool_name,
-                "inputs": inputs,
-            }
-        )
-        return result if isinstance(result, dict) else {"status": "dispatched"}
-
-    if tool_name == "dispatch_agent_to_issue":
-        return {"status": "dispatched", "tool": tool_name, "inputs": inputs}
-
-    if tool_name == "quick_dispatch_agent":
-        return {"status": "dispatched", "tool": tool_name, "inputs": inputs}
-
-    if tool_name == "dispatch_remediation":
-        return {"status": "dispatched", "tool": tool_name, "inputs": inputs}
-
-    return {"status": "unknown_tool", "tool": tool_name}
-
-
-async def _route_readonly_tool(tool_name: str, gh_api_caller: Any) -> dict:
-    """Execute a read-only tool and return its result."""
-    try:
-        if tool_name == "list_open_prs":
-            return await gh_api_caller("/api/prs")
-        if tool_name == "list_open_issues":
-            return await gh_api_caller("/api/issues")
-        if tool_name == "get_failed_runs":
-            return await gh_api_caller("/api/runs/enriched")
-        if tool_name == "get_repos":
-            return await gh_api_caller("/api/repos")
-        if tool_name == "refresh_dashboard_data":
-            return {"action": "refresh", "status": "client_instruction_sent"}
-    except Exception as exc:  # noqa: BLE001
-        return {"error": str(exc)}
-    return {"error": f"unhandled readonly tool {tool_name!r}"}
-
 
 @app.post("/api/assistant/tool/execute", tags=["assistant"])
 async def execute_assistant_tool(
@@ -4574,41 +4573,56 @@ async def execute_assistant_tool(
             detail=f"Tool '{req.name}' requires explicit operator confirmation.",
         )
 
-    approved_by = req.confirmation.approved_by if req.confirmation else "n/a"
-    note = req.confirmation.note if req.confirmation else ""
 
-    # Execute
-    result: dict
-    success = True
-    outcome = "ok"
+    # Execute via assistant_tools
     try:
-        if requires_conf:
-            result = await _route_tool_dispatch(req.name, req.input)
-        else:
-            result = await _route_readonly_tool(req.name, gh_api)
+        outcome_data = await assistant_tools.execute_tool(
+            tool_name=req.name,
+            tool_call_id=req.tool_call_id,
+            inputs=req.input,
+            confirmation=req.confirmation.model_dump() if req.confirmation else None,
+            principal=principal.id,
+            on_behalf_of=req.confirmation.on_behalf_of if req.confirmation else "",
+            correlation_id=req.confirmation.correlation_id if req.confirmation else "",
+            gh_api_fn=gh_api,
+            run_cmd_fn=run_cmd,
+            normalize_repository_fn=_normalize_repository_input,
+            org=ORG,
+            repo_root=REPO_ROOT,
+        )
+        return {
+            "success": True,
+            "tool_call_id": req.tool_call_id,
+            "name": req.name,
+            "result": outcome_data.get("result"),
+            "audit_id": outcome_data.get("audit_entry", {}).get("timestamp"),
+        }
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
-        success = False
-        outcome = f"error: {exc}"
-        result = {"error": str(exc)}
         log.error("tool execute error tool=%s: %s", req.name, exc)
-
-    audit_entry = assistant_tools._record_audit(  # noqa: SLF001
-        tool_name=req.name,
-        tool_call_id=req.tool_call_id,
-        inputs=req.input,
-        outcome=outcome,
-        success=success,
-        approved_by=approved_by,
-        note=note,
-    )
-
-    return {
-        "success": success,
-        "tool_call_id": req.tool_call_id,
-        "name": req.name,
-        "result": result,
-        "audit_id": audit_entry["timestamp"],
-    }
+        # Record a failed audit entry manually if execute_tool failed before recording
+        audit_entry = assistant_tools._record_audit(  # noqa: SLF001
+            tool_name=req.name,
+            tool_call_id=req.tool_call_id,
+            inputs=req.input,
+            outcome=f"error: {exc}",
+            success=False,
+            approved_by=req.confirmation.approved_by if req.confirmation else "n/a",
+            principal=principal.id,
+            on_behalf_of=req.confirmation.on_behalf_of if req.confirmation else "",
+            correlation_id=req.confirmation.correlation_id if req.confirmation else "",
+            note=req.confirmation.note if req.confirmation else "",
+        )
+        return {
+            "success": False,
+            "tool_call_id": req.tool_call_id,
+            "name": req.name,
+            "result": {"error": str(exc)},
+            "audit_id": audit_entry["timestamp"],
+        }
 
 
 @app.get("/api/assistant/audit-history", tags=["assistant"])

@@ -38,6 +38,9 @@ import shutil
 import subprocess
 import time
 from collections import deque
+from pathlib import Path
+
+import yaml
 
 try:
     import psutil
@@ -107,6 +110,29 @@ def _list_runner_units() -> list[str]:
         if name.startswith("actions.runner.") and name.endswith(".service"):
             units.append(name)
     return sorted(units)
+
+
+def _leased_runners() -> set[str]:
+    """Read config/leases.yml and return a set of leased runner_ids."""
+    # Assuming config is relative to the dashboard root.
+    # The autoscaler might run from a different CWD, so we should resolve this.
+    path = Path(__file__).resolve().parent.parent / "config" / "leases.yml"
+    if not path.exists():
+        return set()
+    try:
+        with open(path) as f:
+            data = yaml.safe_load(f)
+        if not data or "leases" not in data:
+            return set()
+        now = time.time()
+        return {
+            str(lease_rec["runner_id"])
+            for lease_rec in data["leases"]
+            if lease_rec.get("expires_at") is None or float(lease_rec["expires_at"]) > now
+        }
+    except Exception as exc:
+        log.warning("Failed to read leases: %s", exc)
+        return set()
 
 
 def _unit_is_active(unit: str) -> bool:
@@ -220,7 +246,7 @@ def _sample() -> tuple[float, float, float, float, float]:
     cpu = psutil.cpu_percent(interval=1.0)
     mem = psutil.virtual_memory().percent
     try:
-        load1 = os.getloadavg()[0]
+        load1 = os.getloadavg()[0]  # type: ignore[attr-defined]
     except OSError:
         load1 = 0.0
     cores = psutil.cpu_count(logical=True) or 1
@@ -279,7 +305,11 @@ def main() -> None:
             active = [u for u in units if _unit_is_active(u)]
             inactive = [u for u in units if u not in active]
             busy = {u for u in active if _runner_is_busy(u)}
-            idle_active = [u for u in active if u not in busy]
+            leased = _leased_runners()
+            idle_active = [u for u in active if u not in busy and not any(r in u for r in leased)]
+
+            if leased:
+                log.info("Detected %d active leases: %s", len(leased), ", ".join(sorted(leased)))
 
             overloaded = (
                 avg_cpu >= CPU_HIGH

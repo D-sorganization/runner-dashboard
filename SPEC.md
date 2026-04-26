@@ -1,6 +1,6 @@
 # SPEC.md — D-sorganization Runner Dashboard
 
-**Spec Version:** 2.3.0
+**Spec Version:** 2.4.0
 **Application Version:** 4.1.0 (see `VERSION`)
 **Last Updated:** 2026-04-26
 **Status:** Active
@@ -1594,12 +1594,67 @@ See [`docs/pwa-launcher-design.md`](docs/pwa-launcher-design.md) for:
 
 ### 17.8 Success Criteria
 
-- ✅ PWA icon click launches dashboard (Windows/macOS)
-- ✅ If backend down, recovery modal appears automatically
 - ✅ "Start Now" button successfully starts backend and opens dashboard
 - ✅ No manual terminal commands needed for happy path
-- ✅ All recovery actions logged for audit
-- ✅ Cross-platform (Windows/macOS/Linux with fallbacks)
-- ✅ Zero new secrets or credential exposure
- 
- 
+
+---
+
+## 18. Identity & Quotas (Wave 3)
+
+### 18.1 Multi-User Identity Model
+
+The dashboard uses a multi-principal identity model where every authenticated
+request is attributed to a `Principal` (human or bot).
+
+**Principal Model:**
+- `id`: Unique identifier (e.g., `dashboard-operator`, `runner-bot`)
+- `type`: `human` or `bot`
+- `roles`: List of roles (e.g., `admin`, `operator`, `viewer`, `bot`)
+- `quotas`: Resource limits (see below)
+
+### 18.2 Resource Quotas (Fair Sharing)
+
+Quotas prevent any single principal from monopolizing fleet resources or
+depleting API budgets.
+
+| Resource | Default | Description |
+|---|---|---|
+| `max_runners` | 2 | Maximum concurrent runners leased by this principal |
+| `agent_spend_usd_day` | $10.00 | Maximum daily spend on paid agent dispatches ($0.10/dispatch) |
+| `local_app_slots` | 1 | Maximum local application slots |
+
+**Enforcement:**
+- **Dispatch check:** `quota_enforcement.py` validates remaining spend and
+  runner slots before allowing a dispatch.
+- **Bulk truncation:** Bulk PR/issue dispatches are automatically truncated
+  to fit within the principal's remaining `max_runners` quota.
+
+### 18.3 Runner Lease Management
+
+The lease layer (`runner_lease.py`) tracks active claims on runners.
+
+- **Lease types:** Physical (tied to a `runner-id`) or Virtual (tied to a
+  `task-id` before a runner is assigned).
+- **Lease Awareness:** The `runner_autoscaler.py` respects active leases; it
+  will not stop a runner that holds a valid claim, even if it is idle.
+- **Lease Reaper:** Stale leases are automatically cleared after 1 hour or
+  upon task completion.
+- **Unification:** Internal leases are synchronized with GitHub `claim:*`
+  labels and `lease:` expiry comments found in issue/PR inventories via
+  `lease_synchronizer.py`.
+
+### 18.4 Onboarding & Principals Configuration
+
+Principals are defined in `config/principals.yml`.
+
+```yaml
+principals:
+  - id: dashboard-operator
+    type: human
+    roles: [admin]
+    github_username: operator-login
+```
+
+New principals can be added by editing this file; the dashboard reloads it
+automatically. Service tokens for bot principals can be minted via the
+Identity Manager (`identity_manager.mint_service_token`).
