@@ -28,8 +28,10 @@ PRIVATE_NETWORKS = (
 )
 
 
-class _StrEnum(str, Enum):
-    """Python 3.10 compatible StrEnum."""
+from enum import StrEnum
+
+class _StrEnum(StrEnum):
+    """StrEnum."""
 
     pass
 
