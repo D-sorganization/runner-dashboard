@@ -1,0 +1,396 @@
+{
+  "meta": {
+    "date": "2026-04-26",
+    "assessor": "pragmatic-ao-auditor",
+    "fleet": "D-sorganization",
+    "repo_count": 18,
+    "method": "16-weighted-criteria-a-o",
+    "principles": ["PP1-DRY", "PP2-Orthogonality", "PP3-Reversibility", "PP4-Tracer-Bullets", "PP5-Design-by-Contract", "PP6-Crash-Early", "PP7-Test-Early-Often-Auto", "PP8-Broken-Windows"]
+  },
+  "fleet_summary": {
+    "average_score": 5.7,
+    "top_performers": [
+      {"repo": "MuJoCo_Models", "score": 7.5},
+      {"repo": "Drake_Models", "score": 7.5},
+      {"repo": "Movement-Optimizer", "score": 7.2}
+    ],
+    "at_risk": [
+      {"repo": "runner-dashboard", "score": 4.1},
+      {"repo": "MLProjects", "score": 4.3},
+      {"repo": "Games", "score": 4.8},
+      {"repo": "MEB_Conversion", "score": 4.9}
+    ],
+    "total_p0": 17,
+    "total_p1": 78,
+    "total_p2": 83
+  },
+  "criteria_weights": {
+    "A": 1.0,
+    "B": 1.0,
+    "C": 1.5,
+    "D": 1.5,
+    "E": 1.0,
+    "F": 1.5,
+    "G": 1.0,
+    "H": 1.5,
+    "I": 1.0,
+    "J": 1.0,
+    "K": 1.5,
+    "L": 1.5,
+    "M": 1.0,
+    "N": 1.0,
+    "O": 1.0
+  },
+  "repositories": [
+    {
+      "name": "runner-dashboard",
+      "owner": "D-sorganization",
+      "branch": "feat/principal-management-ui",
+      "head": "01c5248",
+      "clean": true,
+      "overall_score": 4.1,
+      "grade": "D",
+      "p0_count": 3,
+      "p1_count": 7,
+      "p2_count": 4,
+      "scores": {"A": 5, "B": 4, "C": 3, "D": 4, "E": 5, "F": 4, "G": 6, "H": 5, "I": 4, "J": 3, "K": 3, "L": 2, "M": 4, "N": 5, "O": 3},
+      "findings": [
+        {"id": "runner-dashboard-P0-C-3", "criterion": "C", "priority": "P0", "principle": "PP7", "title": "CI pass rate 20% — Xvfb/mypy/timeout failures", "evidence": "gh run list: 16 failures, 3 successes, 1 skipped in last 20 runs", "remediation": "Pin actions/checkout@v4, add Xvfb guard, 10-min timeout, consolidate Jules workflows"},
+        {"id": "runner-dashboard-P0-F-1", "criterion": "F", "priority": "P0", "principle": "PP1/PP2", "title": "backend/server.py is 6721-line god object", "evidence": "wc -l backend/server.py = 6721", "remediation": "Extract into routes/, services/, models/ packages"},
+        {"id": "runner-dashboard-P0-K-1", "criterion": "K", "priority": "P0", "principle": "PP8", "title": "47 TODO/FIXME comments without issue links", "evidence": "grep -rn 'TODO|FIXME' backend/ tests/ | wc -l = 47", "remediation": "Convert each to issue or remove stale ones"}
+      ]
+    },
+    {
+      "name": "MLProjects",
+      "owner": "D-sorganization",
+      "branch": "main",
+      "head": "ad5e703",
+      "clean": true,
+      "overall_score": 4.3,
+      "grade": "D",
+      "p0_count": 2,
+      "p1_count": 8,
+      "p2_count": 5,
+      "scores": {"A": 3, "B": 4, "C": 2, "D": 3, "E": 4, "F": 4, "G": 5, "H": 4, "I": 4, "J": 3, "K": 3, "L": 3, "M": 2, "N": 4, "O": 3},
+      "findings": [
+        {"id": "mlprojects-P0-A-1", "criterion": "A", "priority": "P0", "principle": "PP2", "title": "Monolithic src/ with only 5 Python files for 320K LOC", "evidence": "src/ contains __init__.py, contracts.py, ml_projects.py plus notebooks", "remediation": "Reorganize into models/, data/, training/, evaluation/, deployment/ packages"},
+        {"id": "mlprojects-P0-C-1", "criterion": "C", "priority": "P0", "principle": "PP7", "title": "Test-to-source ratio 0.05 (target 0.50)", "evidence": "~15K test LOC for 320K source LOC", "remediation": "Add unit tests for all public functions; introduce property-based tests"},
+        {"id": "mlprojects-P0-D-1", "criterion": "D", "priority": "P0", "principle": "PP6", "title": "Bare except blocks in notebook code", "evidence": "Notebooks contain bare except: that swallow exceptions silently", "remediation": "Replace with explicit exception types; log failures"},
+        {"id": "mlprojects-P0-K-1", "criterion": "K", "priority": "P0", "principle": "PP8", "title": "200+ TODO comments without issue links; single-author risk", "evidence": "git shortlog -sn --since=6months shows one dominant author >90%", "remediation": "Cross-train; pair programming; convert TODOs to issues"},
+        {"id": "mlprojects-P0-O-1", "criterion": "O", "priority": "P0", "principle": "PP4", "title": "No AGENTS.md or CLAUDE.md", "evidence": "Agent cannot determine how to run training jobs", "remediation": "Create AGENTS.md with env setup, training commands, data paths"}
+      ]
+    },
+    {
+      "name": "UpstreamDrift",
+      "owner": "D-sorganization",
+      "branch": "jules-5025444499394185959-6528b1d7",
+      "head": "e64a276",
+      "clean": true,
+      "overall_score": 4.8,
+      "grade": "D+",
+      "p0_count": 1,
+      "p1_count": 6,
+      "p2_count": 4,
+      "scores": {"A": 5, "B": 5, "C": 4, "D": 5, "E": 5, "F": 5, "G": 5, "H": 5, "I": 5, "J": 4, "K": 4, "L": 4, "M": 4, "N": 5, "O": 4},
+      "findings": [
+        {"id": "upstreamdrift-P0-L-1", "criterion": "L", "priority": "P0", "principle": "PP3", "title": "Jules-dominated CI with ephemeral machine-generated branch names", "evidence": "Branch jules-5025444499394185959-6528b1d7 is hard to trace", "remediation": "Adopt semantic branch naming (fix/, feat/, refactor/); clean stale Jules branches"}
+      ]
+    },
+    {
+      "name": "Gasification_Model",
+      "owner": "D-sorganization",
+      "branch": "fix/issue-3048-api-mypy-errors",
+      "head": "b585be5",
+      "clean": true,
+      "overall_score": 5.1,
+      "grade": "C-",
+      "p0_count": 1,
+      "p1_count": 5,
+      "p2_count": 6,
+      "scores": {"A": 6, "B": 5, "C": 5, "D": 5, "E": 5, "F": 5, "G": 5, "H": 5, "I": 5, "J": 4, "K": 4, "L": 4, "M": 4, "N": 5, "O": 5},
+      "findings": [
+        {"id": "gasification-P0-L-1", "criterion": "L", "priority": "P0", "principle": "PP7", "title": "CI failures on mypy errors — known lingering issue", "evidence": "Branch name fix/issue-3048-api-mypy-errors indicates known issue", "remediation": "Fix mypy errors before merge; add mypy to pre-commit"}
+      ]
+    },
+    {
+      "name": "Tools",
+      "owner": "D-sorganization",
+      "branch": "fix/py310-utc-compat",
+      "head": "3341c8d",
+      "clean": true,
+      "overall_score": 6.2,
+      "grade": "C+",
+      "p0_count": 0,
+      "p1_count": 4,
+      "p2_count": 7,
+      "scores": {"A": 6, "B": 6, "C": 6, "D": 6, "E": 6, "F": 6, "G": 6, "H": 6, "I": 6, "J": 6, "K": 5, "L": 5, "M": 5, "N": 6, "O": 6},
+      "findings": [
+        {"id": "tools-P1-K-1", "criterion": "K", "priority": "P1", "principle": "PP5", "title": "Mypy exclusion list disables type checking for ~30% of codebase", "evidence": "pyproject.toml mypy exclusions cover config/project_template/, data_processing/, media_processing/", "remediation": "Remove exclusions incrementally; fix typing in one module per sprint"},
+        {"id": "tools-P1-L-1", "criterion": "L", "priority": "P1", "principle": "PP7", "title": "Jules automation workflows create CI noise", "evidence": "Mixed pass/fail pattern in recent runs", "remediation": "Separate human-triggered CI from bot CI; use workflow_run dependencies"}
+      ]
+    },
+    {
+      "name": "Playground",
+      "owner": "D-sorganization",
+      "branch": "fix/issue-247-shared-mypy-autofix",
+      "head": "59967d3",
+      "clean": true,
+      "overall_score": 5.4,
+      "grade": "C",
+      "p0_count": 0,
+      "p1_count": 5,
+      "p2_count": 5,
+      "scores": {"A": 6, "B": 5, "C": 5, "D": 5, "E": 5, "F": 5, "G": 5, "H": 5, "I": 5, "J": 5, "K": 5, "L": 4, "M": 4, "N": 5, "O": 5},
+      "findings": [
+        {"id": "playground-P0-L-1", "criterion": "L", "priority": "P0", "principle": "PP7", "title": "CI failures on shared mypy autofix branch — stale fix branch", "evidence": "Branch fix/issue-247-shared-mypy-autofix open >30 days", "remediation": "Complete mypy fixes; merge or abandon; do not leave fix branches open >30 days"}
+      ]
+    },
+    {
+      "name": "Games",
+      "owner": "D-sorganization",
+      "branch": "refactor/issue-775-split-oversized-modules",
+      "head": "913edb9",
+      "clean": true,
+      "overall_score": 4.8,
+      "grade": "D+",
+      "p0_count": 2,
+      "p1_count": 6,
+      "p2_count": 4,
+      "scores": {"A": 5, "B": 4, "C": 4, "D": 5, "E": 5, "F": 4, "G": 5, "H": 5, "I": 5, "J": 4, "K": 4, "L": 3, "M": 4, "N": 5, "O": 4},
+      "findings": [
+        {"id": "games-P0-C-1", "criterion": "C", "priority": "P0", "principle": "PP7", "title": "Test collection shows 5 errors (1629 tests, 5 collection errors)", "evidence": "pytest --co -q reports 5 collection errors", "remediation": "Fix import errors; add pytest --co to CI as a gate"},
+        {"id": "games-P0-F-1", "criterion": "F", "priority": "P0", "principle": "PP1", "title": "God modules exist — refactor branch indicates oversized files", "evidence": "Branch refactor/issue-775-split-oversized-modules open >2 weeks", "remediation": "Complete refactor; enforce 500-line file cap in CI via wc -l check"},
+        {"id": "games-P0-K-1", "criterion": "K", "priority": "P0", "principle": "PP8", "title": "80+ TODO/FIXME comments; stale refactor branch", "evidence": "Branch open >2 weeks with 80+ TODOs", "remediation": "Complete or abandon refactor; convert TODOs to issues"},
+        {"id": "games-P0-L-1", "criterion": "L", "priority": "P0", "principle": "PP7", "title": "CI failures frequent — recent runs show red", "evidence": "Recent CI runs failing", "remediation": "Triage failing tests; pin action versions; add flaky-test retry logic"}
+      ]
+    },
+    {
+      "name": "AffineDrift",
+      "owner": "D-sorganization",
+      "branch": "main",
+      "head": "f24716e",
+      "clean": true,
+      "overall_score": 5.4,
+      "grade": "C",
+      "p0_count": 1,
+      "p1_count": 6,
+      "p2_count": 5,
+      "scores": {"A": 6, "B": 5, "C": 5, "D": 5, "E": 5, "F": 5, "G": 5, "H": 5, "I": 5, "J": 5, "K": 4, "L": 4, "M": 4, "N": 5, "O": 5},
+      "findings": [
+        {"id": "affinedrift-P0-K-1", "criterion": "K", "priority": "P0", "principle": "PP8", "title": "547 commits in 30 days — extreme churn; single-author risk", "evidence": "git shortlog -sn --since=30days shows one dominant author", "remediation": "Code review enforcement; distribute knowledge via pair programming"},
+        {"id": "affinedrift-P0-L-1", "criterion": "L", "priority": "P0", "principle": "PP7", "title": "Mixed CI health with 42 workflow files", "evidence": "42 workflow files; recent failures observed", "remediation": "Consolidate workflows; delete obsolete Jules workflows"}
+      ]
+    },
+    {
+      "name": "Movement-Optimizer",
+      "owner": "D-sorganization",
+      "branch": "fix/mass-frac-validation",
+      "head": "b64ab22",
+      "clean": true,
+      "overall_score": 7.2,
+      "grade": "B",
+      "p0_count": 0,
+      "p1_count": 3,
+      "p2_count": 4,
+      "scores": {"A": 8, "B": 7, "C": 7, "D": 7, "E": 7, "F": 7, "G": 7, "H": 7, "I": 7, "J": 7, "K": 7, "L": 7, "M": 7, "N": 7, "O": 7},
+      "findings": []
+    },
+    {
+      "name": "Controls",
+      "owner": "D-sorganization",
+      "branch": "fix/output-dir-lazy-init-clean",
+      "head": "ecbbbe9",
+      "clean": true,
+      "overall_score": 6.6,
+      "grade": "B-",
+      "p0_count": 0,
+      "p1_count": 4,
+      "p2_count": 5,
+      "scores": {"A": 7, "B": 6, "C": 6, "D": 7, "E": 6, "F": 6, "G": 7, "H": 7, "I": 6, "J": 6, "K": 6, "L": 6, "M": 6, "N": 7, "O": 6},
+      "findings": [
+        {"id": "controls-P1-C-1", "criterion": "C", "priority": "P1", "principle": "PP7", "title": "28 test files but 7 test collection errors", "evidence": "pytest --co reports 7 errors", "remediation": "Fix broken imports in test files"},
+        {"id": "controls-P1-F-1", "criterion": "F", "priority": "P1", "principle": "PP1", "title": "Ruff suppresses PLR0915 and C901 for control algorithms", "evidence": "pyproject.toml ruff config with documented but risky suppressions", "remediation": "Add complexity regression tests; require ADR for new suppressions"}
+      ]
+    },
+    {
+      "name": "QuatEngine",
+      "owner": "D-sorganization",
+      "branch": "main",
+      "head": "cf3f92e",
+      "clean": true,
+      "overall_score": 6.4,
+      "grade": "C+",
+      "p0_count": 0,
+      "p1_count": 3,
+      "p2_count": 5,
+      "scores": {"A": 7, "B": 6, "C": 6, "D": 7, "E": 7, "F": 7, "G": 6, "H": 6, "I": 6, "J": 6, "K": 6, "L": 6, "M": 6, "N": 6, "O": 6},
+      "findings": [
+        {"id": "quatengine-P1-B-1", "criterion": "B", "priority": "P1", "principle": "PP8", "title": "Missing CHANGELOG.md, CONTRIBUTING.md, SECURITY.md", "evidence": "Files absent from repo root", "remediation": "Add standard governance files"},
+        {"id": "quatengine-P1-L-1", "criterion": "L", "priority": "P1", "principle": "PP7", "title": "CI mixed — recent main push failures", "evidence": "Recent main branch CI failures observed", "remediation": "Stabilize CI before merging main branch"}
+      ]
+    },
+    {
+      "name": "MEB_Conversion",
+      "owner": "D-sorganization",
+      "branch": "fix/remove-affinedrift-thesis-automation-20260314",
+      "head": "87da198",
+      "clean": false,
+      "overall_score": 4.9,
+      "grade": "D+",
+      "p0_count": 2,
+      "p1_count": 5,
+      "p2_count": 4,
+      "scores": {"A": 5, "B": 5, "C": 4, "D": 5, "E": 5, "F": 5, "G": 5, "H": 5, "I": 4, "J": 4, "K": 4, "L": 4, "M": 4, "N": 5, "O": 4},
+      "findings": [
+        {"id": "mebconversion-P0-K-1", "criterion": "K", "priority": "P0", "principle": "PP8", "title": "Dirty working tree with untracked rust_core/ and vendor/", "evidence": "git status shows untracked rust_core/ and vendor/ directories", "remediation": "Complete cleanup; commit or .gitignore untracked directories"},
+        {"id": "mebconversion-P0-C-1", "criterion": "C", "priority": "P0", "principle": "PP7", "title": "Only 9 test files for 264K LOC repo — ratio ~0.06", "evidence": "find tests/ -name test_*.py | wc -l = 9", "remediation": "Add unit tests for thermo_database.py, gasification_enthalpy.py, GUI modules"},
+        {"id": "mebconversion-P0-L-1", "criterion": "L", "priority": "P0", "principle": "PP7", "title": "CI failures on dirty tree", "evidence": "CI fails because working tree is not clean", "remediation": "Clean tree; add git status --porcelain check to CI"}
+      ]
+    },
+    {
+      "name": "Repository_Management",
+      "owner": "D-sorganization",
+      "branch": "main",
+      "head": "249a7df",
+      "clean": false,
+      "overall_score": 5.2,
+      "grade": "C-",
+      "p0_count": 1,
+      "p1_count": 5,
+      "p2_count": 5,
+      "scores": {"A": 5, "B": 5, "C": 4, "D": 5, "E": 5, "F": 5, "G": 5, "H": 5, "I": 5, "J": 4, "K": 4, "L": 4, "M": 4, "N": 5, "O": 4},
+      "findings": [
+        {"id": "repmgmt-P0-K-1", "criterion": "K", "priority": "P0", "principle": "PP8", "title": "Untracked .claude/worktrees/ directory", "evidence": "git status shows untracked .claude/worktrees/", "remediation": "Add .claude/ to .gitignore or commit worktrees config if intentional"},
+        {"id": "repmgmt-P0-C-1", "criterion": "C", "priority": "P0", "principle": "PP7", "title": "Test coverage low for 580K LOC repo", "evidence": "Few test files relative to massive codebase", "remediation": "Prioritize tests for most-changed modules in last 6 months"}
+      ]
+    },
+    {
+      "name": "OpenSim_Models",
+      "owner": "D-sorganization",
+      "branch": "bolt/optimize-require-shape-4878414992598735494",
+      "head": "5eff09b",
+      "clean": true,
+      "overall_score": 7.0,
+      "grade": "B-",
+      "p0_count": 0,
+      "p1_count": 3,
+      "p2_count": 4,
+      "scores": {"A": 9, "B": 7, "C": 7, "D": 7, "E": 7, "F": 7, "G": 7, "H": 7, "I": 7, "J": 7, "K": 6, "L": 6, "M": 7, "N": 7, "O": 7},
+      "findings": [
+        {"id": "opensim-P1-K-1", "criterion": "K", "priority": "P1", "principle": "PP1", "title": "preconditions.py duplicated across MuJoCo_Models and Pinocchio_Models", "evidence": "src/opensim_models/shared/contracts/preconditions.py matches other repos verbatim", "remediation": "Extract shared contracts package (see fleet theme 2)"},
+        {"id": "opensim-P1-L-1", "criterion": "L", "priority": "P1", "principle": "PP7", "title": "CI pass rate 65% (13/20)", "evidence": "7 failures in last 20 runs", "remediation": "Triage failures; likely Xvfb or display-related"}
+      ]
+    },
+    {
+      "name": "MuJoCo_Models",
+      "owner": "D-sorganization",
+      "branch": "main",
+      "head": "37369ba",
+      "clean": true,
+      "overall_score": 7.5,
+      "grade": "B",
+      "p0_count": 0,
+      "p1_count": 2,
+      "p2_count": 3,
+      "scores": {"A": 9, "B": 8, "C": 8, "D": 8, "E": 7, "F": 7, "G": 8, "H": 8, "I": 7, "J": 7, "K": 7, "L": 7, "M": 7, "N": 8, "O": 8},
+      "findings": [
+        {"id": "mujoco-P1-A-1", "criterion": "A", "priority": "P1", "principle": "PP1", "title": "Shared contracts duplication (see fleet theme 2)", "evidence": "preconditions.py duplicated verbatim from OpenSim_Models", "remediation": "Extract shared robotics-contracts package"},
+        {"id": "mujoco-P1-L-1", "criterion": "L", "priority": "P1", "principle": "PP7", "title": "CI pass rate 70% (14/20) with 4 failures, 2 cancelled", "evidence": "Display/headless test failures", "remediation": "Stabilize display/headless tests"}
+      ]
+    },
+    {
+      "name": "Drake_Models",
+      "owner": "D-sorganization",
+      "branch": "main",
+      "head": "e297d88",
+      "clean": true,
+      "overall_score": 7.5,
+      "grade": "B",
+      "p0_count": 0,
+      "p1_count": 2,
+      "p2_count": 3,
+      "scores": {"A": 9, "B": 8, "C": 8, "D": 8, "E": 7, "F": 8, "G": 8, "H": 8, "I": 7, "J": 7, "K": 7, "L": 8, "M": 7, "N": 8, "O": 8},
+      "findings": [
+        {"id": "drake-P1-A-1", "criterion": "A", "priority": "P1", "principle": "PP1", "title": "Shared contracts duplication (see fleet theme 2)", "evidence": "preconditions.py pattern duplicated from OpenSim_Models", "remediation": "Extract shared robotics-contracts package"},
+        {"id": "drake-P1-E-1", "criterion": "E", "priority": "P1", "principle": "PP4", "title": "No performance benchmarks for trajectory optimization", "evidence": "No pytest-benchmark or criterion benchmarks in tests/", "remediation": "Add pytest-benchmark for hot paths"}
+      ]
+    },
+    {
+      "name": "Pinocchio_Models",
+      "owner": "D-sorganization",
+      "branch": "main",
+      "head": "f89abb7",
+      "clean": true,
+      "overall_score": 6.5,
+      "grade": "C+",
+      "p0_count": 0,
+      "p1_count": 4,
+      "p2_count": 4,
+      "scores": {"A": 6, "B": 7, "C": 7, "D": 7, "E": 6, "F": 6, "G": 7, "H": 7, "I": 7, "J": 6, "K": 6, "L": 6, "M": 6, "N": 7, "O": 7},
+      "findings": [
+        {"id": "pinocchio-P1-A-1", "criterion": "A", "priority": "P1", "principle": "PP1", "title": "preconditions.py duplication (see fleet theme 2)", "evidence": "Duplicated verbatim across three robotics repos", "remediation": "Extract shared robotics-contracts package"},
+        {"id": "pinocchio-P1-F-1", "criterion": "F", "priority": "P1", "principle": "PP8", "title": "geometry.py.orig stale file from merge conflict", "evidence": "src/opensim_models/shared/utils/geometry.py.orig exists", "remediation": "Delete .orig files; add *.orig to .gitignore"}
+      ]
+    },
+    {
+      "name": "Worksheet-Workshop",
+      "owner": "D-sorganization",
+      "branch": "pr-143",
+      "head": "9e51042",
+      "clean": true,
+      "overall_score": 5.5,
+      "grade": "C",
+      "p0_count": 0,
+      "p1_count": 5,
+      "p2_count": 5,
+      "scores": {"A": 7, "B": 5, "C": 5, "D": 5, "E": 5, "F": 5, "G": 5, "H": 5, "I": 5, "J": 5, "K": 5, "L": 4, "M": 4, "N": 5, "O": 5},
+      "findings": [
+        {"id": "worksheet-P0-L-1", "criterion": "L", "priority": "P0", "principle": "PP7", "title": "CI Standard frequent failures; Local-Only Guard mostly success — test isolation issues", "evidence": "Two-tier CI with divergent results", "remediation": "Merge CI tiers or fix isolation issues in CI Standard"},
+        {"id": "worksheet-P1-B-1", "criterion": "B", "priority": "P1", "principle": "PP8", "title": "Missing SECURITY.md, CONTRIBUTING.md, CHANGELOG", "evidence": "Files absent from repo root", "remediation": "Add standard governance files"},
+        {"id": "worksheet-P1-G-1", "criterion": "G", "priority": "P1", "principle": "PP3", "title": "pyproject.toml has empty dependencies but requirements.txt has 17 lines", "evidence": "Inconsistency between pyproject.toml and requirements.txt", "remediation": "Consolidate deps into pyproject.toml; delete requirements.txt or make it a lockfile"}
+      ]
+    }
+  ],
+  "fleet_themes": [
+    {
+      "theme": "CI Health Degraded",
+      "priority": "P0",
+      "principle": "PP7/PP8",
+      "affected_repos": ["runner-dashboard", "Games", "MEB_Conversion", "Repository_Management", "MLProjects", "AffineDrift"],
+      "epic": "fleet-ci-health-2026q2",
+      "description": "Consolidate Jules workflows, add display-headless guards, pin action versions, introduce 10-minute job timeout"
+    },
+    {
+      "theme": "Shared Contracts Duplicated",
+      "priority": "P1",
+      "principle": "PP1",
+      "affected_repos": ["OpenSim_Models", "MuJoCo_Models", "Pinocchio_Models"],
+      "epic": "shared-contracts-package",
+      "description": "Extract contracts into lightweight D-sorganization/robotics-contracts package"
+    },
+    {
+      "theme": "SECURITY.md Missing",
+      "priority": "P1",
+      "principle": "PP5/PP8",
+      "affected_repos": ["MLProjects", "Worksheet-Workshop", "QuatEngine", "MEB_Conversion"],
+      "epic": "fleet-governance-files-2026q2",
+      "description": "Create SECURITY.md, CONTRIBUTING.md, CHANGELOG.md in all repos missing them"
+    },
+    {
+      "theme": "Test Coverage Below Target",
+      "priority": "P0",
+      "principle": "PP7",
+      "affected_repos": ["MLProjects", "MEB_Conversion", "Repository_Management", "Games", "runner-dashboard"],
+      "epic": "fleet-test-coverage-2026q2",
+      "description": "Bring test-to-source ratios to target (0.50 for apps, 0.80 for services)"
+    },
+    {
+      "theme": "Dirty Working Trees",
+      "priority": "P0",
+      "principle": "PP8",
+      "affected_repos": ["MEB_Conversion", "Repository_Management"],
+      "epic": "clean-working-trees-2026q2",
+      "description": "Clean untracked files or add to .gitignore; add git status check to CI"
+    }
+  ]
+}
