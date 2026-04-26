@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import datetime as _dt_mod
+import enum
 import ipaddress
 import re
 from dataclasses import asdict, dataclass, field
-from enum import StrEnum
 from typing import Any
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -28,8 +28,8 @@ PRIVATE_NETWORKS = (
 )
 
 
-class _StrEnum(StrEnum):
-    """StrEnum."""
+class _StrEnum(str, enum.Enum):
+    """Python 3.10 compatible StrEnum."""
 
     pass
 
