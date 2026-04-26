@@ -29,9 +29,7 @@ UTC = getattr(_dt_mod, "UTC", _dt_mod.timezone.utc)  # noqa: UP017
 datetime = _dt_mod.datetime
 
 SCHEMA_VERSION = "agent-remediation.v1"
-DEFAULT_CONFIG_PATH = (
-    Path(__file__).resolve().parents[1] / "config" / "agent_remediation.json"
-)
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "agent_remediation.json"
 DEFAULT_PROVIDER_ORDER = (
     "jules_cli",
     "jules_api",
@@ -276,8 +274,7 @@ class RemediationPolicy:
         data["provider_order"] = list(self.provider_order)
         data["enabled_providers"] = list(self.enabled_providers)
         data["workflow_type_rules"] = {
-            workflow_type: rule.to_dict()
-            for workflow_type, rule in self.workflow_type_rules.items()
+            workflow_type: rule.to_dict() for workflow_type, rule in self.workflow_type_rules.items()
         }
         return data
 
@@ -311,9 +308,7 @@ class WorkflowTypeRule:
     fallback_providers: tuple[str, ...] = field(default_factory=tuple)
 
     @classmethod
-    def from_dict(
-        cls, workflow_type: str, data: dict[str, Any] | None
-    ) -> WorkflowTypeRule:
+    def from_dict(cls, workflow_type: str, data: dict[str, Any] | None) -> WorkflowTypeRule:
         payload = data or {}
         return cls(
             workflow_type=workflow_type,
@@ -322,9 +317,7 @@ class WorkflowTypeRule:
             dispatch_mode=str(payload.get("dispatch_mode") or "manual"),
             provider_id=str(payload.get("provider_id") or ""),
             notes=str(payload.get("notes") or ""),
-            fallback_providers=_as_tuple_strings(
-                payload.get("fallback_providers"), fallback=()
-            ),
+            fallback_providers=_as_tuple_strings(payload.get("fallback_providers"), fallback=()),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -498,9 +491,7 @@ def _load_workflow_type_rules(
 
 
 def load_policy(path: Path | str | None = None) -> RemediationPolicy:
-    config_path = (
-        path or os.environ.get("AGENT_REMEDIATION_CONFIG") or DEFAULT_CONFIG_PATH
-    )
+    config_path = path or os.environ.get("AGENT_REMEDIATION_CONFIG") or DEFAULT_CONFIG_PATH
     resolved = Path(config_path)
     if not resolved.exists():
         return RemediationPolicy(
@@ -518,21 +509,13 @@ def load_policy(path: Path | str | None = None) -> RemediationPolicy:
     return RemediationPolicy(
         auto_dispatch_on_failure=bool(payload.get("auto_dispatch_on_failure", True)),
         require_failure_summary=bool(payload.get("require_failure_summary", True)),
-        require_non_protected_branch=bool(
-            payload.get("require_non_protected_branch", True)
-        ),
+        require_non_protected_branch=bool(payload.get("require_non_protected_branch", True)),
         max_same_failure_attempts=int(payload.get("max_same_failure_attempts", 3)),
         attempt_window_hours=int(payload.get("attempt_window_hours", 24)),
-        provider_order=_as_tuple_strings(
-            payload.get("provider_order"), fallback=DEFAULT_PROVIDER_ORDER
-        ),
-        enabled_providers=_as_tuple_strings(
-            payload.get("enabled_providers"), fallback=DEFAULT_PROVIDER_ORDER
-        ),
+        provider_order=_as_tuple_strings(payload.get("provider_order"), fallback=DEFAULT_PROVIDER_ORDER),
+        enabled_providers=_as_tuple_strings(payload.get("enabled_providers"), fallback=DEFAULT_PROVIDER_ORDER),
         default_provider=str(payload.get("default_provider") or "jules_api"),
-        workflow_type_rules=_load_workflow_type_rules(
-            payload.get("workflow_type_rules")
-        ),
+        workflow_type_rules=_load_workflow_type_rules(payload.get("workflow_type_rules")),
     )
 
 
@@ -542,9 +525,7 @@ def save_policy(
 ) -> Path:
     import config_schema  # noqa: PLC0415
 
-    config_path = (
-        path or os.environ.get("AGENT_REMEDIATION_CONFIG") or DEFAULT_CONFIG_PATH
-    )
+    config_path = path or os.environ.get("AGENT_REMEDIATION_CONFIG") or DEFAULT_CONFIG_PATH
     resolved = Path(config_path)
     payload = {
         "schema_version": SCHEMA_VERSION,
@@ -569,11 +550,7 @@ def classify_workflow_type(
     for index, (workflow_type, rule) in enumerate(policy.workflow_type_rules.items()):
         if workflow_type == "unknown":
             continue
-        matched_lengths = [
-            len(term.strip())
-            for term in rule.match_terms
-            if term.strip() and term.lower() in haystack
-        ]
+        matched_lengths = [len(term.strip()) for term in rule.match_terms if term.strip() and term.lower() in haystack]
         if not matched_lengths:
             continue
         score = max(matched_lengths)
@@ -643,12 +620,7 @@ def _attempts_for_provider(
     filtered: list[AttemptRecord] = []
     for attempt in attempts:
         stamp = _parse_timestamp(attempt.created_at)
-        if (
-            attempt.fingerprint != fingerprint
-            or attempt.provider_id != provider_id
-            or stamp is None
-            or stamp < cutoff
-        ):
+        if attempt.fingerprint != fingerprint or attempt.provider_id != provider_id or stamp is None or stamp < cutoff:
             continue
         filtered.append(attempt)
     return filtered
@@ -657,9 +629,7 @@ def _attempts_for_provider(
 def provider_prompt(provider_id: str, context: FailureContext) -> str:
     # Sanitize all user-controlled content before inserting into the prompt
     # to defend against prompt injection attacks (issue #24).
-    raw_summary = (
-        context.failure_reason.strip() or "No concise failure summary was provided."
-    )
+    raw_summary = context.failure_reason.strip() or "No concise failure summary was provided."
     raw_log = context.log_excerpt.strip() or "(no log excerpt provided)"
     summary = sanitize_for_prompt(raw_summary)
     log_excerpt = sanitize_for_prompt(raw_log)
@@ -749,9 +719,7 @@ def plan_dispatch(
             workflow_label=workflow_rule.label,
             dispatch_mode=workflow_rule.dispatch_mode,
         )
-    if policy.require_failure_summary and not (
-        context.failure_reason.strip() or context.log_excerpt.strip()
-    ):
+    if policy.require_failure_summary and not (context.failure_reason.strip() or context.log_excerpt.strip()):
         return DispatchDecision(
             accepted=False,
             reason="A failure summary or failed-log excerpt is required before dispatch.",
@@ -769,9 +737,7 @@ def plan_dispatch(
     if dispatch_origin == "automatic" and workflow_rule.dispatch_mode != "auto":
         return DispatchDecision(
             accepted=False,
-            reason=(
-                f"{workflow_rule.label} failures require manual review before agent dispatch."
-            ),
+            reason=(f"{workflow_rule.label} failures require manual review before agent dispatch."),
             fingerprint=fingerprint,
             attempt_count=attempt_count,
             remaining_attempts=remaining_attempts,
@@ -786,19 +752,9 @@ def plan_dispatch(
     else:
         preferred = [workflow_rule.provider_id] if workflow_rule.provider_id else []
         # Build fallback chain: primary + fallback_providers + global provider_order
-        fallback_chain = (
-            list(workflow_rule.fallback_providers)
-            if workflow_rule.fallback_providers
-            else []
-        )
-        remaining_order = [
-            p
-            for p in policy.provider_order
-            if p not in preferred and p not in fallback_chain
-        ]
-        candidate_ids = tuple(
-            dict.fromkeys(preferred + fallback_chain + remaining_order).keys()
-        )
+        fallback_chain = list(workflow_rule.fallback_providers) if workflow_rule.fallback_providers else []
+        remaining_order = [p for p in policy.provider_order if p not in preferred and p not in fallback_chain]
+        candidate_ids = tuple(dict.fromkeys(preferred + fallback_chain + remaining_order).keys())
 
     selected_provider: str | None = None
     exhausted_providers: list[str] = []
@@ -818,9 +774,7 @@ def plan_dispatch(
         )
         provider_attempt_count = len(provider_attempts)
         if provider_attempt_count >= policy.max_same_failure_attempts:
-            exhausted_providers.append(
-                f"{provider.label} ({provider_attempt_count} attempts)"
-            )
+            exhausted_providers.append(f"{provider.label} ({provider_attempt_count} attempts)")
             continue
 
         selected_provider = provider_id
@@ -843,9 +797,7 @@ def plan_dispatch(
             prompt_preview=provider_prompt(selected_provider, context),
             suggested_workflow=".github/workflows/Agent-CI-Remediation.yml",
             attempt_count=provider_attempt_count,
-            remaining_attempts=max(
-                0, policy.max_same_failure_attempts - provider_attempt_count
-            ),
+            remaining_attempts=max(0, policy.max_same_failure_attempts - provider_attempt_count),
             workflow_type=workflow_rule.workflow_type,
             workflow_label=workflow_rule.label,
             dispatch_mode=workflow_rule.dispatch_mode,
@@ -952,9 +904,7 @@ def inspect_jules_workflows(repo_root: Path) -> WorkflowHealthReport:
             )
         )
     if not control_tower_issues:
-        control_tower_summary = (
-            "No obvious local Control Tower health issue was detected."
-        )
+        control_tower_summary = "No obvious local Control Tower health issue was detected."
     else:
         control_tower_summary = " ".join(control_tower_issues)
     return WorkflowHealthReport(

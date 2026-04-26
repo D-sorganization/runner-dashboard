@@ -23,7 +23,9 @@ async def github_login(request: Request):
 
     state = secrets.token_urlsafe(16)
     request.session["oauth_state"] = state
-    redirect_uri = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&state={state}&scope=read:user"
+    redirect_uri = (
+        f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&state={state}&scope=read:user"
+    )
     return RedirectResponse(url=redirect_uri)
 
 
@@ -80,9 +82,7 @@ async def github_callback(request: Request, code: str, state: str):
 async def dev_login(request: Request):
     """Development login when OAuth is not configured."""
     if GITHUB_CLIENT_ID:
-        raise HTTPException(
-            status_code=400, detail="Dev login disabled when OAuth is configured"
-        )
+        raise HTTPException(status_code=400, detail="Dev login disabled when OAuth is configured")
 
     # Just grab the first human principal
     for p in identity_manager.principals.values():
@@ -117,32 +117,22 @@ class MintTokenRequest(BaseModel):
 
 
 @router.post("/tokens")
-async def mint_token(
-    req: MintTokenRequest, current_user: Principal = Depends(require_principal)
-):  # noqa: B008
+async def mint_token(req: MintTokenRequest, current_user: Principal = Depends(require_principal)):  # noqa: B008
     """Mint a new service token (requires admin role or similar)."""
     if "admin" not in current_user.roles:
-        raise HTTPException(
-            status_code=403, detail="Admin role required to mint tokens"
-        )
+        raise HTTPException(status_code=403, detail="Admin role required to mint tokens")
 
     try:
-        raw_token = identity_manager.mint_service_token(
-            req.principal_id, req.name, req.expires_in_days
-        )
+        raw_token = identity_manager.mint_service_token(req.principal_id, req.name, req.expires_in_days)
         return {"token": raw_token}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.delete("/tokens/{token_hash}")
-async def revoke_token(
-    token_hash: str, current_user: Principal = Depends(require_principal)
-):  # noqa: B008
+async def revoke_token(token_hash: str, current_user: Principal = Depends(require_principal)):  # noqa: B008
     """Revoke a token."""
     if "admin" not in current_user.roles:
-        raise HTTPException(
-            status_code=403, detail="Admin role required to revoke tokens"
-        )
+        raise HTTPException(status_code=403, detail="Admin role required to revoke tokens")
     identity_manager.revoke_token(token_hash)
     return {"status": "revoked"}

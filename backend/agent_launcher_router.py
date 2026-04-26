@@ -66,19 +66,10 @@ def _launcher_root() -> Path | None:
     here = Path(__file__).resolve().parent
     candidates: list[Path] = []
     for parent in (here.parent, here.parent.parent, here.parent.parent.parent):
-        candidates.append(
-            parent.parent
-            / "Repository_Management"
-            / "launchers"
-            / "cline_agent_launcher"
-        )
+        candidates.append(parent.parent / "Repository_Management" / "launchers" / "cline_agent_launcher")
     home = Path.home()
     candidates += [
-        home
-        / "Repositories"
-        / "Repository_Management"
-        / "launchers"
-        / "cline_agent_launcher",
+        home / "Repositories" / "Repository_Management" / "launchers" / "cline_agent_launcher",
         Path("/mnt/c/Users")
         / os.environ.get("USERNAME", "")
         / "Repositories"
@@ -306,9 +297,7 @@ def get_config() -> dict:
     try:
         return json.loads(stdout)
     except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=500, detail=f"launcher returned invalid JSON: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"launcher returned invalid JSON: {exc}") from exc
 
 
 @router.put("/config", response_model=SimpleResponse)
@@ -362,9 +351,7 @@ def get_repos() -> ReposResponse:
     try:
         d = json.loads(stdout)
     except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=500, detail=f"launcher returned invalid JSON: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"launcher returned invalid JSON: {exc}") from exc
     return ReposResponse(**d)
 
 
@@ -384,16 +371,12 @@ def _bat_path() -> Path:
 def start_scheduler() -> SimpleResponse:
     pid_info = _read_pidfile()
     if pid_info and _is_pid_alive(int(pid_info.get("pid", -1))):
-        return SimpleResponse(
-            ok=True, detail=f"already running (pid {pid_info['pid']})"
-        )
+        return SimpleResponse(ok=True, detail=f"already running (pid {pid_info['pid']})")
 
     if platform.system() == "Windows":
         bat = _bat_path()
         if not bat.is_file():
-            raise HTTPException(
-                status_code=500, detail=f"missing launcher.bat at {bat}"
-            )
+            raise HTTPException(status_code=500, detail=f"missing launcher.bat at {bat}")
         try:
             # /B = no new window. pythonw inside the .bat handles detach.
             subprocess.Popen(
@@ -406,9 +389,7 @@ def start_scheduler() -> SimpleResponse:
     else:
         rc, _, stderr = _run_cli("&")
         if rc != 0:
-            raise HTTPException(
-                status_code=500, detail=f"launcher exited: {stderr[:300]}"
-            )
+            raise HTTPException(status_code=500, detail=f"launcher exited: {stderr[:300]}")
     return SimpleResponse(ok=True, detail="scheduler start requested")
 
 
