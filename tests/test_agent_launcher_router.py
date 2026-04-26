@@ -11,10 +11,9 @@ from __future__ import annotations  # noqa: E402
 import json  # noqa: E402
 from pathlib import Path  # noqa: E402
 
+import agent_launcher_router as alr  # noqa: E402
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-
-from backend import agent_launcher_router as alr  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
