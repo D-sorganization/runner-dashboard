@@ -68,6 +68,36 @@ def _env_present_anywhere(key: str) -> bool:
     return False
 
 
+def _find_binary(name: str) -> str | None:
+    """Search for a binary on PATH and in common installation locations."""
+    # First: PATH lookup
+    found = shutil.which(name)
+    if found:
+        return found
+
+    # Common static paths
+    static_paths = [
+        Path.home() / ".npm-global" / "bin" / name,
+        Path.home() / ".local" / "bin" / name,
+        Path("/usr/local/bin") / name,
+        Path.home() / ".cargo" / "bin" / name,
+    ]
+
+    # fnm paths: ~/.local/share/fnm/node-versions/*/installation/bin/<name>
+    _fnm_base = Path.home() / ".local" / "share" / "fnm" / "node-versions"
+    if _fnm_base.exists():
+        for version_dir in _fnm_base.iterdir():
+            if version_dir.is_dir():
+                candidate = version_dir / "installation" / "bin" / name
+                static_paths.append(candidate)
+
+    for p in static_paths:
+        if p.exists():
+            return str(p)
+
+    return None
+
+
 def _env_source(key: str) -> str:
     return "env_var" if os.environ.get(key, "") else "unavailable"
 
@@ -240,21 +270,8 @@ async def get_credentials(request: Request) -> dict:
         }
     )
 
-    # Codex CLI — check PATH and common npm-global locations
-    codex_binary = shutil.which("codex") or (
-        next(
-            (
-                str(p)
-                for p in [
-                    Path.home() / ".npm-global" / "bin" / "codex",
-                    Path.home() / ".local" / "bin" / "codex",
-                    Path("/usr/local/bin/codex"),
-                ]
-                if p.exists()
-            ),
-            None,
-        )
-    )
+    # Codex CLI — check PATH, npm-global, fnm, and other common locations
+    codex_binary = _find_binary("codex")
     openai_key = _env_present("OPENAI_API_KEY")
     probes.append(
         {
