@@ -108,7 +108,31 @@
         background: rgba(0,0,0,0.22);
         border-bottom: 1px solid var(--border);
         gap: 2px;
-        overflow-x: hidden;
+        overflow-x: auto;
+      }
+      .ribbon-group {
+        display: flex;
+        align-items: center;
+        padding: 0 4px;
+        border-right: 1px solid var(--border);
+        height: 100%;
+        position: relative;
+      }
+      .ribbon-group:last-child {
+        border-right: none;
+      }
+      .ribbon-group-label {
+        position: absolute;
+        bottom: 1px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 9px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        pointer-events: none;
+        opacity: 0.6;
       }
       .ribbon-cat-btn {
         background: none;
@@ -130,7 +154,8 @@
       .ribbon-cat-btn:hover { color: var(--text-primary); }
       .ribbon-cat-btn.active {
         color: var(--text-primary);
-        border-bottom-color: var(--accent-blue);
+        background: rgba(255,255,255,0.06);
+        border-radius: 6px 6px 0 0;
       }
       .ribbon-tab-btn {
         background: none;
@@ -148,7 +173,10 @@
         position: relative;
         transition: color 0.15s;
       }
-      .ribbon-tab-btn:hover { color: rgba(255,255,255,0.8); }
+      .ribbon-tab-btn:hover {
+        color: rgba(255,255,255,1);
+        background: rgba(255,255,255,0.05);
+      }
       .ribbon-tab-btn.active { color: var(--text-primary); }
       .ribbon-tab-btn.active::after {
         content: "";
@@ -8253,7 +8281,7 @@
           ["jules_api", "Jules API"],
           ["codex_cli", "Codex CLI"],
           ["claude_code_cli", "Claude Code CLI"],
-          ["ollama", "Ollama"],
+          ["ollama_local", "Ollama (local)"],
           ["cline", "Cline"],
         ];
 
@@ -8996,7 +9024,7 @@
             });
         }
 
-        var providerOptions = ['jules_api', 'codex_cli', 'claude_code_cli', 'ollama', 'cline'];
+        var providerOptions = ['jules_api', 'codex_cli', 'claude_code_cli', 'ollama_local', 'cline'];
 
         return h('div', { style: { padding: '0 0 16px 0' } },
           // Filter bar
@@ -9351,7 +9379,7 @@
           "jules_api",
           "codex_cli",
           "claude_code_cli",
-          "ollama",
+          "ollama_local",
           "cline",
         ];
         var providerEntries = Object.keys(providers).length
@@ -11382,6 +11410,7 @@
         // --- local state ---
         var ts = React.useState([]);          var tasks = ts[0], setTasks = ts[1];
         var bs = React.useState(null);        var backends = bs[0], setBackends = bs[1];
+        var avs = React.useState([]);         var availBackends = avs[0], setAvailBackends = avs[1];
         var ws = React.useState(null);        var workers = ws[0], setWorkers = ws[1];
         var cs = React.useState(null);        var cost = cs[0], setCost = cs[1];
         var ps = React.useState(null);        var pipeline = ps[0], setPipeline = ps[1];
@@ -11389,7 +11418,7 @@
         var dv = React.useState("");          var daemonVersion = dv[0], setDaemonVersion = dv[1];
         var ctrl = React.useState(null);      var ctrlStatus = ctrl[0], setCtrlStatus = ctrl[1];
         var cb = React.useState(false);       var busy = cb[0], setBusy = cb[1];
-        var df = React.useState({ prompt: "", repo: "" });
+        var df = React.useState({ prompt: "", repo: "", backend: "" });
         var dispForm = df[0], setDispForm = df[1];
         var dr = React.useState(null);        var dispResult = dr[0], setDispResult = dr[1];
         var db = React.useState(false);       var dispBusy = db[0], setDispBusy = db[1];
@@ -11406,6 +11435,22 @@
           fetch("/api/maxwell/backends")
             .then(function(r) { return r.json(); })
             .then(function(d) { setBackends(d); })
+            .catch(function() {});
+          fetch("/api/maxwell/backends/available")
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              // d is typically { backends: [{name, connected, ...}] } or an array
+              var list = [];
+              if (Array.isArray(d)) { list = d; }
+              else if (d && Array.isArray(d.backends)) { list = d.backends; }
+              else if (d && typeof d === "object") {
+                // fallback: each key is a backend name
+                list = Object.keys(d).map(function(k) {
+                  return { name: k, connected: !!(d[k] && d[k].connected) };
+                });
+              }
+              setAvailBackends(list);
+            })
             .catch(function() {});
           fetch("/api/maxwell/workers")
             .then(function(r) { return r.json(); })
@@ -11450,16 +11495,18 @@
           if (!dispForm.prompt.trim()) return;
           setDispBusy(true);
           setDispResult(null);
+          var payload = { prompt: dispForm.prompt, repo: dispForm.repo || null };
+          if (dispForm.backend) payload.backend = dispForm.backend;
           fetch("/api/maxwell/dispatch", {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-            body: JSON.stringify({ prompt: dispForm.prompt, repo: dispForm.repo || null }),
+            body: JSON.stringify(payload),
           })
             .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
             .then(function(res) {
               if (res.ok) {
                 setDispResult({ ok: true, msg: "Queued — task ID: " + res.d.task_id });
-                setDispForm({ prompt: "", repo: "" });
+                setDispForm({ prompt: "", repo: "", backend: dispForm.backend });
                 setTimeout(fetchAll, 800);
               } else {
                 setDispResult({ ok: false, msg: res.d.detail || res.d.error || "Dispatch failed" });
@@ -11477,6 +11524,15 @@
 
         var costStr = cost && typeof cost.month_to_date_usd === "number"
           ? "$" + cost.month_to_date_usd.toFixed(4) : "—";
+
+        // Build backend options for dispatch selector
+        var backendOptions = availBackends.filter(function(b) {
+          return b && (b.name || typeof b === "string");
+        }).map(function(b) {
+          var name = b.name || b;
+          var connected = b.connected !== false;
+          return { name: name, connected: connected };
+        });
 
         return h("div", null,
           h("div", { className: "stat-row" },
@@ -11532,14 +11588,33 @@
                            border: "1px solid var(--border)", borderRadius: 6, padding: "8px 10px",
                            fontFamily: "inherit", fontSize: 13, resize: "vertical" },
                 }),
-                h("input", {
-                  placeholder: "Repo (optional) — owner/repo",
-                  value: dispForm.repo,
-                  onChange: function(e) { setDispForm(function(f) { return Object.assign({}, f, { repo: e.target.value }); }); },
-                  style: { background: "var(--bg-tertiary)", color: "var(--text-primary)",
-                           border: "1px solid var(--border)", borderRadius: 6, padding: "7px 10px",
-                           fontFamily: "inherit", fontSize: 13 },
-                }),
+                h("div", { style: { display: "flex", gap: 8 } },
+                  h("input", {
+                    placeholder: "Repo (optional) — owner/repo",
+                    value: dispForm.repo,
+                    onChange: function(e) { setDispForm(function(f) { return Object.assign({}, f, { repo: e.target.value }); }); },
+                    style: { flex: 1, background: "var(--bg-tertiary)", color: "var(--text-primary)",
+                             border: "1px solid var(--border)", borderRadius: 6, padding: "7px 10px",
+                             fontFamily: "inherit", fontSize: 13 },
+                  }),
+                  h("select", {
+                    value: dispForm.backend,
+                    onChange: function(e) { setDispForm(function(f) { return Object.assign({}, f, { backend: e.target.value }); }); },
+                    title: "Backend to use for this task",
+                    style: { background: "var(--bg-tertiary)", color: "var(--text-primary)",
+                             border: "1px solid var(--border)", borderRadius: 6, padding: "7px 10px",
+                             fontFamily: "inherit", fontSize: 12, minWidth: 130 },
+                  },
+                    h("option", { value: "" }, "auto (default)"),
+                    backendOptions.map(function(b) {
+                      return h("option", {
+                        key: b.name,
+                        value: b.name,
+                        style: { color: b.connected ? "var(--text-primary)" : "var(--text-muted)" },
+                      }, b.name + (b.connected ? "" : " (offline)"));
+                    }),
+                  ),
+                ),
                 h("button", {
                   className: "btn",
                   onClick: doDispatch,
@@ -13434,16 +13509,14 @@
 
         var PROVIDERS = [
           { value: "claude_code_cli", label: "Claude Code" },
-          { value: "gemini_cli", label: "Gemini CLI" },
           { value: "codex_cli", label: "Codex CLI" },
           { value: "jules_api", label: "Jules API" },
-          { value: "ollama", label: "Ollama" },
         ];
         var MODELS = [
-          { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
-          { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash (fast)" },
-          { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro (recommended)" },
-          { value: "gemini-2.0-flash-exp", label: "Gemini 2.0 Flash (exp)" },
+          { value: "claude-sonnet-4-6", label: "Sonnet 4.6 (recommended)" },
+          { value: "claude-opus-4-6", label: "Opus 4.6 (premium)" },
+          { value: "claude-haiku-4-5-20251001", label: "Haiku 4.5 (fast)" },
+          { value: "claude-3-5-sonnet-20241022", label: "Sonnet 3.5" },
         ];
 
         function fetchStatus() {
@@ -13487,8 +13560,8 @@
           setEditForm({
             enabled: a.enabled !== false,
             interval_seconds: a.interval_seconds || 3600,
-            provider: a.provider || "gemini_cli",
-            model: a.model || "gemini-1.5-flash",
+            provider: a.provider || "claude_code_cli",
+            model: a.model || "claude-sonnet-4-6",
           });
           setSaveStatus(null);
         }
@@ -13604,8 +13677,8 @@
                       !isEditing && h("div", { style: { fontSize: 12, color: "var(--text-secondary)", display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 12px", marginBottom: 10 } },
                         h("span", { style: { color: "var(--text-muted)" } }, "Provider"),
                         h("span", null, cfgA.provider || "—"),
-                        (cfgA.provider === "claude_code_cli" || cfgA.provider === "gemini_cli" || !cfgA.provider) ? h("span", { style: { color: "var(--text-muted)" } }, "Model") : null,
-                        (cfgA.provider === "claude_code_cli" || cfgA.provider === "gemini_cli" || !cfgA.provider) ? h("span", null, cfgA.model || "default") : null,
+                        cfgA.provider === "claude_code_cli" || !cfgA.provider ? h("span", { style: { color: "var(--text-muted)" } }, "Model") : null,
+                        cfgA.provider === "claude_code_cli" || !cfgA.provider ? h("span", null, cfgA.model || "default") : null,
                         h("span", { style: { color: "var(--text-muted)" } }, "Interval"),
                         h("span", null, a.interval_seconds < 3600
                           ? Math.round(a.interval_seconds / 60) + " min"
@@ -13629,8 +13702,8 @@
                           h("select", { className: "form-input", value: editForm.provider || "claude_code_cli", onChange: function(e) { setEditForm(function(p) { return Object.assign({}, p, { provider: e.target.value }); }); } },
                             PROVIDERS.map(function(p) { return h("option", { key: p.value, value: p.value }, p.label); }),
                           ),
-                          (editForm.provider === "claude_code_cli" || editForm.provider === "gemini_cli" || !editForm.provider) ? h("label", { style: { color: "var(--text-muted)" } }, "Model") : null,
-                          (editForm.provider === "claude_code_cli" || editForm.provider === "gemini_cli" || !editForm.provider) ? h("select", { className: "form-input", value: editForm.model || (editForm.provider === "gemini_cli" ? "gemini-1.5-flash" : "claude-3-5-sonnet-20241022"), onChange: function(e) { setEditForm(function(p) { return Object.assign({}, p, { model: e.target.value }); }); } },
+                          (editForm.provider === "claude_code_cli" || !editForm.provider) ? h("label", { style: { color: "var(--text-muted)" } }, "Model") : null,
+                          (editForm.provider === "claude_code_cli" || !editForm.provider) ? h("select", { className: "form-input", value: editForm.model || "claude-sonnet-4-6", onChange: function(e) { setEditForm(function(p) { return Object.assign({}, p, { model: e.target.value }); }); } },
                             MODELS.map(function(m) { return h("option", { key: m.value, value: m.value }, m.label); }),
                           ) : null,
                           h("label", { style: { color: "var(--text-muted)" } }, "Interval (s)"),
@@ -17078,6 +17151,12 @@ function PrincipalsTab() {
                 h("button", {
                   className: "btn",
                   style: { marginLeft: 4 },
+                  onClick: function () { window.open("https://github.com/D-sorganization/runner-dashboard", "_blank"); },
+                  title: "View documentation",
+                }, I.help ? I.help(12) : "?"),
+                h("button", {
+                  className: "btn",
+                  style: { marginLeft: 4 },
                   onClick: function () {
                     fetchFleet(); fetchRepos(); fetchTests(); fetchReports();
                     fetchQueue(); fetchMachines(); fetchLocalApps(); fetchEnrichedRuns();
@@ -17090,44 +17169,77 @@ function PrincipalsTab() {
             // ── Secondary ribbon (subtabs) ────────────────────────────────
             h("div", { className: "ribbon-secondary" },
               // Monitor
-              activeCategory === "monitor" && h("button", { className: "ribbon-tab-btn" + (tab === "overview" ? " active" : ""), onClick: function(){setTab("overview");} }, I.server(14), "Overview"),
-              activeCategory === "monitor" && h("button", { className: "ribbon-tab-btn" + (tab === "queue" ? " active" : ""), onClick: function(){setTab("queue"); fetchQueue();} }, I.queue(14), "Queue",
-                (queue.total||0) > 0 ? h("span", {className:"section-badge",style:{background:"rgba(88,166,255,0.2)",color:"var(--accent-blue)",marginLeft:2}}, queue.total||0) : null),
-              activeCategory === "monitor" && h("button", { className: "ribbon-tab-btn" + (tab === "history" ? " active" : ""), onClick: function(){setTab("history"); fetchEnrichedRuns();} }, I.activity(14), "History",
-                enrichedRuns.length > 0 ? h("span", {className:"section-badge",style:{background:"rgba(136,108,228,0.15)",color:"var(--accent-purple)",marginLeft:2}}, enrichedRuns.length) : null),
-              activeCategory === "monitor" && h("button", { className: "ribbon-tab-btn" + (tab === "stats" ? " active" : ""), onClick: function(){setTab("stats");} }, I.activity(14), "Stats"),
-              activeCategory === "monitor" && h("button", { className: "ribbon-tab-btn" + (tab === "machines" ? " active" : ""), onClick: function(){setTab("machines"); fetchMachines();} }, I.server(14), "Machines",
-                (machinesData.count||0) > 1 ? h("span", {className:"section-badge",style:{background:"rgba(63,185,80,0.15)",color:"var(--accent-green)",marginLeft:2}}, machinesData.count||0) : null),
-              activeCategory === "monitor" && h("button", { className: "ribbon-tab-btn" + (tab === "local-apps" ? " active" : ""), onClick: function(){setTab("local-apps"); fetchLocalApps();} }, I.server(14), "Local Tools",
-                (function(){var apps=localApps.tools||localApps.apps||[];var n=apps.filter(localAppNeedsAttention).length;return n>0?h("span",{className:"section-badge",style:{background:"rgba(210,153,34,0.2)",color:"var(--accent-yellow)",marginLeft:2}},n):null;})()),
+              activeCategory === "monitor" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "overview" ? " active" : ""), onClick: function(){setTab("overview");} }, I.server(14), "Overview"),
+                h("button", { className: "ribbon-tab-btn" + (tab === "queue" ? " active" : ""), onClick: function(){setTab("queue"); fetchQueue();} }, I.queue(14), "Queue",
+                  (queue.total||0) > 0 ? h("span", {className:"section-badge",style:{background:"rgba(88,166,255,0.2)",color:"var(--accent-blue)",marginLeft:2}}, queue.total||0) : null),
+                h("button", { className: "ribbon-tab-btn" + (tab === "history" ? " active" : ""), onClick: function(){setTab("history"); fetchEnrichedRuns();} }, I.activity(14), "History",
+                  enrichedRuns.length > 0 ? h("span", {className:"section-badge",style:{background:"rgba(136,108,228,0.15)",color:"var(--accent-purple)",marginLeft:2}}, enrichedRuns.length) : null),
+                h("button", { className: "ribbon-tab-btn" + (tab === "stats" ? " active" : ""), onClick: function(){setTab("stats");} }, I.activity(14), "Stats"),
+                h("div", { className: "ribbon-group-label" }, "Overview")
+              ),
+              activeCategory === "monitor" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "machines" ? " active" : ""), onClick: function(){setTab("machines"); fetchMachines();} }, I.server(14), "Machines",
+                  (machinesData.count||0) > 1 ? h("span", {className:"section-badge",style:{background:"rgba(63,185,80,0.15)",color:"var(--accent-green)",marginLeft:2}}, machinesData.count||0) : null),
+                h("button", { className: "ribbon-tab-btn" + (tab === "local-apps" ? " active" : ""), onClick: function(){setTab("local-apps"); fetchLocalApps();} }, I.server(14), "Local Tools",
+                  (function(){var apps=localApps.tools||localApps.apps||[];var n=apps.filter(localAppNeedsAttention).length;return n>0?h("span",{className:"section-badge",style:{background:"rgba(210,153,34,0.2)",color:"var(--accent-yellow)",marginLeft:2}},n):null;})()),
+                h("div", { className: "ribbon-group-label" }, "Infrastructure")
+              ),
               // Dispatch
-              activeCategory === "dispatch" && h("button", { className: "ribbon-tab-btn" + (tab === "workflows" ? " active" : ""), onClick: function(){setTab("workflows"); fetchWorkflowsList();} }, I.activity(14), "Workflows",
-                workflowsList.length > 0 ? h("span", {className:"section-badge",style:{background:"rgba(88,166,255,0.15)",color:"#58a6ff",marginLeft:2}}, workflowsList.length) : null),
-              activeCategory === "dispatch" && h("button", { className: "ribbon-tab-btn" + (tab === "scheduled-jobs" ? " active" : ""), onClick: function(){setTab("scheduled-jobs"); fetchScheduledJobs();} }, I.clock(14), "Schedules",
-                (scheduledJobs.scheduled_workflow_count||0) > 0 ? h("span", {className:"section-badge",style:{background:"rgba(88,166,255,0.2)",color:"var(--accent-blue)",marginLeft:2}}, scheduledJobs.scheduled_workflow_count) : null),
-              activeCategory === "dispatch" && h("button", { className: "ribbon-tab-btn" + (tab === "runner-schedule" ? " active" : ""), onClick: function(){setTab("runner-schedule"); fetchRunnerCapacity();} }, I.clock(14), "Runner Plan",
-                runnerCapacity&&runnerCapacity.state ? h("span", {className:"section-badge",style:{background:"rgba(63,185,80,0.15)",color:"var(--accent-green)",marginLeft:2}}, runnerCapacity.state.desired||0) : null),
-              activeCategory === "dispatch" && h("button", { className: "ribbon-tab-btn" + (tab === "agent-launcher" ? " active" : ""), onClick: function(){setTab("agent-launcher");} }, I.terminal ? I.terminal(14) : I.server(14), "Agent Launcher"),
-              activeCategory === "dispatch" && h("button", { className: "ribbon-tab-btn" + (tab === "maxwell" ? " active" : ""), onClick: function(){setTab("maxwell"); fetchMaxwellStatus();} }, I.server(14), "Maxwell",
-                maxwellStatus.status === "running" ? h("span", {className:"section-badge",style:{background:"rgba(63,185,80,0.15)",color:"var(--accent-green)",marginLeft:2}}, "on") :
-                  maxwellStatus.status ? h("span", {className:"section-badge",style:{background:"rgba(248,81,73,0.15)",color:"var(--accent-red)",marginLeft:2}}, "off") : null),
+              activeCategory === "dispatch" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "workflows" ? " active" : ""), onClick: function(){setTab("workflows"); fetchWorkflowsList();} }, I.activity(14), "Workflows",
+                  workflowsList.length > 0 ? h("span", {className:"section-badge",style:{background:"rgba(88,166,255,0.15)",color:"#58a6ff",marginLeft:2}}, workflowsList.length) : null),
+                h("button", { className: "ribbon-tab-btn" + (tab === "scheduled-jobs" ? " active" : ""), onClick: function(){setTab("scheduled-jobs"); fetchScheduledJobs();} }, I.clock(14), "Schedules",
+                  (scheduledJobs.scheduled_workflow_count||0) > 0 ? h("span", {className:"section-badge",style:{background:"rgba(88,166,255,0.2)",color:"var(--accent-blue)",marginLeft:2}}, scheduledJobs.scheduled_workflow_count) : null),
+                h("div", { className: "ribbon-group-label" }, "Automation")
+              ),
+              activeCategory === "dispatch" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "runner-schedule" ? " active" : ""), onClick: function(){setTab("runner-schedule"); fetchRunnerCapacity();} }, I.clock(14), "Runner Plan",
+                  runnerCapacity&&runnerCapacity.state ? h("span", {className:"section-badge",style:{background:"rgba(63,185,80,0.15)",color:"var(--accent-green)",marginLeft:2}}, runnerCapacity.state.desired||0) : null),
+                h("div", { className: "ribbon-group-label" }, "Capacity")
+              ),
+              activeCategory === "dispatch" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "agent-launcher" ? " active" : ""), onClick: function(){setTab("agent-launcher");} }, I.terminal ? I.terminal(14) : I.server(14), "Agent Launcher"),
+                h("button", { className: "ribbon-tab-btn" + (tab === "maxwell" ? " active" : ""), onClick: function(){setTab("maxwell"); fetchMaxwellStatus();} }, I.server(14), "Maxwell",
+                  maxwellStatus.status === "running" ? h("span", {className:"section-badge",style:{background:"rgba(63,185,80,0.15)",color:"var(--accent-green)",marginLeft:2}}, "on") :
+                    maxwellStatus.status ? h("span", {className:"section-badge",style:{background:"rgba(248,81,73,0.15)",color:"var(--accent-red)",marginLeft:2}}, "off") : null),
+                h("div", { className: "ribbon-group-label" }, "Agents")
+              ),
               // Manage
-              activeCategory === "manage" && h("button", { className: "ribbon-tab-btn" + (tab === "remediation" ? " active" : ""), onClick: function(){setTab("remediation"); fetchRemediationConfig();} }, I.issue(14), "Remediation",
-                runs.filter(function(r){return r.conclusion==="failure";}).length > 0 ? h("span", {className:"section-badge",style:{background:"rgba(248,81,73,0.15)",color:"var(--accent-red)",marginLeft:2}}, runs.filter(function(r){return r.conclusion==="failure";}).length) : null),
-              activeCategory === "manage" && h("button", { className: "ribbon-tab-btn" + (tab === "deployment" ? " active" : ""), onClick: function(){setTab("deployment"); fetchDeploymentState();} }, I.server(14), "Deployment",
-                (deploymentStateLoading||((deploymentState.rollout_state||{}).machines_attention||0)>0) ? h("span", {className:"section-badge",style:{background:"rgba(210,153,34,0.2)",color:"var(--accent-yellow)",marginLeft:2}}, deploymentStateLoading?"\u2026":(deploymentState.rollout_state||{}).machines_attention) : null),
-              activeCategory === "manage" && h("button", { className: "ribbon-tab-btn" + (tab === "fleet-orchestration" ? " active" : ""), onClick: function(){setTab("fleet-orchestration"); fetchFleetOrchestration();} }, I.server(14), "Fleet Orchestration"),
-              activeCategory === "manage" && h("button", { className: "ribbon-tab-btn" + (tab === "credentials" ? " active" : ""), onClick: function(){setTab("credentials"); fetchCredentials();} }, I.settings(14), "Credentials",
-                credentialsData.summary&&credentialsData.summary.not_ready>0 ? h("span", {className:"section-badge",style:{background:"rgba(210,153,34,0.15)",color:"var(--accent-yellow)",marginLeft:2}}, credentialsData.summary.not_ready) : null),
-              activeCategory === "manage" && h("button", { className: "ribbon-tab-btn" + (tab === "org" ? " active" : ""), onClick: function(){setTab("org");} }, I.repo(14), "Organization"),
-              activeCategory === "manage" && h("button", { className: "ribbon-tab-btn" + (tab === "principals" ? " active" : ""), onClick: function(){setTab("principals");} }, I.server(14), "Principals"),
+              activeCategory === "manage" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "remediation" ? " active" : ""), onClick: function(){setTab("remediation"); fetchRemediationConfig();} }, I.issue(14), "Remediation",
+                  runs.filter(function(r){return r.conclusion==="failure";}).length > 0 ? h("span", {className:"section-badge",style:{background:"rgba(248,81,73,0.15)",color:"var(--accent-red)",marginLeft:2}}, runs.filter(function(r){return r.conclusion==="failure";}).length) : null),
+                h("button", { className: "ribbon-tab-btn" + (tab === "deployment" ? " active" : ""), onClick: function(){setTab("deployment"); fetchDeploymentState();} }, I.server(14), "Deployment",
+                  (deploymentStateLoading||((deploymentState.rollout_state||{}).machines_attention||0)>0) ? h("span", {className:"section-badge",style:{background:"rgba(210,153,34,0.2)",color:"var(--accent-yellow)",marginLeft:2}}, deploymentStateLoading?"\u2026":(deploymentState.rollout_state||{}).machines_attention) : null),
+                h("button", { className: "ribbon-tab-btn" + (tab === "fleet-orchestration" ? " active" : ""), onClick: function(){setTab("fleet-orchestration"); fetchFleetOrchestration();} }, I.server(14), "Fleet Orchestration"),
+                h("div", { className: "ribbon-group-label" }, "Operations")
+              ),
+              activeCategory === "manage" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "credentials" ? " active" : ""), onClick: function(){setTab("credentials"); fetchCredentials();} }, I.settings(14), "Credentials",
+                  credentialsData.summary&&credentialsData.summary.not_ready>0 ? h("span", {className:"section-badge",style:{background:"rgba(210,153,34,0.15)",color:"var(--accent-yellow)",marginLeft:2}}, credentialsData.summary.not_ready) : null),
+                h("div", { className: "ribbon-group-label" }, "Security")
+              ),
+              activeCategory === "manage" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "org" ? " active" : ""), onClick: function(){setTab("org");} }, I.repo(14), "Organization"),
+                h("button", { className: "ribbon-tab-btn" + (tab === "principals" ? " active" : ""), onClick: function(){setTab("principals");} }, I.server(14), "Principals"),
+                h("div", { className: "ribbon-group-label" }, "Identity")
+              ),
               // Reports
-              activeCategory === "reports" && h("button", { className: "ribbon-tab-btn" + (tab === "tests" ? " active" : ""), onClick: function(){setTab("tests");} }, I.flask(14), "Tests"),
-              activeCategory === "reports" && h("button", { className: "ribbon-tab-btn" + (tab === "reports" ? " active" : ""), onClick: function(){setTab("reports");} }, I.fileText(14), "Reports"),
-              activeCategory === "reports" && h("button", { className: "ribbon-tab-btn" + (tab === "assessments" ? " active" : ""), onClick: function(){setTab("assessments"); fetchAssessments();} }, I.activity(14), "Assessments"),
-              activeCategory === "reports" && h("button", { className: "ribbon-tab-btn" + (tab === "feature-requests" ? " active" : ""), onClick: function(){setTab("feature-requests"); fetchFeatureRequests();} }, I.issue(14), "Feature Requests",
-                featureRequests.length > 0 ? h("span", {className:"section-badge",style:{background:"rgba(136,108,228,0.15)",color:"var(--accent-purple)",marginLeft:2}}, featureRequests.length) : null),
-              activeCategory === "reports" && h("button", { className: "ribbon-tab-btn" + (tab === "diagnostics" ? " active" : ""), onClick: function(){setTab("diagnostics");} }, I.settings(14), "Diagnostics"),
+              activeCategory === "reports" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "tests" ? " active" : ""), onClick: function(){setTab("tests");} }, I.flask(14), "Tests"),
+                h("button", { className: "ribbon-tab-btn" + (tab === "reports" ? " active" : ""), onClick: function(){setTab("reports");} }, I.fileText(14), "Reports"),
+                h("div", { className: "ribbon-group-label" }, "Quality")
+              ),
+              activeCategory === "reports" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "assessments" ? " active" : ""), onClick: function(){setTab("assessments"); fetchAssessments();} }, I.activity(14), "Assessments"),
+                h("button", { className: "ribbon-tab-btn" + (tab === "feature-requests" ? " active" : ""), onClick: function(){setTab("feature-requests"); fetchFeatureRequests();} }, I.issue(14), "Feature Requests",
+                  featureRequests.length > 0 ? h("span", {className:"section-badge",style:{background:"rgba(136,108,228,0.15)",color:"var(--accent-purple)",marginLeft:2}}, featureRequests.length) : null),
+                h("div", { className: "ribbon-group-label" }, "Evals")
+              ),
+              activeCategory === "reports" && h("div", { className: "ribbon-group" },
+                h("button", { className: "ribbon-tab-btn" + (tab === "diagnostics" ? " active" : ""), onClick: function(){setTab("diagnostics");} }, I.settings(14), "Diagnostics"),
+                h("div", { className: "ribbon-group-label" }, "System")
+              ),
             ),
           ),
           h(
@@ -17466,4 +17578,5 @@ function PrincipalsTab() {
 
       ReactDOM.createRoot(document.getElementById("root")).render(h(App));
     </script>
-  </
+  </body>
+</html>

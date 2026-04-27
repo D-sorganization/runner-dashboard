@@ -1,7 +1,7 @@
 # ruff: noqa: B008
 #!/usr/bin/env python3
 """
-D-sorganization Runner Dashboard  FastAPI Backend
+D-sorganization Runner Dashboard -- FastAPI Backend
 ===================================================
 Provides a REST API that:
   - Proxies GitHub's org runner & workflow APIs
@@ -47,7 +47,6 @@ from identity import Principal, require_principal, require_scope  # noqa: B008
 from pydantic import BaseModel, Field
 from routers import admin as admin_router
 from routers import auth as auth_router
-from routers import maxwell as maxwell_router
 from starlette.middleware.sessions import SessionMiddleware
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -77,6 +76,7 @@ from machine_registry import (  # noqa: E402
 from report_files import parse_report_metrics, sanitize_report_date  # noqa: E402
 from routers import credentials as _credentials_router  # noqa: E402
 from routers import dispatch as _dispatch_router  # noqa: E402
+from routers import maxwell as maxwell_router  # noqa: E402
 from security import (  # noqa: E402
     check_dispatch_rate,
     safe_subprocess_env,
@@ -284,14 +284,14 @@ REPORTS_DIR = Path(os.environ.get("REPORTS_DIR", str(_default_reports_dir)))
 HEAVY_TEST_REPOS = {
     "Repository_Management": {
         "workflow_file": "ci-heavy-integration-tests.yml",
-        "description": ("Heavy Integration Suite  Self-hosted Runner Control Tower tests"),
+        "description": ("Heavy Integration Suite -- Self-hosted Runner Control Tower tests"),
         "docker_compose": "docker-compose.yml",
         "python_versions": ["3.11", "3.12"],
         "default_python": "3.12",
     },
     "UpstreamDrift": {
         "workflow_file": "heavy-tests-opt-in.yml",
-        "description": ("Heavy Integration Tests (live_simulation marker)  MuJoCo, Drake, Pinocchio, Biomechanics"),
+        "description": ("Heavy Integration Tests (live_simulation marker) -- MuJoCo, Drake, Pinocchio, Biomechanics"),
         "docker_compose": "docker-compose.yml",
         "python_versions": ["3.10", "3.11", "3.12"],
         "default_python": "3.11",
@@ -355,13 +355,13 @@ _dispatch_router.set_replay_functions(_is_envelope_replay, _record_processed_env
 app.include_router(_credentials_router.router)
 app.include_router(admin_router.router)
 app.include_router(auth_router.router)
+app.include_router(maxwell_router.router)
 
 # Agent-launcher control surface (sibling: Repository_Management/launchers/cline_agent_launcher).
-# Subprocess-only  never imports the launcher Python at runtime.
+# Subprocess-only -- never imports the launcher Python at runtime.
 import agent_launcher_router as _agent_launcher_router  # noqa: E402
 
 app.include_router(_agent_launcher_router.router)
-app.include_router(maxwell_router.router)
 
 app.add_middleware(
     SessionMiddleware,
@@ -426,14 +426,14 @@ async def _add_security_headers(request: Request, call_next: Any) -> Any:
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     # CSP note: 'strict-dynamic' was previously used here but is INCOMPATIBLE
-    # with host-based allowlists  per spec, 'strict-dynamic' disables source
+    # with host-based allowlists -- per spec, 'strict-dynamic' disables source
     # expressions like https://cdnjs.cloudflare.com, meaning React and other CDN
     # libraries were silently blocked, causing a blank dashboard. Removed in #172.
     #
     # 'unsafe-inline' is required for script-src because the frontend is a single
     # index.html with several inline <script> blocks (error handler, React check,
     # and the ~630 KB application bundle). Adding nonces would require a build step
-    # or per-request template rendering  not worth the complexity for a
+    # or per-request template rendering -- not worth the complexity for a
     # localhost-only operator tool.
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
@@ -603,7 +603,7 @@ def _disk_pressure_snapshot(
 # Set MACHINE_ROLE=hub on the primary machine.
 # Set FLEET_NODES to a comma-separated list of "name:http://tailscale-ip:8321"
 # entries for every *other* machine in the fleet.  The hub always includes
-# itself automatically  do not list it in FLEET_NODES.
+# itself automatically -- do not list it in FLEET_NODES.
 #
 # Example (in /etc/systemd/system/runner-dashboard.service on ControlTower):
 #   Environment=MACHINE_ROLE=hub
@@ -615,7 +615,7 @@ for _entry in _fleet_raw.split(","):
     _entry = _entry.strip()
     if not _entry:
         continue
-    # Format: name:http://host:port   the URL part begins after the first colon
+    # Format: name:http://host:port  -- the URL part begins after the first colon
     # but URLs also contain colons, so we require the URL to start with http
     _colon_idx = _entry.find(":http")
     if _colon_idx == -1:
@@ -1924,6 +1924,7 @@ def get_per_runner_resources() -> list[dict]:
     """Get CPU and memory usage for each runner's worker processes."""
     runner_procs = []
     for i in range(1, _runner_limit() + 1):
+        _ = get_runner_service_name(i)
         runner_info: dict[str, Any] = {
             "runner_num": i,
             "cpu_percent": 0.0,
@@ -2043,7 +2044,7 @@ async def get_system_metrics():
         }
 
     # On WSL, also report the Windows host disk (/mnt/c) where the VHDX lives.
-    # The host disk is the binding constraint  if it fills up, WSL itself breaks.
+    # The host disk is the binding constraint -- if it fills up, WSL itself breaks.
     windows_disk = None
     wsl_host_path = Path("/mnt/c")
     if wsl_host_path.exists():
@@ -2339,7 +2340,7 @@ async def get_deployment_drift() -> dict:
     """Compare the deployed version against the hub's expected VERSION.
 
     Used by the Machines tab to surface "Update available" badges on stale
-    nodes. Remote update orchestration is intentionally out of scope here
+    nodes. Remote update orchestration is intentionally out of scope here --
     see ``POST /api/deployment/update-signal`` for the notify-only affordance.
     """
     expected = await _read_expected_dashboard_version()
@@ -2505,7 +2506,7 @@ def _matlab_runner_summary(runner: dict) -> dict:
 async def _recent_matlab_workflow_runs(limit: int = 5) -> list[dict]:
     """Fetch recent MATLAB Code Analyzer workflow runs across the org.
 
-    Returns an empty list on any failure  this is advisory UI, not critical
+    Returns an empty list on any failure -- this is advisory UI, not critical
     control surface, so transient API errors must not break the endpoint.
     """
     try:
@@ -3254,7 +3255,7 @@ async def get_repos(request: Request):
             "last_ci_updated": None,
         }
 
-        # Get open PRs count  use --paginate so repos with >100 open PRs are
+        # Get open PRs count -- use --paginate so repos with >100 open PRs are
         # counted accurately.  GitHub's open_issues_count includes PRs, so we
         # subtract the real PR count to get the genuine issue count.
         pr_code, pr_out, _ = await run_cmd(
@@ -3697,7 +3698,7 @@ async def run_docker_heavy_test(
 
 
 # ---------------------------------------------------------------------------
-# CI Tests endpoints  standard ci-standard workflow runs + manual rerun
+# CI Tests endpoints -- standard ci-standard workflow runs + manual rerun
 # ---------------------------------------------------------------------------
 
 _CI_FLEET_REPOS = [
@@ -4404,7 +4405,7 @@ async def _dispatch_to_ai_provider_for_chat(
     """Call the configured AI provider for assistant chat."""
     # For MVP: return a simple response based on the prompt
     # In production, this would dispatch to an actual provider (Jules, Claude, etc.)
-    provider_id = provider or "ollama"
+    provider_id = provider or "ollama_local"
 
     # Check provider availability
     availability = agent_remediation.probe_provider_availability()
@@ -4472,7 +4473,7 @@ async def assistant_chat(request: Request, *, principal: Principal = Depends(req
     )
     return {
         "response": response_text,
-        "provider": req.provider or "ollama",
+        "provider": req.provider or "ollama_local",
         "context_used": req.context.dict(),
         "timestamp": now_ts,
     }
@@ -4597,7 +4598,7 @@ async def propose_action(request: Request, *, principal: Principal = Depends(req
         raise HTTPException(status_code=422, detail=str(e)) from e
 
     # Call AI provider to generate action proposal
-    provider_id = req.provider or "ollama"
+    provider_id = req.provider or "ollama_local"
     availability = agent_remediation.probe_provider_availability()
     if provider_id not in availability or not availability[provider_id].available:
         # For MVP: return a synthetic proposal
@@ -4918,7 +4919,7 @@ async def diagnose_queue() -> dict:
     """Explain why queued jobs are waiting.
 
     Samples queued workflow runs, fetches their jobs, and reports which runner
-    labels the waiting jobs need  self-hosted fleet, ubuntu-latest, or other.
+    labels the waiting jobs need -- self-hosted fleet, ubuntu-latest, or other.
     Cross-references against the live runner pool to identify the bottleneck.
     """
     cached = _cache_get("diagnose", 120.0)
@@ -4946,7 +4947,7 @@ async def diagnose_queue() -> dict:
         timeout=20,
     )
     if code != 0:
-        return {"error": "Cannot reach GitHub API  check GH_TOKEN in service"}
+        return {"error": "Cannot reach GitHub API -- check GH_TOKEN in service"}
 
     try:
         repos = json.loads(stdout)
@@ -5153,7 +5154,7 @@ async def diagnose_queue() -> dict:
             f"MISCONFIGURATION: {len(pick_runner_misconfig)} 'pick-runner' dispatcher "
             f"job(s) are themselves targeting 'self-hosted' in: "
             f"{', '.join(repos_affected)}. "
-            "The pick-runner job must use 'runs-on: ubuntu-latest' (not 'self-hosted')  "  # noqa: E501
+            "The pick-runner job must use 'runs-on: ubuntu-latest' (not 'self-hosted') -- "  # noqa: E501
             "it is the dispatcher that decides where to send work. "
             "Update those workflow files to fix 'runs-on: ubuntu-latest' on the pick-runner job."  # noqa: E501
         )
@@ -5165,12 +5166,12 @@ async def diagnose_queue() -> dict:
     elif waiting_for_fleet > 0 and idle:
         bottleneck = (
             f"{len(idle)} idle fleet runner(s) exist but {waiting_for_fleet} fleet job(s) are "  # noqa: E501
-            "still queued  possible label mismatch. Verify the runner labels include 'd-sorg-fleet'."  # noqa: E501
+            "still queued -- possible label mismatch. Verify the runner labels include 'd-sorg-fleet'."  # noqa: E501
         )
     elif waiting_for_generic_sh > 0 and idle:
         if runner_groups_restricted:
             blocked_info = [
-                f"'{g['name']}' (runners: {', '.join(g['runner_names'][:3])}{'' if len(g['runner_names']) > 3 else ''}) "  # noqa: E501
+                f"'{g['name']}' (runners: {', '.join(g['runner_names'][:3])}{'Ã¢â‚¬Â¦' if len(g['runner_names']) > 3 else ''}) "  # noqa: E501
                 f"blocks: {', '.join(g['blocked_waiting_repos'][:5])}"
                 for g in runner_groups_info
                 if g["restricted"] and g["blocked_waiting_repos"]
@@ -5179,14 +5180,14 @@ async def diagnose_queue() -> dict:
                 f"RUNNER GROUP ACCESS RESTRICTION: {waiting_for_generic_sh} job(s) cannot "  # noqa: E501
                 f"reach {len(idle)} idle runner(s). "
                 + (" | ".join(blocked_info) + ". " if blocked_info else "")
-                + "FIX: GitHub org Settings  Actions  Runner Groups  "
-                "select the restricted group  set Repository access to 'All repositories'."  # noqa: E501
+                + "FIX: GitHub org Settings Ã¢â€ â€™ Actions Ã¢â€ â€™ Runner Groups Ã¢â€ â€™ "
+                "select the restricted group Ã¢â€ â€™ set Repository access to 'All repositories'."  # noqa: E501
             )
         else:
             bottleneck = (
                 f"{waiting_for_generic_sh} job(s) target the generic 'self-hosted' label "  # noqa: E501
                 f"with {len(idle)} idle runner(s). "
-                "Runners will pick these up  but check if any are pick-runner "  # noqa: E501
+                "Runners will pick these up -- but check if any are pick-runner "  # noqa: E501
                 "dispatcher jobs (they should use runs-on: ubuntu-latest, not "
                 "self-hosted, to avoid wasting a runner slot on routing logic)."
             )
@@ -5198,14 +5199,14 @@ async def diagnose_queue() -> dict:
     elif waiting_for_github_hosted > 0:
         bottleneck = (
             f"{waiting_for_github_hosted} job(s) are waiting for GitHub-hosted runners "
-            "(ubuntu-latest). This is GitHub's queue  no local action possible. "
+            "(ubuntu-latest). This is GitHub's queue -- no local action possible. "
             "This may mean pick-runner routed them to the cloud because all fleet "
             "runners were busy when the dispatcher ran."
         )
     elif not sampled_jobs:
-        bottleneck = "Could not sample job details  runs may have just started or GitHub API rate limit may be close."
+        bottleneck = "Could not sample job details -- runs may have just started or GitHub API rate limit may be close."
     else:
-        bottleneck = "Unknown  job labels did not match known runner targets."
+        bottleneck = "Unknown -- job labels did not match known runner targets."
 
     result = {
         "runner_pool": {
@@ -5343,7 +5344,7 @@ async def log_requests(request: Request, call_next):
     )
     if not request.url.path.startswith(skip):
         log.info(
-            "%s %s  %s (%sms)",
+            "%s %s Ã¢â€ â€™ %s (%sms)",
             request.method,
             request.url.path,
             response.status_code,
@@ -5374,7 +5375,7 @@ async def serve_index():
         "<p>Frontend index.html not found</p>"
         "<p><a href='/api/health' "
         "style='color:#58a6ff'>Health Check</a>"
-        "  <a href='/docs' "
+        " Ã‚Â· <a href='/docs' "
         "style='color:#58a6ff'>API Docs</a></p>"
         "</div></body></html>"
     )
@@ -5399,10 +5400,10 @@ async def serve_icon():
     return FileResponse(icon_path, media_type="image/svg+xml")
 
 
-#  Fleet Agent Dispatcher API  see backend/routers/dispatch.py
+#  Fleet Agent Dispatcher API -- see backend/routers/dispatch.py
 # Endpoints extracted to routers/dispatch.py and registered via app.include_router.
 
-#  Credentials Probe  see backend/routers/credentials.py
+#  Credentials Probe -- see backend/routers/credentials.py
 # Endpoint extracted to routers/credentials.py and registered via app.include_router.
 
 #  Maxwell-Daemon endpoints
@@ -5440,7 +5441,7 @@ DASHBOARD_FAQ: dict[str, str] = {
     ),
     "provider": (
         "Providers are AI agents: Jules API (cloud, Google), Codex CLI (OpenAI),"
-        " Claude Code CLI (Anthropic), Gemini CLI (Google), Ollama."
+        " Claude Code CLI (Anthropic), Ollama (local)."
     ),
     "loop guard": (
         "Loop guard prevents infinite retry loops. When the same failure repeats more than"
@@ -5456,7 +5457,7 @@ async def get_maxwell_status() -> dict:
 
     maxwell_binary = shutil.which("maxwell") or shutil.which("maxwell-daemon")
     maxwell_url = os.environ.get("MAXWELL_URL", "")
-    maxwell_port = int(os.environ.get("MAXWELL_PORT", 8322))
+    maxwell_port = int(os.environ.get("MAXWELL_PORT", 8080))
 
     # Check if maxwell service is running via systemd
     service_running = False
@@ -5528,7 +5529,7 @@ async def maxwell_control(
     if not approved_by:
         raise HTTPException(status_code=422, detail="approved_by required for privileged action")
 
-    code, out, stderr = await run_cmd(["systemctl", action, "maxwell-daemon"], timeout=15, cwd=REPO_ROOT)
+    code, out, stderr = await run_cmd(["sudo", "systemctl", action, "maxwell-daemon"], timeout=15, cwd=REPO_ROOT)
     log.info(
         "maxwell_control: action=%s approved_by=%s exit_code=%d",
         sanitize_log_value(action),
@@ -5549,82 +5550,63 @@ async def maxwell_control(
 
 def _maxwell_base_url() -> str:
     """Return the Maxwell-Daemon base URL from env."""
-    return os.environ.get("MAXWELL_URL", "") or f"http://localhost:{int(os.environ.get('MAXWELL_PORT', 8322))}"
+    return os.environ.get("MAXWELL_URL", "") or f"http://localhost:{int(os.environ.get('MAXWELL_PORT', 8080))}"
+
+
+def _maxwell_api_token() -> str:
+    """Return the Maxwell-Daemon API confirmation token from env."""
+    return os.environ.get("MAXWELL_API_TOKEN", "")
+
+
+def _maxwell_headers() -> dict:
+    """Return auth headers for Maxwell-Daemon requests."""
+    token = _maxwell_api_token()
+    if token:
+        return {"Authorization": f"Bearer {token}"}
+    return {}
+
+
+async def _mx_get(path: str, params: dict | None = None) -> dict:
+    """GET helper for Maxwell proxy routes."""
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(
+                f"{_maxwell_base_url()}{path}",
+                params=params,
+                headers=_maxwell_headers(),
+            )
+            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
+            return resp.json()
+    except Exception as e:  # noqa: BLE001
+        log.info("maxwell_proxy: path=%s error=%s", path, str(e)[:80])
+        return {"error": str(e)[:120], "daemon_available": False}
 
 
 @app.get("/api/maxwell/version")
 async def get_maxwell_version() -> dict:
     """Proxy GET /api/version from Maxwell-Daemon."""
-    path = "/api/version"
-    resp = None
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(f"{_maxwell_base_url()}{path}")
-            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
-            return resp.json()
-    except Exception as e:  # noqa: BLE001
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
-
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
+    return await _mx_get("/api/version")
 
 
 @app.get("/api/maxwell/daemon-status")
 async def get_maxwell_daemon_status_detail() -> dict:
     """Proxy GET /api/status from Maxwell-Daemon (pipeline state)."""
-    path = "/api/status"
-    resp = None
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(f"{_maxwell_base_url()}{path}")
-            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
-            return resp.json()
-    except Exception as e:  # noqa: BLE001
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
-
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
+    return await _mx_get("/api/status")
 
 
 @app.get("/api/maxwell/tasks")
 async def get_maxwell_tasks(limit: int = 20, cursor: str | None = None) -> dict:
     """Proxy GET /api/tasks from Maxwell-Daemon."""
-    path = "/api/tasks"
-    resp = None
-    try:
-        params: dict = {"limit": limit}
-        if cursor is not None:
-            params["cursor"] = cursor
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(f"{_maxwell_base_url()}{path}", params=params)
-            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
-            return resp.json()
-    except Exception as e:  # noqa: BLE001
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
-
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
+    params: dict = {"limit": limit}
+    if cursor is not None:
+        params["cursor"] = cursor
+    return await _mx_get("/api/tasks", params=params)
 
 
 @app.get("/api/maxwell/tasks/{task_id}")
 async def get_maxwell_task_detail(task_id: str) -> dict:
     """Proxy GET /api/tasks/{task_id} from Maxwell-Daemon."""
-    path = f"/api/tasks/{task_id}"
-    resp = None
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(f"{_maxwell_base_url()}{path}")
-            log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
-            return resp.json()
-    except Exception as e:  # noqa: BLE001
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
-
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
+    return await _mx_get(f"/api/tasks/{task_id}")
 
 
 @app.post("/api/maxwell/dispatch")
@@ -5633,24 +5615,38 @@ async def maxwell_dispatch_task(
     *,
     principal: Principal = Depends(require_scope("maxwell.control")),  # noqa: B008
 ) -> dict:
-    """Proxy POST /api/dispatch to Maxwell-Daemon (forwards body as-is)."""
+    """Proxy POST /api/dispatch to Maxwell-Daemon.
+
+    Injects ``confirmation_token`` from ``MAXWELL_API_TOKEN`` env var so the
+    browser never needs to know the raw token.
+    """
+    import json as _json
+    import uuid
+
     path = "/api/dispatch"
-    resp = None
     try:
-        body = await request.body()
-        async with httpx.AsyncClient(timeout=3.0) as client:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+
+    # Inject auth token and ensure idempotency_key is present.
+    body["confirmation_token"] = _maxwell_api_token()
+    if not body.get("idempotency_key"):
+        body["idempotency_key"] = str(uuid.uuid4())
+
+    hdrs = {"Content-Type": "application/json"}
+    hdrs.update(_maxwell_headers())
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
                 f"{_maxwell_base_url()}{path}",
-                content=body,
-                headers={"Content-Type": "application/json"},
+                content=_json.dumps(body),
+                headers=hdrs,
             )
             log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
             return resp.json()
     except Exception as e:  # noqa: BLE001
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
-
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
+        log.info("maxwell_proxy: path=%s error=%s", path, str(e)[:80])
         return {"error": str(e)[:120], "daemon_available": False}
 
 
@@ -5661,27 +5657,64 @@ async def maxwell_pipeline_control(
     *,
     principal: Principal = Depends(require_scope("maxwell.control")),  # noqa: B008
 ) -> dict:
-    """Proxy POST /api/control/{action} to Maxwell-Daemon."""
+    """Proxy POST /api/control/{action} to Maxwell-Daemon.
+
+    Injects ``confirmation_token`` from ``MAXWELL_API_TOKEN`` env var.
+    """
+    import json as _json
+
     if action not in ("pause", "resume", "abort"):
         raise HTTPException(status_code=422, detail="action must be pause, resume, or abort")
     path = f"/api/control/{action}"
-    resp = None
     try:
-        body = await request.body()
-        async with httpx.AsyncClient(timeout=3.0) as client:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+
+    body["confirmation_token"] = _maxwell_api_token()
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
                 f"{_maxwell_base_url()}{path}",
-                content=body,
+                content=_json.dumps(body),
                 headers={"Content-Type": "application/json"},
             )
             log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
             return resp.json()
     except Exception as e:  # noqa: BLE001
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
+        log.info("maxwell_proxy: path=%s status=%s error=%s", path, "error", str(e)[:80])
         return {"error": str(e)[:120], "daemon_available": False}
 
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
+
+@app.get("/api/maxwell/backends")
+async def get_maxwell_backends() -> dict:
+    """Proxy GET /api/v1/backends from Maxwell-Daemon."""
+    return await _mx_get("/api/v1/backends")
+
+
+@app.get("/api/maxwell/workers")
+async def get_maxwell_workers() -> dict:
+    """Proxy GET /api/v1/workers from Maxwell-Daemon."""
+    return await _mx_get("/api/v1/workers")
+
+
+@app.get("/api/maxwell/cost")
+async def get_maxwell_cost() -> dict:
+    """Proxy GET /api/v1/cost from Maxwell-Daemon."""
+    return await _mx_get("/api/v1/cost")
+
+
+@app.get("/api/maxwell/pipeline-state")
+async def get_maxwell_pipeline_state() -> dict:
+    """Proxy GET /api/status (pipeline state) from Maxwell-Daemon."""
+    return await _mx_get("/api/status")
+
+
+@app.get("/api/maxwell/backends/available")
+async def get_maxwell_backends_available() -> dict:
+    """Proxy GET /api/v1/backends/available — returns all backends Maxwell knows about."""
+    return await _mx_get("/api/v1/backends/available")
 
 
 @app.post("/api/help/chat")
