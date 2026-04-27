@@ -5,21 +5,23 @@
   "require_non_protected_branch": true,
   "max_same_failure_attempts": 3,
   "attempt_window_hours": 24,
-  "default_provider": "ollama_local",
+  "default_provider": "gemini_cli",
   "provider_order": [
+    "gemini_cli",
     "jules_cli",
     "jules_api",
     "codex_cli",
     "claude_code_cli",
-    "ollama_local",
+    "ollama",
     "cline"
   ],
   "enabled_providers": [
+    "gemini_cli",
     "jules_cli",
     "jules_api",
     "codex_cli",
     "claude_code_cli",
-    "ollama_local",
+    "ollama",
     "cline"
   ],
   "workflow_type_rules": {

@@ -8188,7 +8188,8 @@
           ["jules_api", "Jules API"],
           ["codex_cli", "Codex CLI"],
           ["claude_code_cli", "Claude Code CLI"],
-          ["ollama_local", "Ollama (local)"],
+          ["gemini_cli", "Gemini CLI"],
+          ["ollama", "Ollama"],
           ["cline", "Cline"],
         ];
 
@@ -8931,7 +8932,7 @@
             });
         }
 
-        var providerOptions = ['jules_api', 'codex_cli', 'claude_code_cli', 'ollama_local', 'cline'];
+        var providerOptions = ['gemini_cli', 'jules_api', 'codex_cli', 'claude_code_cli', 'ollama', 'cline'];
 
         return h('div', { style: { padding: '0 0 16px 0' } },
           // Filter bar
@@ -9286,7 +9287,8 @@
           "jules_api",
           "codex_cli",
           "claude_code_cli",
-          "ollama_local",
+          "gemini_cli",
+          "ollama",
           "cline",
         ];
         var providerEntries = Object.keys(providers).length

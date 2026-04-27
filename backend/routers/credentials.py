@@ -200,8 +200,8 @@ async def get_credentials(request: Request) -> dict:
     ollama_binary = shutil.which("ollama")
     probes.append(
         {
-            "id": "ollama_local",
-            "label": "Ollama (Local)",
+            "id": "ollama",
+            "label": "Ollama",
             "icon": "ollama",
             "installed": ollama_binary is not None,
             "authenticated": True,
@@ -212,6 +212,42 @@ async def get_credentials(request: Request) -> dict:
             "config_source": "system" if ollama_binary else "unavailable",
             "docs_url": "https://ollama.com/",
             "setup_hint": "Install from ollama.com",
+        }
+    )
+
+    # Gemini CLI
+    gemini_binary = shutil.which("gemini")
+    gemini_api_key = _env_present("GOOGLE_API_KEY") or _env_present("GEMINI_API_KEY")
+    probes.append(
+        {
+            "id": "gemini_cli",
+            "label": "Gemini CLI",
+            "icon": "gemini",
+            "installed": gemini_binary is not None,
+            "authenticated": gemini_api_key,
+            "reachable": gemini_binary is not None and gemini_api_key,
+            "usable": gemini_binary is not None and gemini_api_key,
+            "status": (
+                "ready"
+                if (gemini_binary and gemini_api_key)
+                else ("missing_key" if gemini_binary else "not_installed")
+            ),
+            "detail": (
+                "Ready"
+                if (gemini_binary and gemini_api_key)
+                else (
+                    "GOOGLE_API_KEY or GEMINI_API_KEY not set"
+                    if gemini_binary
+                    else "gemini not found on PATH"
+                )
+            ),
+            "config_source": (
+                _env_source("GOOGLE_API_KEY")
+                if _env_present("GOOGLE_API_KEY")
+                else (_env_source("GEMINI_API_KEY") if gemini_api_key else ("system" if gemini_binary else "unavailable"))
+            ),
+            "docs_url": "https://ai.google.dev/gemini-api/docs",
+            "setup_hint": "Install Gemini CLI and set GOOGLE_API_KEY or GEMINI_API_KEY",
         }
     )
 

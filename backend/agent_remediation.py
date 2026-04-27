@@ -31,11 +31,12 @@ datetime = _dt_mod.datetime
 SCHEMA_VERSION = "agent-remediation.v1"
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "agent_remediation.json"
 DEFAULT_PROVIDER_ORDER = (
+    "gemini_cli",
     "jules_cli",
     "jules_api",
     "codex_cli",
     "claude_code_cli",
-    "ollama_local",
+    "ollama",
     "cline",
 )
 DEFAULT_WORKFLOW_TYPE_RULES: tuple[dict[str, Any], ...] = (
@@ -397,8 +398,8 @@ PROVIDERS: dict[str, AgentProvider] = {
         editable=True,
         notes="Uses `claude -p` with auto permissions for branch-local remediation on a self-hosted runner.",
     ),
-    "ollama_local": AgentProvider(
-        provider_id="ollama_local",
+    "ollama": AgentProvider(
+        provider_id="ollama",
         label="Ollama",
         execution_mode="local_analysis",
         dispatch_mode="future",
@@ -409,6 +410,16 @@ PROVIDERS: dict[str, AgentProvider] = {
             "Useful as a low-cost analyzer or triage assistant; code-edit execution should stay gated"
             " until a stronger local agent loop is selected."
         ),
+    ),
+    "gemini_cli": AgentProvider(
+        provider_id="gemini_cli",
+        label="Gemini CLI",
+        execution_mode="local_exec",
+        dispatch_mode="github_actions",
+        availability_probe=("gemini",),
+        required_env=("GOOGLE_API_KEY", "GEMINI_API_KEY"),
+        editable=True,
+        notes="Uses `gemini` CLI for branch-local remediation on a self-hosted runner.",
     ),
     "cline": AgentProvider(
         provider_id="cline",
