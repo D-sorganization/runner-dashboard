@@ -105,6 +105,7 @@ def _patch_maxwell_yaml_api_key(env_var: str, value: str) -> None:
         return
     try:
         import yaml  # type: ignore[import]
+
         with open(_MAXWELL_YAML) as f:
             cfg = yaml.safe_load(f)
         if not isinstance(cfg, dict) or "backends" not in cfg:
@@ -128,6 +129,7 @@ def _clear_maxwell_yaml_api_key(env_var: str) -> None:
 
 
 # Pydantic models
+
 
 class SetKeyRequest(BaseModel):
     provider: str = Field(..., description="Provider id, e.g. 'claude', 'gemini', 'codex'")
@@ -166,61 +168,68 @@ async def get_credentials(request: Request) -> dict:
         except Exception:
             gh_auth_detail = "probe failed"
 
-    probes.append({
-        "id": "github_cli",
-        "label": "GitHub CLI",
-        "icon": "github",
-        "installed": gh_binary is not None,
-        "authenticated": gh_auth_ok,
-        "reachable": gh_auth_ok,
-        "usable": gh_auth_ok,
-        "status": ("ready" if gh_auth_ok else ("not_authed" if gh_binary else "not_installed")),
-        "detail": gh_auth_detail,
-        "config_source": "system" if gh_binary else "unavailable",
-        "docs_url": "https://cli.github.com/",
-        "setup_hint": "Run: gh auth login",
-    })
+    probes.append(
+        {
+            "id": "github_cli",
+            "label": "GitHub CLI",
+            "icon": "github",
+            "installed": gh_binary is not None,
+            "authenticated": gh_auth_ok,
+            "reachable": gh_auth_ok,
+            "usable": gh_auth_ok,
+            "status": ("ready" if gh_auth_ok else ("not_authed" if gh_binary else "not_installed")),
+            "detail": gh_auth_detail,
+            "config_source": "system" if gh_binary else "unavailable",
+            "docs_url": "https://cli.github.com/",
+            "setup_hint": "Run: gh auth login",
+        }
+    )
 
     # Jules CLI
     jules_binary = shutil.which("jules")
-    probes.append({
-        "id": "jules_cli",
-        "label": "Jules CLI",
-        "icon": "jules",
-        "installed": jules_binary is not None,
-        "authenticated": jules_binary is not None,
-        "reachable": jules_binary is not None,
-        "usable": jules_binary is not None,
-        "status": "ready" if jules_binary else "not_installed",
-        "detail": (f"Found at {jules_binary}" if jules_binary else "jules not found on PATH"),
-        "config_source": "system" if jules_binary else "unavailable",
-        "docs_url": "https://jules.google/docs/",
-        "setup_hint": "Install Jules CLI from jules.google",
-    })
+    probes.append(
+        {
+            "id": "jules_cli",
+            "label": "Jules CLI",
+            "icon": "jules",
+            "installed": jules_binary is not None,
+            "authenticated": jules_binary is not None,
+            "reachable": jules_binary is not None,
+            "usable": jules_binary is not None,
+            "status": "ready" if jules_binary else "not_installed",
+            "detail": (f"Found at {jules_binary}" if jules_binary else "jules not found on PATH"),
+            "config_source": "system" if jules_binary else "unavailable",
+            "docs_url": "https://jules.google/docs/",
+            "setup_hint": "Install Jules CLI from jules.google",
+        }
+    )
 
     # Jules API
     jules_api_key = _env_present("JULES_API_KEY") or _env_present("GOOGLE_API_KEY")
-    probes.append({
-        "id": "jules_api",
-        "label": "Jules API",
-        "icon": "jules",
-        "installed": True,
-        "authenticated": jules_api_key,
-        "reachable": jules_api_key,
-        "usable": jules_api_key,
-        "status": "ready" if jules_api_key else "missing_key",
-        "detail": ("API key present" if jules_api_key else "JULES_API_KEY or GOOGLE_API_KEY not set"),
-        "config_source": (_env_source("JULES_API_KEY") if jules_api_key else "unavailable"),
-        "docs_url": "https://jules.google/docs/api/",
-        "setup_hint": "Set JULES_API_KEY environment variable",
-        "key_provider": "jules",
-    })
+    probes.append(
+        {
+            "id": "jules_api",
+            "label": "Jules API",
+            "icon": "jules",
+            "installed": True,
+            "authenticated": jules_api_key,
+            "reachable": jules_api_key,
+            "usable": jules_api_key,
+            "status": "ready" if jules_api_key else "missing_key",
+            "detail": ("API key present" if jules_api_key else "JULES_API_KEY or GOOGLE_API_KEY not set"),
+            "config_source": (_env_source("JULES_API_KEY") if jules_api_key else "unavailable"),
+            "docs_url": "https://jules.google/docs/api/",
+            "setup_hint": "Set JULES_API_KEY environment variable",
+            "key_provider": "jules",
+        }
+    )
 
     # Codex CLI — check PATH and common npm-global locations
     codex_binary = shutil.which("codex") or (
         next(
             (
-                str(p) for p in [
+                str(p)
+                for p in [
                     Path.home() / ".npm-global" / "bin" / "codex",
                     Path.home() / ".local" / "bin" / "codex",
                     Path("/usr/local/bin/codex"),
@@ -231,58 +240,62 @@ async def get_credentials(request: Request) -> dict:
         )
     )
     openai_key = _env_present("OPENAI_API_KEY")
-    probes.append({
-        "id": "codex_cli",
-        "label": "Codex CLI",
-        "icon": "openai",
-        "installed": codex_binary is not None,
-        "authenticated": openai_key,
-        "reachable": codex_binary is not None and openai_key,
-        "usable": codex_binary is not None and openai_key,
-        "binary_found": codex_binary is not None,
-        "key_status": "set" if openai_key else "missing",
-        "status": (
-            "ready" if (codex_binary and openai_key)
-            else ("missing_key" if codex_binary else "not_installed")
-        ),
-        "detail": (
-            "Ready" if (codex_binary and openai_key)
-            else ("OPENAI_API_KEY not set" if codex_binary else "codex not on PATH or npm-global")
-        ),
-        "config_source": (
-            _env_source("OPENAI_API_KEY") if openai_key else ("system" if codex_binary else "unavailable")
-        ),
-        "docs_url": "https://github.com/openai/codex",
-        "setup_hint": "npm install -g @openai/codex then set OPENAI_API_KEY",
-        "key_provider": "codex",
-    })
+    probes.append(
+        {
+            "id": "codex_cli",
+            "label": "Codex CLI",
+            "icon": "openai",
+            "installed": codex_binary is not None,
+            "authenticated": openai_key,
+            "reachable": codex_binary is not None and openai_key,
+            "usable": codex_binary is not None and openai_key,
+            "binary_found": codex_binary is not None,
+            "key_status": "set" if openai_key else "missing",
+            "status": (
+                "ready" if (codex_binary and openai_key) else ("missing_key" if codex_binary else "not_installed")
+            ),
+            "detail": (
+                "Ready"
+                if (codex_binary and openai_key)
+                else ("OPENAI_API_KEY not set" if codex_binary else "codex not on PATH or npm-global")
+            ),
+            "config_source": (
+                _env_source("OPENAI_API_KEY") if openai_key else ("system" if codex_binary else "unavailable")
+            ),
+            "docs_url": "https://github.com/openai/codex",
+            "setup_hint": "npm install -g @openai/codex then set OPENAI_API_KEY",
+            "key_provider": "codex",
+        }
+    )
 
     # Claude Code CLI
     claude_binary = shutil.which("claude")
     anthropic_key = _env_present("ANTHROPIC_API_KEY")
-    probes.append({
-        "id": "claude_code_cli",
-        "label": "Claude Code CLI",
-        "icon": "anthropic",
-        "installed": claude_binary is not None,
-        "authenticated": anthropic_key,
-        "reachable": claude_binary is not None and anthropic_key,
-        "usable": claude_binary is not None and anthropic_key,
-        "status": (
-            "ready" if (claude_binary and anthropic_key)
-            else ("missing_key" if claude_binary else "not_installed")
-        ),
-        "detail": (
-            "Ready" if (claude_binary and anthropic_key)
-            else ("ANTHROPIC_API_KEY not set" if claude_binary else "claude not found on PATH")
-        ),
-        "config_source": (
-            _env_source("ANTHROPIC_API_KEY") if anthropic_key else ("system" if claude_binary else "unavailable")
-        ),
-        "docs_url": "https://docs.anthropic.com/claude-code",
-        "setup_hint": "npm install -g @anthropic-ai/claude-code then set ANTHROPIC_API_KEY",
-        "key_provider": "claude",
-    })
+    probes.append(
+        {
+            "id": "claude_code_cli",
+            "label": "Claude Code CLI",
+            "icon": "anthropic",
+            "installed": claude_binary is not None,
+            "authenticated": anthropic_key,
+            "reachable": claude_binary is not None and anthropic_key,
+            "usable": claude_binary is not None and anthropic_key,
+            "status": (
+                "ready" if (claude_binary and anthropic_key) else ("missing_key" if claude_binary else "not_installed")
+            ),
+            "detail": (
+                "Ready"
+                if (claude_binary and anthropic_key)
+                else ("ANTHROPIC_API_KEY not set" if claude_binary else "claude not found on PATH")
+            ),
+            "config_source": (
+                _env_source("ANTHROPIC_API_KEY") if anthropic_key else ("system" if claude_binary else "unavailable")
+            ),
+            "docs_url": "https://docs.anthropic.com/claude-code",
+            "setup_hint": "npm install -g @anthropic-ai/claude-code then set ANTHROPIC_API_KEY",
+            "key_provider": "claude",
+        }
+    )
 
     # Cline (VS Code extension) — check globalStorage path AND `code --list-extensions`
     _cline_storage = Path.home() / ".config" / "Code" / "User" / "globalStorage" / "saoudrizwan.claude-dev"
@@ -293,79 +306,90 @@ async def get_credentials(request: Request) -> dict:
         try:
             _ext_result = subprocess.run(
                 ["code", "--list-extensions"],
-                capture_output=True, text=True, timeout=8,
+                capture_output=True,
+                text=True,
+                timeout=8,
             )
             _cline_by_ext = "saoudrizwan.claude-dev" in _ext_result.stdout
         except Exception:
             pass
     cline_installed = _cline_by_path or _cline_by_ext
     _cline_detail = (
-        "VS Code extension installed (globalStorage)" if _cline_by_path
-        else ("VS Code extension installed (code --list-extensions)" if _cline_by_ext
-              else ("VS Code found but Cline not installed" if _vscode_binary
-                    else "VS Code not found"))
+        "VS Code extension installed (globalStorage)"
+        if _cline_by_path
+        else (
+            "VS Code extension installed (code --list-extensions)"
+            if _cline_by_ext
+            else ("VS Code found but Cline not installed" if _vscode_binary else "VS Code not found")
+        )
     )
-    probes.append({
-        "id": "cline",
-        "label": "Cline (VS Code)",
-        "icon": "vscode",
-        "installed": cline_installed,
-        "vscode_found": _vscode_binary is not None,
-        "authenticated": cline_installed and bool(anthropic_key),
-        "reachable": cline_installed,
-        "usable": cline_installed,
-        "status": "ready" if cline_installed else ("not_installed" if not _vscode_binary else "not_installed"),
-        "detail": _cline_detail,
-        "config_source": "vscode" if cline_installed else "unavailable",
-        "docs_url": "https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev",
-        "setup_hint": "Install Cline extension in VS Code: ext install saoudrizwan.claude-dev",
-    })
+    probes.append(
+        {
+            "id": "cline",
+            "label": "Cline (VS Code)",
+            "icon": "vscode",
+            "installed": cline_installed,
+            "vscode_found": _vscode_binary is not None,
+            "authenticated": cline_installed and bool(anthropic_key),
+            "reachable": cline_installed,
+            "usable": cline_installed,
+            "status": "ready" if cline_installed else ("not_installed" if not _vscode_binary else "not_installed"),
+            "detail": _cline_detail,
+            "config_source": "vscode" if cline_installed else "unavailable",
+            "docs_url": "https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev",
+            "setup_hint": "Install Cline extension in VS Code: ext install saoudrizwan.claude-dev",
+        }
+    )
 
     # Gemini CLI
     gemini_binary = shutil.which("gemini")
     google_key = _env_present("GOOGLE_API_KEY")
-    probes.append({
-        "id": "gemini_cli",
-        "label": "Gemini CLI",
-        "icon": "google",
-        "installed": gemini_binary is not None,
-        "authenticated": google_key,
-        "reachable": gemini_binary is not None and google_key,
-        "usable": gemini_binary is not None and google_key,
-        "binary_found": gemini_binary is not None,
-        "key_status": "set" if google_key else "missing",
-        "status": (
-            "ready" if (gemini_binary and google_key)
-            else ("missing_key" if gemini_binary else "not_installed")
-        ),
-        "detail": (
-            "Ready" if (gemini_binary and google_key)
-            else ("GOOGLE_API_KEY not set" if gemini_binary else "gemini not found on PATH")
-        ),
-        "config_source": (
-            _env_source("GOOGLE_API_KEY") if google_key else ("system" if gemini_binary else "unavailable")
-        ),
-        "docs_url": "https://aistudio.google.com/apikey",
-        "setup_hint": "npm install -g @google/gemini-cli then set GOOGLE_API_KEY",
-        "key_provider": "gemini",
-    })
+    probes.append(
+        {
+            "id": "gemini_cli",
+            "label": "Gemini CLI",
+            "icon": "google",
+            "installed": gemini_binary is not None,
+            "authenticated": google_key,
+            "reachable": gemini_binary is not None and google_key,
+            "usable": gemini_binary is not None and google_key,
+            "binary_found": gemini_binary is not None,
+            "key_status": "set" if google_key else "missing",
+            "status": (
+                "ready" if (gemini_binary and google_key) else ("missing_key" if gemini_binary else "not_installed")
+            ),
+            "detail": (
+                "Ready"
+                if (gemini_binary and google_key)
+                else ("GOOGLE_API_KEY not set" if gemini_binary else "gemini not found on PATH")
+            ),
+            "config_source": (
+                _env_source("GOOGLE_API_KEY") if google_key else ("system" if gemini_binary else "unavailable")
+            ),
+            "docs_url": "https://aistudio.google.com/apikey",
+            "setup_hint": "npm install -g @google/gemini-cli then set GOOGLE_API_KEY",
+            "key_provider": "gemini",
+        }
+    )
 
     # Ollama
     ollama_binary = shutil.which("ollama")
-    probes.append({
-        "id": "ollama_local",
-        "label": "Ollama (Local)",
-        "icon": "ollama",
-        "installed": ollama_binary is not None,
-        "authenticated": True,
-        "reachable": ollama_binary is not None,
-        "usable": ollama_binary is not None,
-        "status": "ready" if ollama_binary else "not_installed",
-        "detail": (f"Found at {ollama_binary}" if ollama_binary else "ollama not found on PATH"),
-        "config_source": "system" if ollama_binary else "unavailable",
-        "docs_url": "https://ollama.com/",
-        "setup_hint": "Install from ollama.com",
-    })
+    probes.append(
+        {
+            "id": "ollama_local",
+            "label": "Ollama (Local)",
+            "icon": "ollama",
+            "installed": ollama_binary is not None,
+            "authenticated": True,
+            "reachable": ollama_binary is not None,
+            "usable": ollama_binary is not None,
+            "status": "ready" if ollama_binary else "not_installed",
+            "detail": (f"Found at {ollama_binary}" if ollama_binary else "ollama not found on PATH"),
+            "config_source": "system" if ollama_binary else "unavailable",
+            "docs_url": "https://ollama.com/",
+            "setup_hint": "Install from ollama.com",
+        }
+    )
 
     ready = sum(1 for p in probes if p["usable"])
     return {
@@ -380,6 +404,7 @@ async def get_credentials(request: Request) -> dict:
 
 
 # Key management endpoints
+
 
 @router.post("/credentials/set-key")
 async def set_credential_key(body: SetKeyRequest, request: Request) -> dict:
@@ -419,7 +444,10 @@ async def set_credential_key(body: SetKeyRequest, request: Request) -> dict:
     if body.restart_maxwell:
         try:
             proc = await asyncio.create_subprocess_exec(
-                "sudo", "systemctl", "restart", "maxwell-daemon",
+                "sudo",
+                "systemctl",
+                "restart",
+                "maxwell-daemon",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -465,7 +493,10 @@ async def clear_credential_key(body: ClearKeyRequest, request: Request) -> dict:
     if body.restart_maxwell:
         try:
             proc = await asyncio.create_subprocess_exec(
-                "sudo", "systemctl", "restart", "maxwell-daemon",
+                "sudo",
+                "systemctl",
+                "restart",
+                "maxwell-daemon",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
