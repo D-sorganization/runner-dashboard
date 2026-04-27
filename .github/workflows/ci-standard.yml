@@ -141,7 +141,8 @@ jobs:
       - name: Verify No Placeholders
         run: |
           if grep -rE "TODO|FIXME" backend/ --include="*.py"; then
-            echo "::error::Placeholders found. Remove TODOs/FIXMEs or create tracked GitHub issues."
+            echo "::error::Placeholders found. Matches:"
+            grep -rE "TODO|FIXME" backend/ --include="*.py"
             exit 1
           fi
       - name: Security Audit (pip-audit)
