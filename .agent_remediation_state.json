@@ -1,16 +1,15 @@
 {
-  "pr_number": 112,
-  "branch": "fix/issue-6-config-contracts",
+  "pr_number": 181,
+  "branch": "fix/issue-161-extract-security",
   "repo": "D-sorganization/runner-dashboard",
-  "failure_job": "close-redundant",
-  "root_cause": "Missing JULES_APP_ID/JULES_APP_PRIVATE_KEY secrets cause actions/create-github-app-token@v1 to fail with 'Input required and not supplied: app-id'",
-  "fix_strategy": "Added credential guard step to all workflows using create-github-app-token@v1. When secrets are absent, the workflow skips gracefully instead of failing.",
+  "failure_job": "quality-gate",
+  "root_cause": "ruff linting failures: missing trailing newline in backend/security.py and unused imports with E402 in backend/server.py after extraction.",
+  "fix_strategy": "Add trailing newline to backend/security.py; trim unused imports and mark security import as noqa: E402 in backend/server.py.",
   "retry_count": 1,
   "max_retries": 3,
-  "last_attempt": "2026-04-25T18:59:00Z",
+  "last_attempt": "2026-04-27T00:52:02Z",
   "files_modified": [
-    ".github/workflows/Agent-Redundant-PR-Closer.yml",
-    ".github/workflows/Agent-Fleet-Dashboard.yml",
-    ".github/workflows/Agent-Lease-Reaper.yml"
+    "backend/security.py",
+    "backend/server.py"
   ]
 }
