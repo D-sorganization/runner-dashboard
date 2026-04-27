@@ -6778,17 +6778,19 @@ async def _fetch_hosted_runner_violations() -> list[dict[str, Any]]:
                         runner_name = job.get("runner_name") or ""
                         runner_group = job.get("runner_group_name") or ""
                         if HOSTED_RUNNER_PATTERNS.match(runner_name) or runner_group == "GitHub Actions":
-                            violations.append({
-                                "repo": repo_name,
-                                "workflow": run.get("name", ""),
-                                "run_id": run["id"],
-                                "job_name": job.get("name", ""),
-                                "runner_name": runner_name,
-                                "runner_group": runner_group,
-                                "run_url": run.get("html_url", ""),
-                                "started_at": job.get("started_at", ""),
-                                "conclusion": job.get("conclusion", ""),
-                            })
+                            violations.append(
+                                {
+                                    "repo": repo_name,
+                                    "workflow": run.get("name", ""),
+                                    "run_id": run["id"],
+                                    "job_name": job.get("name", ""),
+                                    "runner_name": runner_name,
+                                    "runner_group": runner_group,
+                                    "run_url": run.get("html_url", ""),
+                                    "started_at": job.get("started_at", ""),
+                                    "conclusion": job.get("conclusion", ""),
+                                }
+                            )
             except Exception:  # noqa: BLE001
                 continue
 
