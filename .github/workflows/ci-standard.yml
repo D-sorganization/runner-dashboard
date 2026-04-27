@@ -207,5 +207,9 @@ jobs:
             pytest tests/ --tb=short -q
           else
             echo "No tests directory found — skipping"
+<<<<<<< Updated upstream
             exit 0
+=======
+            exit 1
+>>>>>>> Stashed changes
           fi
