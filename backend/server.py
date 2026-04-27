@@ -75,8 +75,8 @@ from machine_registry import (  # noqa: E402
 )
 from report_files import parse_report_metrics, sanitize_report_date  # noqa: E402
 from routers import credentials as _credentials_router  # noqa: E402
-from routers import maxwell as maxwell_router
 from routers import dispatch as _dispatch_router  # noqa: E402
+from routers import maxwell as maxwell_router
 from security import (  # noqa: E402
     check_dispatch_rate,
     safe_subprocess_env,
