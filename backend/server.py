@@ -5440,7 +5440,7 @@ DASHBOARD_FAQ: dict[str, str] = {
     ),
     "provider": (
         "Providers are AI agents: Jules API (cloud, Google), Codex CLI (OpenAI),"
-        " Claude Code CLI (Anthropic), Ollama (local)."
+        " Claude Code CLI (Anthropic), Gemini CLI (Google), Ollama."
     ),
     "loop guard": (
         "Loop guard prevents infinite retry loops. When the same failure repeats more than"
