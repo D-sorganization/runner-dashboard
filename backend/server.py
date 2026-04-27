@@ -5527,7 +5527,7 @@ async def maxwell_control(
     if not approved_by:
         raise HTTPException(status_code=422, detail="approved_by required for privileged action")
 
-    code, out, stderr = await run_cmd(["systemctl", action, "maxwell-daemon"], timeout=15, cwd=REPO_ROOT)
+    code, out, stderr = await run_cmd(["sudo", "systemctl", action, "maxwell-daemon"], timeout=15, cwd=REPO_ROOT)
     log.info(
         "maxwell_control: action=%s approved_by=%s exit_code=%d",
         sanitize_log_value(action),

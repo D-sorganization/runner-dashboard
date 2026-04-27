@@ -137,6 +137,16 @@ identity_manager = IdentityManager()
 auth_header = APIKeyHeader(name="Authorization", auto_error=False)
 auth_cookie = APIKeyCookie(name="dashboard_session", auto_error=False)
 
+# Synthetic admin principal granted automatically to loopback (127.0.0.1) requests.
+# This allows the local browser to use all authenticated endpoints without manual
+# principal setup on a single-machine deployment.
+_LOOPBACK_ADMIN = Principal(
+    id="__loopback__",
+    type="human",
+    name="Local Admin (loopback)",
+    roles=["admin"],
+)
+
 
 def require_principal(
     request: Request,
@@ -155,8 +165,16 @@ def require_principal(
         if principal_id and principal_id in identity_manager.principals:
             prin = identity_manager.principals[principal_id]
 
+    # 3. Loopback bypass — requests from 127.0.0.1 or ::1 are automatically
+    #    granted admin access.  This is appropriate for the local single-user
+    #    dashboard that is not exposed beyond the loopback interface.
     if not prin:
-        # Fail closed
+        client_host = getattr(request.client, "host", "") if request.client else ""
+        if client_host in ("127.0.0.1", "::1"):
+            prin = _LOOPBACK_ADMIN
+
+    if not prin:
+        # Fail closed for non-loopback requests with no credentials
         raise HTTPException(status_code=401, detail="Authentication required")
 
     # Set default on_behalf_of
