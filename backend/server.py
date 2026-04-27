@@ -47,6 +47,7 @@ from identity import Principal, require_principal, require_scope  # noqa: B008
 from pydantic import BaseModel, Field
 from routers import admin as admin_router
 from routers import auth as auth_router
+from routers import maxwell as maxwell_router
 from starlette.middleware.sessions import SessionMiddleware
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -360,6 +361,7 @@ app.include_router(auth_router.router)
 import agent_launcher_router as _agent_launcher_router  # noqa: E402
 
 app.include_router(_agent_launcher_router.router)
+app.include_router(maxwell_router.router)
 
 app.add_middleware(
     SessionMiddleware,
