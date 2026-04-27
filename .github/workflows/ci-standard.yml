@@ -57,7 +57,12 @@ jobs:
           echo "All actions pinned."
       - name: Bootstrap environment
         run: |
-          python -m venv "$RUNNER_TEMP/health-venv"
+          for py in python3.11 python3.12 python3.10 python3 python; do
+            if command -v "$py" &>/dev/null; then
+              "$py" -m venv "$RUNNER_TEMP/health-venv"
+              break
+            fi
+          done
           source "$RUNNER_TEMP/health-venv/bin/activate"
           pip install --upgrade pip
           pip install pytest==8.1.1
