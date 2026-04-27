@@ -8253,7 +8253,7 @@
           ["jules_api", "Jules API"],
           ["codex_cli", "Codex CLI"],
           ["claude_code_cli", "Claude Code CLI"],
-          ["ollama_local", "Ollama (local)"],
+          ["ollama", "Ollama"],
           ["cline", "Cline"],
         ];
 
@@ -8996,7 +8996,7 @@
             });
         }
 
-        var providerOptions = ['jules_api', 'codex_cli', 'claude_code_cli', 'ollama_local', 'cline'];
+        var providerOptions = ['jules_api', 'codex_cli', 'claude_code_cli', 'ollama', 'cline'];
 
         return h('div', { style: { padding: '0 0 16px 0' } },
           // Filter bar
@@ -9351,7 +9351,7 @@
           "jules_api",
           "codex_cli",
           "claude_code_cli",
-          "ollama_local",
+          "ollama",
           "cline",
         ];
         var providerEntries = Object.keys(providers).length
@@ -13434,14 +13434,16 @@
 
         var PROVIDERS = [
           { value: "claude_code_cli", label: "Claude Code" },
+          { value: "gemini_cli", label: "Gemini CLI" },
           { value: "codex_cli", label: "Codex CLI" },
           { value: "jules_api", label: "Jules API" },
+          { value: "ollama", label: "Ollama" },
         ];
         var MODELS = [
-          { value: "claude-sonnet-4-6", label: "Sonnet 4.6 (recommended)" },
-          { value: "claude-opus-4-6", label: "Opus 4.6 (premium)" },
-          { value: "claude-haiku-4-5-20251001", label: "Haiku 4.5 (fast)" },
-          { value: "claude-3-5-sonnet-20241022", label: "Sonnet 3.5" },
+          { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
+          { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash (fast)" },
+          { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro (recommended)" },
+          { value: "gemini-2.0-flash-exp", label: "Gemini 2.0 Flash (exp)" },
         ];
 
         function fetchStatus() {
@@ -13485,8 +13487,8 @@
           setEditForm({
             enabled: a.enabled !== false,
             interval_seconds: a.interval_seconds || 3600,
-            provider: a.provider || "claude_code_cli",
-            model: a.model || "claude-sonnet-4-6",
+            provider: a.provider || "gemini_cli",
+            model: a.model || "gemini-1.5-flash",
           });
           setSaveStatus(null);
         }
@@ -13602,8 +13604,8 @@
                       !isEditing && h("div", { style: { fontSize: 12, color: "var(--text-secondary)", display: "grid", gridTemplateColumns: "auto 1fr", gap: "3px 12px", marginBottom: 10 } },
                         h("span", { style: { color: "var(--text-muted)" } }, "Provider"),
                         h("span", null, cfgA.provider || "—"),
-                        cfgA.provider === "claude_code_cli" || !cfgA.provider ? h("span", { style: { color: "var(--text-muted)" } }, "Model") : null,
-                        cfgA.provider === "claude_code_cli" || !cfgA.provider ? h("span", null, cfgA.model || "default") : null,
+                        (cfgA.provider === "claude_code_cli" || cfgA.provider === "gemini_cli" || !cfgA.provider) ? h("span", { style: { color: "var(--text-muted)" } }, "Model") : null,
+                        (cfgA.provider === "claude_code_cli" || cfgA.provider === "gemini_cli" || !cfgA.provider) ? h("span", null, cfgA.model || "default") : null,
                         h("span", { style: { color: "var(--text-muted)" } }, "Interval"),
                         h("span", null, a.interval_seconds < 3600
                           ? Math.round(a.interval_seconds / 60) + " min"
@@ -13627,8 +13629,8 @@
                           h("select", { className: "form-input", value: editForm.provider || "claude_code_cli", onChange: function(e) { setEditForm(function(p) { return Object.assign({}, p, { provider: e.target.value }); }); } },
                             PROVIDERS.map(function(p) { return h("option", { key: p.value, value: p.value }, p.label); }),
                           ),
-                          (editForm.provider === "claude_code_cli" || !editForm.provider) ? h("label", { style: { color: "var(--text-muted)" } }, "Model") : null,
-                          (editForm.provider === "claude_code_cli" || !editForm.provider) ? h("select", { className: "form-input", value: editForm.model || "claude-sonnet-4-6", onChange: function(e) { setEditForm(function(p) { return Object.assign({}, p, { model: e.target.value }); }); } },
+                          (editForm.provider === "claude_code_cli" || editForm.provider === "gemini_cli" || !editForm.provider) ? h("label", { style: { color: "var(--text-muted)" } }, "Model") : null,
+                          (editForm.provider === "claude_code_cli" || editForm.provider === "gemini_cli" || !editForm.provider) ? h("select", { className: "form-input", value: editForm.model || (editForm.provider === "gemini_cli" ? "gemini-1.5-flash" : "claude-3-5-sonnet-20241022"), onChange: function(e) { setEditForm(function(p) { return Object.assign({}, p, { model: e.target.value }); }); } },
                             MODELS.map(function(m) { return h("option", { key: m.value, value: m.value }, m.label); }),
                           ) : null,
                           h("label", { style: { color: "var(--text-muted)" } }, "Interval (s)"),
