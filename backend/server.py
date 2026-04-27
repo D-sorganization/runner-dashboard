@@ -498,7 +498,7 @@ def _disk_pressure_snapshot(
 ) -> dict:
     """Return dashboard-safe disk pressure state for autoscaling and UI alerts."""
     status = "healthy"
-    reasons = []
+    reasons: list[str] = []
     return {
         "status": status,
         "path": path,
