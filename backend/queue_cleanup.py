@@ -30,7 +30,7 @@ from datetime import timedelta
 
 log = logging.getLogger(__name__)
 
-UTC = _dt.UTC
+UTC = getattr(_dt, "UTC", _dt.timezone.utc)  # noqa: UP017
 DEFAULT_MIN_AGE_MINUTES: int = 60
 _MAX_REPOS: int = 200
 _MAX_RUNS_PER_REPO: int = 100

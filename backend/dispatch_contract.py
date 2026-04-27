@@ -55,7 +55,7 @@ def _load_signing_secret() -> str:
     return secret
 
 
-class _StrEnum(enum.StrEnum):
+class _StrEnum(str, enum.Enum):
     """Python 3.10 compatible StrEnum."""
 
     pass
