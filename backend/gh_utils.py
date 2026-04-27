@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from datetime import UTC, datetime
 
@@ -10,6 +11,8 @@ from cache_utils import cache_get, cache_set
 from dashboard_config import DEPLOYMENT_FILE, HOSTNAME, VERSION
 from fastapi import HTTPException
 from system_utils import BOOT_TIME, get_deployment_info, run_cmd
+
+log = logging.getLogger("dashboard.gh_utils")
 
 
 async def gh_api(endpoint: str) -> dict:
@@ -48,7 +51,8 @@ async def get_gh_health_summary(org: str) -> dict:
             cache_set("runners", data)
         gh_ok = True
         runner_count = len(data.get("runners", []))
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        log.warning("GitHub health check failed: %s", exc)
         gh_ok = False
         runner_count = 0
 
