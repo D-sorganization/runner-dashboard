@@ -145,7 +145,6 @@ async def _fleet_control_local(action: str) -> dict:
     return {"results": results, "hostname": HOSTNAME}
 
 
-
 @router.get("/api/runners")
 async def get_runners(request: Request):
     """Get all org runners with their status."""
@@ -271,7 +270,6 @@ async def fleet_control(
     for name, res in node_results:
         combined[name] = res
     return combined
-
 
 
 @router.get("/api/fleet/status")

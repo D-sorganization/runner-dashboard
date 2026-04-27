@@ -5201,7 +5201,9 @@ async def diagnose_queue() -> dict:
             "runners were busy when the dispatcher ran."
         )
     elif not sampled_jobs:
-        bottleneck = "Could not sample job details â€” runs may have just started or GitHub API rate limit may be close."
+        bottleneck = (
+            "Could not sample job details â€” runs may have just started or GitHub API rate limit may be close."
+        )
     else:
         bottleneck = "Unknown â€” job labels did not match known runner targets."
 

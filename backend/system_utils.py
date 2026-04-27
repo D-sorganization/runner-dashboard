@@ -24,6 +24,7 @@ from dashboard_config import (
     RUNNER_BASE_DIR,
 )
 from security import safe_subprocess_env
+
 log = logging.getLogger("dashboard.system")
 
 # Global state for CPU history
