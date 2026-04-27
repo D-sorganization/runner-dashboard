@@ -76,14 +76,11 @@ from machine_registry import (  # noqa: E402
 from report_files import parse_report_metrics, sanitize_report_date  # noqa: E402
 from routers import credentials as _credentials_router  # noqa: E402
 from routers import dispatch as _dispatch_router  # noqa: E402
-from security import (
+from security import (  # noqa: E402
     check_dispatch_rate,
     safe_subprocess_env,
     sanitize_log_value,
     validate_fleet_node_url,
-    validate_health_command,
-    validate_local_path,
-    validate_local_url,
 )
 
 # datetime.UTC added in Python 3.11; fall back to timezone.utc on older runtimes.

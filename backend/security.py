@@ -113,3 +113,4 @@ def check_dispatch_rate(client_ip: str) -> None:
         raise HTTPException(status_code=429, detail="Rate limit exceeded for agent dispatch")
     window.append(now)
     _dispatch_rate[client_ip] = window
+
