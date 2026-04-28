@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import logging
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+UTC = timezone.utc
 
 from cache_utils import cache_get, cache_set
 from dashboard_config import DEPLOYMENT_FILE, HOSTNAME, VERSION
