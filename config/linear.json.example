@@ -1,0 +1,58 @@
+{
+  "$schema": "./linear.schema.json",
+  "workspaces": [
+    {
+      "id": "personal",
+      "auth": { "kind": "api_key", "env": "LINEAR_API_KEY" },
+      "teams": ["*"],
+      "mapping": "default",
+      "trigger_label": "dispatch",
+      "webhook_secret_env": "LINEAR_WEBHOOK_SECRET",
+      "default_repository": "D-sorganization/runner-dashboard",
+      "prefer_source": "linear"
+    }
+  ],
+  "mappings": {
+    "default": {
+      "priority": {
+        "0": [],
+        "1": ["complexity:trivial", "quick-win"],
+        "2": ["complexity:routine"],
+        "3": ["complexity:routine"],
+        "4": ["complexity:complex"]
+      },
+      "estimate": {
+        "1": ["effort:xs"],
+        "2": ["effort:s"],
+        "3": ["effort:m"],
+        "5": ["effort:l"],
+        "8": ["effort:xl"]
+      },
+      "state_type": {
+        "triage": ["judgement:design"],
+        "backlog": [],
+        "unstarted": [],
+        "started": [],
+        "completed": [],
+        "canceled": []
+      },
+      "label_aliases": {
+        "Bug": ["type:bug"],
+        "Feature": ["type:task"],
+        "Improvement": ["type:task"],
+        "Documentation": ["type:docs"],
+        "Chore": ["type:chore"],
+        "Security": ["type:security"]
+      },
+      "label_passthrough_prefixes": [
+        "type:",
+        "domain:",
+        "wave:",
+        "complexity:",
+        "effort:",
+        "judgement:"
+      ],
+      "default_judgement": "objective"
+    }
+  }
+}
