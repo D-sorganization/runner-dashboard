@@ -1,8 +1,8 @@
 # SPEC.md — D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.0
+**Spec Version:** 2.5.1
 **Application Version:** 4.1.0 (see `VERSION`)
-**Last Updated:** 2026-04-27
+**Last Updated:** 2026-04-28
 **Status:** Active
 
 ---
@@ -654,6 +654,16 @@ Run the full setup script on the target machine:
 bash deploy/setup.sh --runners 4 --machine-name ControlTower --role hub
 ```
 
+Fleet node examples:
+
+```bash
+bash deploy/setup.sh --runners 1 --machine-name Brick-Windows
+bash deploy/setup.sh --runners 8 --machine-name OG-Laptop
+bash deploy/setup.sh --runners 8 --machine-name DeskComputer --runner-aliases desktop
+bash deploy/setup.sh --runners 8 --machine-name ControlTower --role hub \
+  --fleet-nodes "Brick-Windows:http://100.64.12.5:8321,OG-Laptop:http://100.64.12.7:8321,DeskComputer:http://100.64.12.9:8321"
+```
+
 `setup.sh` performs:
 1. Installs Python dependencies into a system venv.
 2. Copies the systemd unit file (`runner-dashboard.service`) to
@@ -780,6 +790,11 @@ The project test suite lives in `tests/`. Run all tests with:
 ```
 pytest tests/ -q
 ```
+
+Pytest is configured with `pythonpath = ["backend"]` in `pyproject.toml`.
+`tests/conftest.py` also inserts the resolved backend directory into
+`sys.path` so local and CI runs import backend modules consistently from any
+supported working directory.
 
 Test coverage areas:
 
