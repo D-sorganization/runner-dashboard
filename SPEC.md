@@ -786,6 +786,9 @@ mono-repo as an independent repository.
 - Fleet-standard CI/CD workflows (ci-standard, ci-spec-check, agent workflows).
 - Branch protection with required `quality-gate` and `Verify SPEC.md freshness`
   status checks.
+- The `ci-health-check` bootstrap gate must allow enough time for a fresh
+  runner to create a Python virtual environment, install `requirements.txt`,
+  and collect tests before downstream quality, security, and test jobs run.
 - Multi-agent coordination via lease protocol.
 
 Prior versions tracked in the mono-repo `Repository_Management`. Application
