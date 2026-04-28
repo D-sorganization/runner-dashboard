@@ -105,6 +105,7 @@ surface task action details without exposing secrets.
 | `config_schema.py` | Config validation and atomic JSON writes |
 | `pr_inventory.py` | Fetch and normalise open PRs across repos (issue #80) |
 | `issue_inventory.py` | Fetch and normalise open issues with taxonomy (issue #81) |
+| `linear_inventory.py` | Fetch and normalise Linear issues into the canonical issue inventory shape |
 
 **Bounded domain routers (`backend/routers/`):**
 
@@ -1106,6 +1107,43 @@ An issue is pickable when ALL of the following hold:
 - Per-repo errors appear in `errors[]`; a failing repo does not abort the
   whole request.
 - Responses are cached 30 seconds in-process.
+
+### 12.2 Linear Inventory Module
+
+Implemented in `backend/linear_inventory.py`. This is a backend inventory data
+layer only; no `/api/linear/*` route, unified GitHub/Linear collapse layer, or
+Linear webhook handling is exposed by this module.
+
+`fetch_workspace_issues(workspace, mapping, client, state="open",
+team_keys=None, limit=500)` fetches one configured Linear workspace through
+`LinearClient.fetch_issues()`, applies `linear_taxonomy_map.apply_mapping()`,
+and normalises each Linear issue into the same canonical shape returned by
+`issue_inventory.py`, with additive `linear` metadata and `sources:
+["linear"]`. Errors are returned as `(items=[], error="...")` instead of being
+raised so callers can aggregate across workspaces.
+
+`fetch_all_issues(config, client, state="open", pickable_only=False,
+complexity=None, effort=None, judgement=None, limit=500)` gathers all
+configured workspaces concurrently and returns `{"items": [...], "errors":
+[...]}`. Filtering semantics mirror `GET /api/issues` for `pickable_only`,
+`complexity`, `effort`, `judgement`, and `limit`; results are cached for the
+same 30 second in-process TTL as GitHub issue inventory.
+
+Linear normalisation rules:
+
+- Linear state types `triage`, `backlog`, `unstarted`, and `started` map to
+  canonical `state: "open"`; `completed` and `canceled` map to `"closed"`.
+- `age_hours` uses the shared issue inventory age helper and Linear
+  `createdAt`.
+- Pickability uses the shared `issue_inventory.is_pickable()` rules. Linear
+  items have no native `agent_claim` or `claim_expires_at`.
+- Taxonomy comes from the Linear mapping result, excluding mapping-only
+  `derived_labels` and `source_signals` keys from the canonical `taxonomy`
+  object. The derived labels remain on the canonical `labels` field.
+- GitHub issue URLs in `attachments.nodes[].url` are extracted into
+  `linear.github_attachments`. When present, the first attachment also fills
+  canonical `repository` and `number` for compatibility with existing issue
+  consumers; Linear-only items use `repository: ""` and `number: null`.
 
 ---
 
