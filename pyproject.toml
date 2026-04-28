@@ -2,7 +2,7 @@
 name = "runner-dashboard"
 version = "0.1.0"
 description = "Runner dashboard for fleet management"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "fastapi==0.130.0",
     "pydantic==2.13.3",
@@ -12,6 +12,17 @@ dependencies = [
     "PyYAML==6.0.2",
     "anthropic==0.49.0",
     "requests==2.33.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.9.0",
+    "mypy>=1.15.0",
+    "pip-audit>=2.10.0",
+    "types-PyYAML",
+    "types-requests",
 ]
 
 [project.optional-dependencies]
