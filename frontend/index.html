@@ -1808,11 +1808,16 @@
       }
 
       function parseRunnerName(name) {
-        var match = String(name || "").match(/^d-sorg-local-(.+)-(\d+)$/);
-        return {
-          machine: match ? canonicalMachineName(match[1]) : "Unknown",
-          number: match ? Number(match[2]) : 999999,
-        };
+        var s = String(name || "");
+        var match = s.match(/^d-sorg-local-(.+)-(\d+)$/);
+        if (match) {
+          return { machine: canonicalMachineName(match[1]), number: Number(match[2]) };
+        }
+        var matlabMatch = s.match(/^(.+)-MATLAB$/i);
+        if (matlabMatch) {
+          return { machine: canonicalMachineName(matlabMatch[1]), number: 9998 };
+        }
+        return { machine: "Unknown", number: 999999 };
       }
 
       function runnerSort(a, b) {
@@ -2479,9 +2484,9 @@
                         ? "CPU " +
                             (cpu.percent_1m_avg || cpu.percent || 0) +
                             "% · RAM " +
-                            (mem.percent || 0) +
+                            (mem.total_gb ? Math.round((1 - mem.available_gb / mem.total_gb) * 100) : Math.round(mem.percent || 0)) +
                             "% · Disk " +
-                            (disk.percent || 0) +
+                            ((disk.windows_host || disk).percent || 0) +
                             "%"
                         : "No telemetry",
                     ),
@@ -2668,7 +2673,7 @@
                       "CPU " +
                         Math.round(cpu.percent_1m_avg || cpu.percent || 0) +
                         "% | RAM " +
-                        Math.round(mem.percent || 0) +
+                        (mem.total_gb ? Math.round((1 - mem.available_gb / mem.total_gb) * 100) : Math.round(mem.percent || 0)) +
                         "% | " +
                         (node.dashboard_reachable === false
                           ? "runners only"
@@ -5103,11 +5108,39 @@
         return localAppHasUpdateAvailable(a) || localAppUnhealthy(a);
       }
 
+      class LocalAppsErrorBoundary extends React.Component {
+        constructor(props) {
+          super(props);
+          this.state = { hasError: false, error: null };
+          this.handleRetry = this.handleRetry.bind(this);
+        }
+        static getDerivedStateFromError(error) {
+          return { hasError: true, error: error };
+        }
+        componentDidCatch(error, info) {
+          console.error("[LocalAppsTab] render error:", error, info);
+        }
+        handleRetry() {
+          this.setState({ hasError: false, error: null });
+        }
+        render() {
+          if (this.state.hasError) {
+            return h("div", { style: { padding: 24, color: "var(--text-primary)" } },
+              h("div", { style: { marginBottom: 12, color: "var(--accent-red)", fontWeight: 600 } }, "Local Tools failed to render"),
+              h("code", { style: { display: "block", fontSize: 12, color: "var(--accent-red)", marginBottom: 12, whiteSpace: "pre-wrap" } },
+                String(this.state.error)),
+              h("button", { className: "btn", onClick: this.handleRetry }, "Retry"),
+            );
+          }
+          return this.props.children;
+        }
+      }
+
       function LocalAppsTab(p) {
         var data = p.data || {};
         var loading = p.loading;
         var onRefresh = p.onRefresh;
-        var apps = data.tools || data.apps || [];
+        var apps = Array.isArray(data.tools) ? data.tools : Array.isArray(data.apps) ? data.apps : [];
 
         function driftBadge(app) {
           var d = app.drift || {};
@@ -6589,20 +6622,18 @@
                   h(
                     "span",
                     { className: "metric-value" },
-                    mem.used_gb +
-                      " / " +
-                      mem.total_gb +
-                      " GB (" +
-                      mem.percent +
-                      "%)",
+                    (function() {
+                      var usedPct = mem.total_gb ? Math.round((1 - mem.available_gb / mem.total_gb) * 100) : Math.round(mem.percent || 0);
+                      return mem.used_gb + " / " + mem.total_gb + " GB (" + usedPct + "%)";
+                    })(),
                   ),
                 ),
                 h(
                   "div",
                   { className: "progress-bar" },
                   h("div", {
-                    className: "progress-fill " + pColor(mem.percent),
-                    style: { width: mem.percent + "%" },
+                    className: "progress-fill " + pColor(mem.total_gb ? Math.round((1 - mem.available_gb / mem.total_gb) * 100) : Math.round(mem.percent || 0)),
+                    style: { width: (mem.total_gb ? Math.round((1 - mem.available_gb / mem.total_gb) * 100) : Math.round(mem.percent || 0)) + "%" },
                   }),
                 ),
               )
@@ -6635,10 +6666,39 @@
             ? h(
                 "div",
                 { style: { marginBottom: 12 } },
+                disk.windows_host
+                  ? h(
+                      "div",
+                      { style: { marginBottom: 8 } },
+                      h(
+                        "div",
+                        { className: "metric-row" },
+                        h("span", { className: "metric-label" }, "Disk (Windows C:)"),
+                        h(
+                          "span",
+                          { className: "metric-value" },
+                          disk.windows_host.used_gb +
+                            " / " +
+                            disk.windows_host.total_gb +
+                            " GB (" +
+                            disk.windows_host.percent +
+                            "%)",
+                        ),
+                      ),
+                      h(
+                        "div",
+                        { className: "progress-bar" },
+                        h("div", {
+                          className: "progress-fill " + pColor(disk.windows_host.percent),
+                          style: { width: disk.windows_host.percent + "%" },
+                        }),
+                      ),
+                    )
+                  : null,
                 h(
                   "div",
                   { className: "metric-row" },
-                  h("span", { className: "metric-label" }, "Disk"),
+                  h("span", { className: "metric-label" }, disk.windows_host ? "Disk (WSL)" : "Disk"),
                   h(
                     "span",
                     { className: "metric-value" },
@@ -6650,14 +6710,16 @@
                       "%)",
                   ),
                 ),
-                h(
-                  "div",
-                  { className: "progress-bar" },
-                  h("div", {
-                    className: "progress-fill " + pColor(disk.percent),
-                    style: { width: disk.percent + "%" },
-                  }),
-                ),
+                !disk.windows_host
+                  ? h(
+                      "div",
+                      { className: "progress-bar" },
+                      h("div", {
+                        className: "progress-fill " + pColor(disk.percent),
+                        style: { width: disk.percent + "%" },
+                      }),
+                    )
+                  : null,
                 diskPressure.status && diskPressure.status !== "healthy"
                   ? h(
                       "div",
@@ -8074,7 +8136,8 @@
           ["jules_api", "Jules API"],
           ["codex_cli", "Codex CLI"],
           ["claude_code_cli", "Claude Code CLI"],
-          ["ollama_local", "Ollama (local)"],
+          ["gemini_cli", "Gemini CLI"],
+          ["ollama", "Ollama"],
           ["cline", "Cline"],
         ];
 
@@ -8817,7 +8880,7 @@
             });
         }
 
-        var providerOptions = ['jules_api', 'codex_cli', 'claude_code_cli', 'ollama_local', 'cline'];
+        var providerOptions = ['jules_api', 'codex_cli', 'claude_code_cli', 'gemini_cli', 'ollama', 'cline'];
 
         return h('div', { style: { padding: '0 0 16px 0' } },
           // Filter bar
@@ -9139,6 +9202,27 @@
       }
 
       // ════════════════════════ MAIN APP ════════════════════════
+      var _PROVIDER_MODELS = {
+        claude_code_cli: [
+          { value: "claude-sonnet-4-6", label: "Sonnet 4.6" },
+          { value: "claude-opus-4-6", label: "Opus 4.6" },
+          { value: "claude-haiku-4-5-20251001", label: "Haiku 4.5" },
+        ],
+        codex_cli: [
+          { value: "o4-mini", label: "o4-mini" },
+          { value: "o3", label: "o3" },
+          { value: "gpt-4o", label: "GPT-4o" },
+        ],
+        gemini_cli: [
+          { value: "gemini-2.5-flash", label: "2.5 Flash" },
+          { value: "gemini-2.5-pro", label: "2.5 Pro" },
+          { value: "gemini-2.0-flash", label: "2.0 Flash" },
+        ],
+        jules_api: [
+          { value: "gemini-2.5-pro", label: "2.5 Pro" },
+        ],
+      };
+
       function RemediationTab(p) {
         var config = p.config || {};
         var workflows = p.workflows || {};
@@ -9149,6 +9233,8 @@
         var setSelectedRunId = p.setSelectedRunId;
         var provider = p.provider;
         var setProvider = p.setProvider;
+        var model = p.model || "";
+        var setModel = p.setModel || function() {};
         var plan = p.plan;
         var dispatchState = p.dispatchState;
         var onRefresh = p.onRefresh;
@@ -9172,7 +9258,8 @@
           "jules_api",
           "codex_cli",
           "claude_code_cli",
-          "ollama_local",
+          "gemini_cli",
+          "ollama",
           "cline",
         ];
         var providerEntries = Object.keys(providers).length
@@ -9499,6 +9586,33 @@
                           );
                         }),
                       ),
+                      (function() {
+                        var currentProvider = isSelected ? provider : (policy.default_provider || "jules_api");
+                        var modelOpts = _PROVIDER_MODELS[currentProvider];
+                        if (!modelOpts || !isSelected) return null;
+                        return h(
+                          "select",
+                          {
+                            value: model || (modelOpts[0] && modelOpts[0].value) || "",
+                            onClick: function (e) { e.stopPropagation(); },
+                            onChange: function (e) {
+                              e.stopPropagation();
+                              setModel(e.target.value);
+                            },
+                            style: {
+                              background: "var(--bg-primary)",
+                              color: "var(--text-muted)",
+                              border: "1px solid var(--border)",
+                              borderRadius: 6,
+                              padding: "4px 8px",
+                              fontSize: 11,
+                            },
+                          },
+                          modelOpts.map(function (m) {
+                            return h("option", { key: m.value, value: m.value }, m.label);
+                          }),
+                        );
+                      })(),
                       h(
                         "button",
                         {
@@ -14986,6 +15100,8 @@
         );
       }
 
+      var PROVIDERS_WITH_MODEL = ["claude_code_cli", "codex_cli", "gemini_cli", "jules_api"];
+
       // ════════════════════════ QUICK DISPATCH POPOVER ════════════════════════
       function QuickDispatchPopover() {
         var os = React.useState(false);
@@ -15000,7 +15116,7 @@
         var fms = React.useState({
           repository: "",
           provider: "claude_code_cli",
-          model: "claude-opus-4-7",
+          model: "claude-sonnet-4-6",
           ref: "main",
           prompt: "",
         });
@@ -15058,7 +15174,7 @@
                 setProviderList(providers);
               })
               .catch(function () {
-                setProviderList(["claude_code_cli", "jules_api", "codex_cli"]);
+                setProviderList(["claude_code_cli", "jules_api", "codex_cli", "gemini_cli"]);
               });
           }
         }, [open]);
@@ -15070,6 +15186,16 @@
         }
 
         function handleFormChange(field, value) {
+          if (field === "provider") {
+            var modelList = _PROVIDER_MODELS[value] || [];
+            setForm(function (prev) {
+              return Object.assign({}, prev, {
+                provider: value,
+                model: modelList.length ? modelList[0].value : prev.model,
+              });
+            });
+            return;
+          }
           setForm(function (prev) { return Object.assign({}, prev, { [field]: value }); });
         }
 
@@ -15227,9 +15353,17 @@
                       onChange: function (e) { handleFormChange("provider", e.target.value); },
                     },
                     providerList.length === 0
-                      ? h("option", { value: "claude_code_cli" }, "claude_code_cli")
+                      ? h("option", { value: "claude_code_cli" }, "Claude Code CLI")
                       : providerList.map(function (pid) {
-                          return h("option", { key: pid, value: pid }, pid);
+                          var labels = {
+                            claude_code_cli: "Claude Code CLI",
+                            codex_cli: "Codex CLI",
+                            gemini_cli: "Gemini CLI",
+                            jules_api: "Jules API",
+                            ollama: "Ollama",
+                            cline: "Cline",
+                          };
+                          return h("option", { key: pid, value: pid }, labels[pid] || pid);
                         }),
                   ),
                 ),
@@ -15238,13 +15372,27 @@
                       "div",
                       { style: rowStyle },
                       h("label", { style: labelStyle }, "Model"),
-                      h("input", {
-                        type: "text",
-                        style: inputStyle,
-                        value: form.model,
-                        placeholder: "claude-opus-4-7",
-                        onChange: function (e) { handleFormChange("model", e.target.value); },
-                      }),
+                      (function() {
+                        var modelOpts = _PROVIDER_MODELS[form.provider];
+                        if (modelOpts && modelOpts.length > 0) {
+                          return h("select", {
+                            style: inputStyle,
+                            value: form.model,
+                            onChange: function (e) { handleFormChange("model", e.target.value); },
+                          },
+                            modelOpts.map(function(m) {
+                              return h("option", { key: m.value, value: m.value }, m.label);
+                            })
+                          );
+                        }
+                        return h("input", {
+                          type: "text",
+                          style: inputStyle,
+                          value: form.model,
+                          placeholder: "model name",
+                          onChange: function (e) { handleFormChange("model", e.target.value); },
+                        });
+                      })(),
                     )
                   : null,
                 h(
@@ -15702,6 +15850,9 @@ function PrincipalsTab() {
         var arp = React.useState("jules_api");
         var remediationProvider = arp[0],
           setRemediationProvider = arp[1];
+        var arm = React.useState("");
+        var remediationModel = arm[0],
+          setRemediationModel = arm[1];
         var arps = React.useState(null);
         var remediationPlan = arps[0],
           setRemediationPlan = arps[1];
@@ -16199,6 +16350,7 @@ function PrincipalsTab() {
             body: JSON.stringify(
               Object.assign({}, payload, {
                 provider_override: remediationProvider,
+                model_override: remediationModel || undefined,
               }),
             ),
           })
@@ -16716,6 +16868,7 @@ function PrincipalsTab() {
             body: JSON.stringify(
               Object.assign({}, payload, {
                 provider_override: remediationProvider,
+                model_override: remediationModel || undefined,
               }),
             ),
           })
@@ -17796,6 +17949,8 @@ function PrincipalsTab() {
                       setSelectedRunId: setRemediationSelectedRunId,
                       provider: remediationProvider,
                       setProvider: setRemediationProvider,
+                      model: remediationModel,
+                      setModel: setRemediationModel,
                       plan: remediationPlan,
                       dispatchState: remediationDispatchState,
                       onRefresh: fetchRemediationConfig,
@@ -17859,11 +18014,13 @@ function PrincipalsTab() {
                                           onSave: saveRunnerCapacity,
                                         })
                                       : tab === "local-apps"
-                                        ? h(LocalAppsTab, {
-                                            data: localApps,
-                                            loading: localAppsLoading,
-                                            onRefresh: fetchLocalApps,
-                                          })
+                                        ? h(LocalAppsErrorBoundary, { key: "local-apps-boundary" },
+                                            h(LocalAppsTab, {
+                                              data: localApps,
+                                              loading: localAppsLoading,
+                                              onRefresh: fetchLocalApps,
+                                            })
+                                          )
                                         : tab === "credentials"
                                           ? h(CredentialsTab, {
                                               probes:
