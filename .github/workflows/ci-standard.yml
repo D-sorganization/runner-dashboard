@@ -75,7 +75,10 @@ jobs:
           source "$RUNNER_TEMP/health-venv/bin/activate"
           pip install --upgrade pip
           pip install pytest==8.1.1
-          if [ -f requirements.txt ]; then
+          if [ -f uv.lock ]; then
+            pip install uv
+            uv pip install --system -r uv.lock
+          elif [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
           echo "$RUNNER_TEMP/health-venv/bin" >> "$GITHUB_PATH"
@@ -122,7 +125,14 @@ jobs:
       - name: Check Formatting
         run: ruff format --check backend/
       - name: Install backend dependencies
-        run: pip install -r requirements.txt types-PyYAML types-requests
+        run: |
+          if [ -f uv.lock ]; then
+            pip install uv
+            uv pip install --system -r uv.lock
+          else
+            pip install -r requirements.txt
+          fi
+          pip install types-PyYAML types-requests
       - name: Type Check
         run: mypy backend/ --ignore-missing-imports --exclude 'backend/__pycache__' --no-implicit-optional
       - name: Run bandit security scan
@@ -146,13 +156,16 @@ jobs:
             exit 1
           fi
       - name: Security Audit (pip-audit)
-        continue-on-error: true
         env:
           PYTHONNOUSERSITE: "1"
         run: |
           python -m venv "$RUNNER_TEMP/pip-audit-venv"
           "$RUNNER_TEMP/pip-audit-venv/bin/pip" install --quiet pip-audit
-          "$RUNNER_TEMP/pip-audit-venv/bin/pip-audit" -r requirements.txt || echo "::warning::pip-audit found vulnerabilities (non-blocking)"
+          if [ -f uv.lock ]; then
+            "$RUNNER_TEMP/pip-audit-venv/bin/pip-audit" -r uv.lock --requirement-hash
+          else
+            "$RUNNER_TEMP/pip-audit-venv/bin/pip-audit" -r requirements.txt
+          fi
 
   security-scan:
     needs: [ci-health-check]
@@ -171,7 +184,11 @@ jobs:
         run: |
           python -m venv "$RUNNER_TEMP/security-venv"
           "$RUNNER_TEMP/security-venv/bin/pip" install --quiet pip-audit
-          "$RUNNER_TEMP/security-venv/bin/pip-audit" -r requirements.txt --progress-spinner=off
+          if [ -f uv.lock ]; then
+            "$RUNNER_TEMP/security-venv/bin/pip-audit" -r uv.lock --requirement-hash --progress-spinner=off
+          else
+            "$RUNNER_TEMP/security-venv/bin/pip-audit" -r requirements.txt --progress-spinner=off
+          fi
 
   tests:
     needs:
@@ -198,7 +215,12 @@ jobs:
           done
           source "$RUNNER_TEMP/ci-venv/bin/activate"
           pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt
+          if [ -f uv.lock ]; then
+            pip install uv
+            uv pip install --system -r uv.lock
+          else
+            pip install -r requirements.txt
+          fi
           echo "$RUNNER_TEMP/ci-venv/bin" >> "$GITHUB_PATH"
       - name: Run Python tests
         env:
