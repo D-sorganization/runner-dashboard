@@ -1253,6 +1253,75 @@
         font-size: 11px;
         color: var(--text-muted);
       }
+      .maxwell-chat {
+        min-height: min(62vh, 560px);
+        display: flex;
+        flex-direction: column;
+      }
+      .maxwell-chat-messages {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .maxwell-chat-bubble {
+        max-width: 86%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 11px;
+        font-size: 13px;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+      .maxwell-chat-bubble.operator {
+        align-self: flex-end;
+        background: rgba(88, 166, 255, 0.16);
+        border-color: rgba(88, 166, 255, 0.36);
+      }
+      .maxwell-chat-bubble.maxwell {
+        align-self: flex-start;
+        background: var(--bg-tertiary);
+      }
+      .maxwell-chat-empty {
+        margin: auto;
+        max-width: 420px;
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.5;
+        text-align: center;
+      }
+      .maxwell-quick-actions {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 10px 0 8px;
+      }
+      .maxwell-composer {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding-top: 10px;
+        background: var(--bg-primary);
+      }
+      .maxwell-composer textarea {
+        min-height: 42px;
+        max-height: 132px;
+        resize: vertical;
+      }
+      .maxwell-scroll-button {
+        align-self: center;
+        margin: -38px auto 8px;
+        z-index: 6;
+      }
 
       /* ── Mobile responsive ── */
       @media (max-width: 768px) {
@@ -1384,6 +1453,21 @@
           flex: 1 1 100% !important;
           width: 100%;
           box-sizing: border-box;
+        }
+        .maxwell-chat {
+          min-height: calc(100dvh - 210px);
+        }
+        .maxwell-chat-messages {
+          min-height: 320px;
+          border-radius: 8px 8px 0 0;
+        }
+        .maxwell-chat-bubble {
+          max-width: 94%;
+        }
+        .maxwell-composer {
+          margin: 0 -12px -12px;
+          padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+          border-top: 1px solid var(--border);
         }
       }
       @media (max-width: 480px) {
@@ -12156,6 +12240,26 @@
         var dv = React.useState("");
         var daemonVersion = dv[0],
           setDaemonVersion = dv[1];
+        var chatStoreKey = "maxwellMobileChatHistory";
+        var cm = React.useState(function () {
+          try {
+            return JSON.parse(sessionStorage.getItem(chatStoreKey) || "[]");
+          } catch (e) {
+            return [];
+          }
+        });
+        var chatMessages = cm[0],
+          setChatMessages = cm[1];
+        var ci = React.useState("");
+        var chatInput = ci[0],
+          setChatInput = ci[1];
+        var csending = React.useState(false);
+        var chatSending = csending[0],
+          setChatSending = csending[1];
+        var cscroll = React.useState(false);
+        var showScrollButton = cscroll[0],
+          setShowScrollButton = cscroll[1];
+        var chatListRef = React.useRef(null);
         var isRunning = status.status === "running";
 
         function fetchTasks() {
@@ -12178,6 +12282,97 @@
           fetchTasks();
           fetchVersion();
         }, []);
+
+        React.useEffect(function () {
+          try {
+            sessionStorage.setItem(chatStoreKey, JSON.stringify(chatMessages.slice(-40)));
+          } catch (e) {}
+        }, [chatMessages]);
+
+        React.useEffect(function () {
+          if (!chatListRef.current || showScrollButton) return;
+          chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
+        }, [chatMessages, showScrollButton]);
+
+        function isNearChatBottom() {
+          if (!chatListRef.current) return true;
+          var node = chatListRef.current;
+          return node.scrollHeight - node.scrollTop - node.clientHeight < 48;
+        }
+
+        function onChatScroll() {
+          setShowScrollButton(!isNearChatBottom());
+        }
+
+        function updateChatMessage(id, patch) {
+          setChatMessages(function (prev) {
+            return prev.map(function (m) {
+              return m.id === id ? Object.assign({}, m, patch) : m;
+            });
+          });
+        }
+
+        function sendMaxwellChat(text) {
+          var msg = (text || chatInput).trim();
+          if (!msg || chatSending) return;
+          setChatInput("");
+          setShowScrollButton(false);
+          var now = Date.now();
+          var userMsg = { id: now, role: "operator", content: msg };
+          var assistantId = now + 1;
+          setChatMessages(function (prev) {
+            return prev.concat([
+              userMsg,
+              { id: assistantId, role: "maxwell", content: "", streaming: true },
+            ]);
+          });
+          setChatSending(true);
+          fetch("/api/maxwell/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+            body: JSON.stringify({ message: msg, history: chatMessages.slice(-12) }),
+          })
+            .then(function (r) {
+              if (!r.ok) throw new Error("HTTP " + r.status);
+              if (!r.body || !window.TextDecoder) return r.text();
+              var reader = r.body.getReader();
+              var decoder = new TextDecoder();
+              var acc = "";
+              function pump() {
+                return reader.read().then(function (result) {
+                  if (result.done) return acc;
+                  acc += decoder.decode(result.value, { stream: true });
+                  updateChatMessage(assistantId, { content: acc || "Receiving...", streaming: true });
+                  return pump();
+                });
+              }
+              return pump();
+            })
+            .then(function (text) {
+              updateChatMessage(assistantId, {
+                content: text || "Maxwell returned an empty response.",
+                streaming: false,
+              });
+            })
+            .catch(function (err) {
+              updateChatMessage(assistantId, {
+                content: "Maxwell-Daemon is unreachable. Check daemon status above, then retry.",
+                detail: String(err),
+                streaming: false,
+                error: true,
+              });
+            })
+            .finally(function () {
+              setChatSending(false);
+            });
+        }
+
+        function onChatKeyDown(e) {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMaxwellChat();
+          }
+        }
 
         function doControl(action) {
           setPendingAction(action);
@@ -12222,6 +12417,89 @@
                 ? h("div", { style: { marginTop: 12, fontSize: 12, color: "var(--text-muted)" } }, "Maxwell-Daemon is not detected on this machine.")
                 : null,
             ),
+          ),
+          h("div", { className: "section maxwell-chat-section" },
+            h("div", { className: "section-header" },
+              h("span", { className: "section-title" }, I.messageSquare ? I.messageSquare(14) : null, "Maxwell Chat")
+            ),
+            h("div", { className: "section-body maxwell-chat" },
+              h("div", {
+                className: "maxwell-chat-messages",
+                ref: chatListRef,
+                onScroll: onChatScroll,
+                "aria-live": "polite",
+              },
+                chatMessages.length === 0
+                  ? h("div", { className: "maxwell-chat-empty" },
+                      status.http_reachable
+                        ? "Ask Maxwell for fleet status, recent runner activity, or the next operator command."
+                        : "Maxwell-Daemon is unreachable. Chat history is preserved; use Retry after the daemon is reachable."
+                    )
+                  : chatMessages.map(function (msg) {
+                      return h("div", {
+                        key: msg.id,
+                        className: "maxwell-chat-bubble " + msg.role + (msg.error ? " error" : ""),
+                      },
+                        msg.content || (msg.streaming ? "Streaming..." : ""),
+                        msg.streaming ? h("span", { style: { color: "var(--text-muted)" } }, " ▌") : null
+                      );
+                    })
+              ),
+              showScrollButton ? h("button", {
+                className: "btn maxwell-scroll-button",
+                onClick: function () {
+                  setShowScrollButton(false);
+                  if (chatListRef.current) chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
+                },
+              }, "Latest") : null,
+              h("div", { className: "maxwell-quick-actions", "aria-label": "Maxwell quick actions" },
+                ["status", "summarize last hour", "which runners are blocked?"].map(function (chip) {
+                  return h("button", {
+                    key: chip,
+                    className: "btn",
+                    type: "button",
+                    onClick: function () { sendMaxwellChat(chip); },
+                    disabled: chatSending,
+                  }, chip);
+                }),
+                !status.http_reachable ? h("button", {
+                  className: "btn btn-blue",
+                  type: "button",
+                  onClick: function () {
+                    if (onRefresh) onRefresh();
+                    fetchTasks();
+                    fetchVersion();
+                  },
+                }, "Retry") : null
+              ),
+              h("div", { className: "maxwell-composer" },
+                h("textarea", {
+                  value: chatInput,
+                  onChange: function (e) { setChatInput(e.target.value); },
+                  onKeyDown: onChatKeyDown,
+                  placeholder: status.http_reachable ? "Message Maxwell..." : "Daemon unreachable; retry before sending commands",
+                  rows: 1,
+                  disabled: chatSending || !status.http_reachable,
+                  style: {
+                    width: "100%",
+                    boxSizing: "border-box",
+                    borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "var(--bg-tertiary)",
+                    color: "var(--text-primary)",
+                    padding: "10px 12px",
+                    fontFamily: "inherit",
+                    fontSize: 13,
+                  },
+                }),
+                h("button", {
+                  className: "btn btn-blue",
+                  type: "button",
+                  onClick: function () { sendMaxwellChat(); },
+                  disabled: chatSending || !chatInput.trim() || !status.http_reachable,
+                }, chatSending ? "Sending..." : "Send")
+              )
+            )
           ),
           h("div", { className: "section" },
             h("div", { className: "section-header" },
