@@ -1,6 +1,6 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.5
+**Spec Version:** 2.5.6
 **Application Version:** 4.1.0 (see `VERSION`)
 **Last Updated:** 2026-04-29
 **Status:** Active
@@ -168,6 +168,13 @@ and transitions must respect `prefers-reduced-motion: reduce`, and inline
 transition styles must opt out through `prefersReducedMotion()`. Static
 frontend integrity tests enforce these guards alongside ARIA labels for mobile
 summary sections and modal dialogs.
+
+The first issue #202 mobile test harness slice lives in `tests/frontend/mobile/`.
+It defines the Playwright mobile viewport contract for `iphone-12` (390 x 844)
+and `pixel-5` (393 x 851), plus shared tap, swipe, and long-press helper
+scaffolding. The current CI-safe guard is static pytest validation; browser
+execution and screenshot baselines remain disabled until the harness proves
+stable enough to add a non-flaky Playwright lane.
 
 **Shared helper components** defined near the top of the script block:
 
@@ -859,6 +866,10 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 ## 7. Changelog
 
+### 2.5.6 - 2026-04-29
+- test: add the issue #202 mobile Playwright harness contract with checked-in
+  viewport profiles, touch helper scaffolding, and static validation before
+  enabling browser or visual-regression CI.
 
 ### 2.5.2 — 2026-04-28
 - chore: migrate to `uv` for dependency management and add `uv.lock`.
@@ -913,6 +924,9 @@ Test coverage areas:
   required tab function markers, absence of deprecated `HeavyTestsTab`, icon helper symbols.
 - **`tests/test_frontend_perf_budget.py`** â€” validates `frontend/perf-budget.json`
   and enforces the interim gzip ceiling for the current no-build frontend artifact.
+- **`tests/test_mobile_test_harness.py`** - validates the issue #202 mobile
+  viewport profiles, smoke-page marker contract, touch helper exports, and the
+  explicit visual-regression opt-in gate.
 
 `pytest>=8.0` and `pytest-asyncio>=0.23` are listed in `requirements.txt`.
 

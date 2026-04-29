@@ -1,0 +1,85 @@
+{
+  "$schema": "./viewport_profiles.schema.json",
+  "version": 1,
+  "playwright": {
+    "browserName": "chromium",
+    "headless": true,
+    "hasTouch": true,
+    "isMobile": true
+  },
+  "profiles": [
+    {
+      "name": "iphone-12",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "deviceScaleFactor": 3
+    },
+    {
+      "name": "pixel-5",
+      "viewport": {
+        "width": 393,
+        "height": 851
+      },
+      "deviceScaleFactor": 2.75
+    }
+  ],
+  "smokePages": [
+    {
+      "name": "Fleet",
+      "tabLabel": "Fleet",
+      "requiredMarkers": ["fleet-mobile-kpis", "fleet-status-strip"],
+      "goldenInteraction": "tap-tab"
+    },
+    {
+      "name": "Queue",
+      "tabLabel": "Queue",
+      "requiredMarkers": ["Queue health summary", "mobile-run-card"],
+      "goldenInteraction": "tap-tab"
+    },
+    {
+      "name": "Workflows",
+      "tabLabel": "Workflows",
+      "requiredMarkers": ["mobile-workflow-filters", "workflowsMobileFilters"],
+      "goldenInteraction": "tap-filter"
+    },
+    {
+      "name": "Credentials",
+      "tabLabel": "Credentials",
+      "requiredMarkers": ["mobile-credentials-lock", "mobile-credentials-sheet"],
+      "goldenInteraction": "tap-locked-action"
+    },
+    {
+      "name": "Reports",
+      "tabLabel": "Reports",
+      "requiredMarkers": ["reports-shell", "reports-reader"],
+      "goldenInteraction": "tap-card"
+    },
+    {
+      "name": "Assessments",
+      "tabLabel": "Assessments",
+      "requiredMarkers": ["assessment-mobile-card-list", "assessment-mobile-score"],
+      "goldenInteraction": "tap-card"
+    },
+    {
+      "name": "Feature Requests",
+      "tabLabel": "Feature Requests",
+      "requiredMarkers": ["feature-request-mobile-list", "feature-request-mobile-card"],
+      "goldenInteraction": "tap-card"
+    },
+    {
+      "name": "Maxwell",
+      "tabLabel": "Maxwell",
+      "requiredMarkers": ["maxwellMobileChatHistory", "maxwell-composer"],
+      "goldenInteraction": "tap-quick-action"
+    }
+  ],
+  "visualRegression": {
+    "state": "scaffolded",
+    "enabledInCi": false,
+    "baselineDir": "tests/frontend/mobile/__screenshots__",
+    "updateFlag": "--update-snapshots",
+    "failureArtifacts": ["diff", "actual", "expected"]
+  }
+}
