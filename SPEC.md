@@ -1,6 +1,6 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.3
+**Spec Version:** 2.5.4
 **Application Version:** 4.1.0 (see `VERSION`)
 **Last Updated:** 2026-04-29
 **Status:** Active
@@ -150,6 +150,10 @@ header tab strip is horizontally scrollable, nonessential header status badges
 are hidden on mobile, Queue Health renders compact KPI/cards instead of forcing
 wide tables, and Workflows filters use sessionStorage-backed state so tab
 switching and app backgrounding do not reset the current session filters.
+Reports, Assessments, and Feature Requests expose read-mostly mobile card and
+reader layouts over their existing APIs so operators can inspect report files,
+assessment score history, and feature request history without relying on wide
+desktop tables.
 
 **Shared helper components** defined near the top of the script block:
 
@@ -252,6 +256,9 @@ frequency, and per-repo breakdowns sourced from the `/api/stats` endpoint.
 ### 3.8 Reports Tab
 Displays dated fleet report files (Markdown). Provides date selection and
 renders the report with parsed metrics summary cards.
+On mobile, report files render as tappable cards with date and size metadata,
+the selected report uses a constrained reader with mobile typography, and an
+Open raw link exposes the underlying report API response as a fallback.
 
 ### 3.9 Scheduled Workflows Tab
 Inventory of all cron-scheduled workflows across the org. Shows next/previous
@@ -311,10 +318,16 @@ Read-only view of credential names (not values) for audit purposes.
 Dispatch and track code quality assessment workflows (Jules Assessment
 Generator). Shows per-repo assessment scores from the `/api/assessments/scores`
 endpoint.
+On mobile, assessment score history renders as per-repo cards showing score,
+provider, date, and summary while preserving the existing dispatch controls and
+read endpoint.
 
 ### 3.16 Feature Requests Tab
 Browse and submit feature request issues via templates. Allows dispatching
 feature implementation workflows directly from the dashboard.
+On mobile, dispatched feature request history renders as compact read-mostly
+cards showing repository, status, vote-count metadata when present, provider,
+date, and prompt excerpt over the existing `/api/feature-requests` response.
 
 ### 3.17 Maxwell Tab
 Control interface for the Maxwell daemon (fleet orchestration AI). Shows
