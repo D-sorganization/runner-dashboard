@@ -19,7 +19,7 @@ from dashboard_config import (
     RUNNER_BASE_DIR,
 )
 from fastapi import APIRouter, Depends, HTTPException, Request
-from gh_utils import get_gh_health_summary, gh_api_admin
+from gh_utils import gh_api_admin
 from identity import Principal, require_scope
 from proxy_utils import proxy_to_hub, should_proxy_fleet_to_hub
 from system_utils import (
@@ -239,38 +239,7 @@ async def start_runner(
     return {"status": "started", "runner": num, "output": stdout.strip()}
 
 
-@router.post("/api/fleet/control/{action}")
-async def fleet_control(
-    request: Request,
-    action: str,
-    principal: Principal = Depends(require_scope("fleet.control")),  # noqa: B008
-):
-    """Orchestrate runner scaling across the fleet or locally."""
-    if action not in {"up", "down", "all-up", "all-down", "all-restart"}:
-        raise HTTPException(status_code=400, detail="Invalid action")
-
-    scope = request.query_params.get("scope", "fleet").lower()
-    should_fan_out = MACHINE_ROLE == "hub" and scope != "local" and bool(FLEET_NODES)
-
-    if not should_fan_out:
-        return await _fleet_control_local(action)
-
-    # Fan out to all nodes
-    async def fan_out_to_node(name, url):
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(f"{url}/api/fleet/control/{action}?local=1", timeout=30)
-                return name, resp.json()
-        except Exception as e:
-            return name, {"error": str(e)}
-
-    node_results = await asyncio.gather(*[fan_out_to_node(n, u) for n, u in FLEET_NODES.items()])
-    hub_result = await _fleet_control_local(action)
-
-    combined = {HOSTNAME: hub_result}
-    for name, res in node_results:
-        combined[name] = res
-    return combined
+# /api/fleet/control/{action} is defined in server.py with richer fan-out logic.
 
 
 @router.get("/api/fleet/status")
@@ -319,7 +288,4 @@ async def get_fleet_status(request: Request):
     return responses
 
 
-@router.get("/api/health")
-async def get_health():
-    """Consolidated fleet health status."""
-    return await get_gh_health_summary(ORG)
+# /api/health is defined in backend/health.py and registered via _health_router.

@@ -83,6 +83,7 @@ from routers import assistant as _assistant_router  # noqa: E402
 from routers import credentials as _credentials_router  # noqa: E402
 from routers import dispatch as _dispatch_router  # noqa: E402
 from routers import feature_requests as _feature_requests_router  # noqa: E402
+from routers import fleet as _fleet_router  # noqa: E402
 from routers import linear as _linear_router  # noqa: E402
 from routers import linear_webhook as _linear_webhook_router  # noqa: E402
 from routers import runs_workflows as _runs_workflows_router  # noqa: E402
@@ -460,8 +461,7 @@ import agent_launcher_router as _agent_launcher_router  # noqa: E402
 app.include_router(_agent_launcher_router.router)
 
 # Batch-2 extracted routers (epic #159)
-# Note: fleet router not registered here because fleet_control has richer fan-out
-# logic in server.py that differs from the simplified routers/fleet.py version.
+app.include_router(_fleet_router.router)
 app.include_router(_runs_workflows_router.router)
 app.include_router(_assistant_router.router)
 app.include_router(_feature_requests_router.router)
