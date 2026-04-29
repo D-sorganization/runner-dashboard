@@ -1,6 +1,6 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.4
+**Spec Version:** 2.5.5
 **Application Version:** 4.1.0 (see `VERSION`)
 **Last Updated:** 2026-04-29
 **Status:** Active
@@ -154,6 +154,14 @@ Reports, Assessments, and Feature Requests expose read-mostly mobile card and
 reader layouts over their existing APIs so operators can inspect report files,
 assessment score history, and feature request history without relying on wide
 desktop tables.
+
+Mobile accessibility guards are part of the frontend source contract. At
+mobile viewport widths, primary interactive controls must use the shared
+`--mobile-hit-target` token with a minimum `44px` target size. CSS animations
+and transitions must respect `prefers-reduced-motion: reduce`, and inline
+transition styles must opt out through `prefersReducedMotion()`. Static
+frontend integrity tests enforce these guards alongside ARIA labels for mobile
+summary sections and modal dialogs.
 
 **Shared helper components** defined near the top of the script block:
 
