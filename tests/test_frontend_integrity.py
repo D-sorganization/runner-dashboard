@@ -204,6 +204,16 @@ def test_credentials_tab_supports_setting_linear_api_key() -> None:
     assert "Set API key" in content
 
 
+def test_mobile_remediation_three_tap_slice_markers_present() -> None:
+    content = _read_index()
+    assert "remediation-mobile-tabs" in content
+    assert "mobile-remediation-sheet" in content
+    assert "Dispatch submitted for " in content
+    assert "Waiting for agent heartbeat." in content
+    assert "Open on desktop" in content
+    assert "Preview safety plan" in content
+
+
 # ---------------------------------------------------------------------------
 # Single source of truth enforcement (issue #3)
 # ---------------------------------------------------------------------------

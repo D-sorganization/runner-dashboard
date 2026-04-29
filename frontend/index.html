@@ -1422,6 +1422,57 @@
       .subtab.active .subtab-badge { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
       .subtab:disabled { opacity: 0.5; cursor: not-allowed; }
       .subtabs-right { display: flex; align-items: center; }
+      .mobile-remediation-sheet {
+        position: fixed;
+        inset: 0;
+        z-index: 1100;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.55);
+      }
+      .mobile-remediation-sheet-panel {
+        width: min(520px, 100%);
+        max-height: 88vh;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 12px 12px 8px 8px;
+        background: var(--bg-primary);
+        box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.32);
+        padding: 16px;
+      }
+      .remediation-inflight-tile {
+        margin: 0 0 12px;
+        padding: 12px;
+        border: 1px solid rgba(88, 166, 255, 0.35);
+        border-radius: 8px;
+        background: rgba(88, 166, 255, 0.08);
+      }
+      @media (max-width: 768px) {
+        .subtabs.remediation-mobile-tabs {
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 4px;
+          margin-bottom: 12px;
+          background: var(--bg-secondary);
+        }
+        .subtabs.remediation-mobile-tabs .subtabs-strip {
+          width: 100%;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .subtabs.remediation-mobile-tabs .subtab {
+          border: 0;
+          border-radius: 6px;
+          padding: 8px 6px;
+          min-width: 0;
+        }
+        .subtabs.remediation-mobile-tabs .subtab.active {
+          background: rgba(88, 166, 255, 0.18);
+          color: var(--text-primary);
+        }
+      }
     </style>
   </head>
   <body>
@@ -1918,7 +1969,7 @@
         }
         return h(
           "div",
-          { className: "subtabs" },
+          { className: "subtabs" + (p.className ? " " + p.className : "") },
           h(
             "div",
             { className: "subtabs-strip" },
@@ -9746,6 +9797,12 @@
         var jdm = React.useState(null);
         var julesDispatchMsg = jdm[0],
           setJulesDispatchMsg = jdm[1];
+        var mrs = React.useState(null);
+        var mobileRemediationSheetRun = mrs[0],
+          setMobileRemediationSheetRun = mrs[1];
+        var mrp = React.useState(false);
+        var mobileRemediationPickerOpen = mrp[0],
+          setMobileRemediationPickerOpen = mrp[1];
         React.useEffect(
           function () {
             setDraftRules(
@@ -9791,6 +9848,44 @@
           savePolicy({ default_provider: val });
           setEditingDefaultProvider(false);
         }
+        function providerLabel(providerId) {
+          var entry = providerEntries.find(function (providerEntry) {
+            return providerEntry[0] === providerId;
+          });
+          return (entry && entry[1] && entry[1].label) || providerId;
+        }
+        function recommendedProviderId() {
+          return (
+            (plan && plan.decision && plan.decision.provider_id) ||
+            provider ||
+            policy.default_provider ||
+            "jules_api"
+          );
+        }
+        function remediationRunTitle(run) {
+          if (!run) return "Failed run";
+          var repoName =
+            run.repository && run.repository.name
+              ? run.repository.name
+              : "repo";
+          return (
+            repoName +
+            " / " +
+            (run.name || run.workflow_name || "workflow") +
+            " #" +
+            run.id
+          );
+        }
+        function openMobileRemediationSheet(run) {
+          setSelectedRunId(String(run.id));
+          setMobileRemediationPickerOpen(false);
+          setMobileRemediationSheetRun(run);
+        }
+        function dispatchFromMobileSheet(run) {
+          setSelectedRunId(String(run.id));
+          onDispatch(run);
+          setMobileRemediationSheetRun(null);
+        }
         var accepted = !!(plan && plan.decision && plan.decision.accepted);
         var sta = React.useState(
           (function () {
@@ -9812,7 +9907,228 @@
             activeKey: subTab,
             onChange: setSubTab,
             storageKey: "remediation-subtab",
+            className: "remediation-mobile-tabs",
           }),
+          dispatchState
+            ? h(
+                "div",
+                {
+                  className: "remediation-inflight-tile",
+                  role: "status",
+                  "aria-live": "polite",
+                },
+                h(
+                  "div",
+                  {
+                    style: {
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      flexWrap: "wrap",
+                    },
+                  },
+                  h(
+                    "strong",
+                    { style: { fontSize: 13 } },
+                    dispatchState.error ? "Dispatch needs attention" : "Agent working",
+                  ),
+                  h(
+                    "span",
+                    { className: "section-badge" },
+                    dispatchState.error ? "error" : "in flight",
+                  ),
+                ),
+                h(
+                  "div",
+                  {
+                    style: {
+                      marginTop: 6,
+                      fontSize: 12,
+                      color: dispatchState.error
+                        ? "var(--accent-red)"
+                        : "var(--text-secondary)",
+                    },
+                  },
+                  dispatchState.error ||
+                    dispatchState.note ||
+                    "Dispatch submitted. Waiting for the next history refresh.",
+                ),
+              )
+            : null,
+          mobileRemediationSheetRun
+            ? (function () {
+                var sheetRun = mobileRemediationSheetRun;
+                var repoName =
+                  sheetRun.repository && sheetRun.repository.name
+                    ? sheetRun.repository.name
+                    : "repo";
+                var branch = sheetRun.head_branch || "branch";
+                var ghUrl =
+                  sheetRun.html_url ||
+                  "https://github.com/D-sorganization/" +
+                    repoName +
+                    "/actions/runs/" +
+                    sheetRun.id;
+                var recommendedId = recommendedProviderId();
+                return h(
+                  "div",
+                  {
+                    className: "mobile-remediation-sheet",
+                    role: "dialog",
+                    "aria-modal": "true",
+                    "aria-label": "Mobile remediation dispatch",
+                    onClick: function (e) {
+                      if (e.target === e.currentTarget) {
+                        setMobileRemediationSheetRun(null);
+                      }
+                    },
+                  },
+                  h(
+                    "div",
+                    { className: "mobile-remediation-sheet-panel" },
+                    h(
+                      "div",
+                      {
+                        style: {
+                          display: "flex",
+                          alignItems: "flex-start",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          marginBottom: 12,
+                        },
+                      },
+                      h(
+                        "div",
+                        { style: { minWidth: 0 } },
+                        h(
+                          "div",
+                          {
+                            style: {
+                              fontSize: 14,
+                              fontWeight: 700,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            },
+                          },
+                          remediationRunTitle(sheetRun),
+                        ),
+                        h(
+                          "div",
+                          {
+                            style: {
+                              marginTop: 3,
+                              fontSize: 12,
+                              color: "var(--text-muted)",
+                            },
+                          },
+                          "Branch " + branch + " | recommended " + providerLabel(recommendedId),
+                        ),
+                      ),
+                      h(
+                        "button",
+                        {
+                          className: "btn",
+                          onClick: function () {
+                            setMobileRemediationSheetRun(null);
+                          },
+                        },
+                        "Close",
+                      ),
+                    ),
+                    h(
+                      "div",
+                      {
+                        style: {
+                          display: "grid",
+                          gap: 8,
+                        },
+                      },
+                      h(
+                        "button",
+                        {
+                          className: "btn btn-primary",
+                          disabled: loading,
+                          onClick: function () {
+                            dispatchFromMobileSheet(sheetRun);
+                          },
+                          style: {
+                            justifyContent: "center",
+                            padding: "10px 12px",
+                            fontSize: 13,
+                          },
+                        },
+                        "Dispatch " + providerLabel(recommendedId),
+                      ),
+                      h(
+                        "button",
+                        {
+                          className: "btn",
+                          onClick: function () {
+                            setMobileRemediationPickerOpen(!mobileRemediationPickerOpen);
+                          },
+                          style: { justifyContent: "center" },
+                        },
+                        mobileRemediationPickerOpen ? "Hide agent picker" : "Pick agent...",
+                      ),
+                      mobileRemediationPickerOpen
+                        ? h(
+                            "select",
+                            {
+                              value: provider,
+                              onChange: function (e) {
+                                setProvider(e.target.value);
+                              },
+                              style: {
+                                width: "100%",
+                                background: "var(--bg-secondary)",
+                                color: "var(--text-primary)",
+                                border: "1px solid var(--border)",
+                                borderRadius: 6,
+                                padding: "9px 10px",
+                              },
+                            },
+                            providerEntries.map(function (entry) {
+                              return h(
+                                "option",
+                                { key: "mobile-agent-" + entry[0], value: entry[0] },
+                                entry[1].label || entry[0],
+                              );
+                            }),
+                          )
+                        : null,
+                      h(
+                        "button",
+                        {
+                          className: "btn",
+                          onClick: function () {
+                            onPreview(sheetRun);
+                            setMobileRemediationSheetRun(null);
+                          },
+                          style: { justifyContent: "center" },
+                        },
+                        "Preview safety plan",
+                      ),
+                      h(
+                        "a",
+                        {
+                          className: "btn",
+                          href: ghUrl,
+                          target: "_blank",
+                          rel: "noopener noreferrer",
+                          style: {
+                            justifyContent: "center",
+                            textDecoration: "none",
+                          },
+                        },
+                        "Open on desktop",
+                      ),
+                    ),
+                  ),
+                );
+              })()
+            : null,
           subTab === "automations" && h(
             "div",
             null,
@@ -9891,7 +10207,7 @@
                       {
                         key: run.id,
                         onClick: function () {
-                          setSelectedRunId(String(run.id));
+                          openMobileRemediationSheet(run);
                         },
                         style: {
                           display: "flex",
@@ -16919,6 +17235,14 @@ function PrincipalsTab() {
             return;
           }
           setRemediationLoading(true);
+          setRemediationDispatchState({
+            note:
+              "Dispatch submitted for " +
+              payload.repository +
+              " #" +
+              payload.run_id +
+              ". Waiting for agent heartbeat.",
+          });
           fetch("/api/agent-remediation/dispatch", {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
@@ -17437,6 +17761,14 @@ function PrincipalsTab() {
             return;
           }
           setRemediationLoading(true);
+          setRemediationDispatchState({
+            note:
+              "Dispatch submitted for " +
+              payload.repository +
+              " #" +
+              payload.run_id +
+              ". Waiting for agent heartbeat.",
+          });
           fetch("/api/agent-remediation/dispatch", {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
