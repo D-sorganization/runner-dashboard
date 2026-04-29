@@ -1,6 +1,6 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.2
+**Spec Version:** 2.5.3
 **Application Version:** 4.1.0 (see `VERSION`)
 **Last Updated:** 2026-04-29
 **Status:** Active
@@ -318,7 +318,9 @@ feature implementation workflows directly from the dashboard.
 
 ### 3.17 Maxwell Tab
 Control interface for the Maxwell daemon (fleet orchestration AI). Shows
-daemon status, configuration, and provides start/stop/configure controls.
+daemon status, configuration, start/stop/configure controls, and a mobile
+operator chat surface with preserved history, quick actions, streamed replies,
+and a daemon-unreachable retry state.
 
 ### 3.18 Fleet Orchestration Tab
 Cross-node deployment orchestration. Shows orchestration run history,
@@ -497,6 +499,7 @@ All endpoints are served under `http://localhost:8321/api/`.
 |---|---|---|
 | GET | `/api/maxwell/status` | Maxwell daemon status and configuration |
 | POST | `/api/maxwell/control` | Control Maxwell daemon (start/stop/configure) |
+| POST | `/api/maxwell/chat` | Proxy Maxwell chat messages over HTTP with streamed text output |
 
 ### Assessments
 

@@ -229,3 +229,20 @@ async def test_maxwell_dispatch_daemon_unreachable_returns_200(client) -> None:
     assert resp.status_code == 200
     data = resp.json()
     assert data.get("daemon_available") is False
+
+
+# ─── POST /api/maxwell/chat ──────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_maxwell_chat_daemon_unreachable_streams_fallback(client) -> None:
+    """When daemon is unreachable, chat streams a readable fallback instead of breaking the tab."""
+    mock_client = MagicMock()
+    mock_client.stream.side_effect = httpx.ConnectError("connection refused")
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+    with patch("httpx.AsyncClient", return_value=mock_cm):
+        resp = await client.post("/api/maxwell/chat", json={"message": "status"})
+    assert resp.status_code == 200
+    assert "Maxwell-Daemon is unreachable" in resp.text

@@ -214,6 +214,17 @@ def test_mobile_remediation_three_tap_slice_markers_present() -> None:
     assert "Preview safety plan" in content
 
 
+def test_maxwell_mobile_chat_slice_markers_present() -> None:
+    content = _read_index()
+    assert "maxwellMobileChatHistory" in content
+    assert "maxwell-chat-messages" in content
+    assert "maxwell-composer" in content
+    assert "/api/maxwell/chat" in content
+    assert "which runners are blocked?" in content
+    assert "Maxwell-Daemon is unreachable. Chat history is preserved" in content
+    assert "TextDecoder" in content
+
+
 # ---------------------------------------------------------------------------
 # Single source of truth enforcement (issue #3)
 # ---------------------------------------------------------------------------

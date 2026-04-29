@@ -44,7 +44,7 @@ import httpx
 import psutil
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from identity import Principal, require_principal, require_scope  # noqa: B008
 from pydantic import BaseModel, Field
 from routers import admin as admin_router
@@ -255,6 +255,11 @@ class AssessmentDispatchBody(BaseModel):
 class MaxwellControlBody(BaseModel):
     action: str = Field(..., max_length=20)
     approved_by: str = Field(..., max_length=200)
+
+
+class MaxwellChatBody(BaseModel):
+    message: str = Field(..., max_length=4000)
+    history: list[dict[str, str]] = Field(default_factory=list, max_length=20)
 
 
 class HelpChatBody(BaseModel):
@@ -5780,6 +5785,38 @@ async def maxwell_dispatch_task(
 
         log.info("maxwell_proxy: path=%s status=%s", path, "error")
         return {"error": str(e)[:120], "daemon_available": False}
+
+
+@app.post("/api/maxwell/chat", response_model=None)
+async def maxwell_chat(
+    body: MaxwellChatBody,
+    *,
+    principal: Principal = Depends(require_scope("operator")),  # noqa: B008
+) -> StreamingResponse:
+    """Proxy chat messages to Maxwell-Daemon while preserving streamed output."""
+    path = "/api/chat"
+    payload = {
+        "message": body.message,
+        "history": body.history[-20:],
+        "stream": True,
+    }
+
+    async def stream_daemon_response() -> Any:
+        try:
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream("POST", f"{_maxwell_base_url()}{path}", json=payload) as resp:
+                    log.info("maxwell_proxy: path=%s status=%s", path, resp.status_code)
+                    if resp.status_code >= 400:
+                        yield f"Maxwell chat failed with HTTP {resp.status_code}."
+                        return
+                    async for chunk in resp.aiter_text():
+                        if chunk:
+                            yield chunk
+        except Exception as e:  # noqa: BLE001
+            log.info("maxwell_proxy: path=%s status=%s", path, "error")
+            yield f"Maxwell-Daemon is unreachable: {str(e)[:120]}"
+
+    return StreamingResponse(stream_daemon_response(), media_type="text/plain; charset=utf-8")
 
 
 @app.post("/api/maxwell/pipeline-control/{action}")
