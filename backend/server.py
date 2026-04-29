@@ -45,6 +45,7 @@ import psutil
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from identity import Principal, require_principal, require_scope  # noqa: B008
 from pydantic import BaseModel, Field
 from routers import admin as admin_router
@@ -484,7 +485,7 @@ _AUTH_EXEMPT_PATHS = {
     "/api/auth/github",
     "/api/auth/callback",
 }
-_AUTH_EXEMPT_PREFIXES = ("/docs", "/openapi", "/redoc")
+_AUTH_EXEMPT_PREFIXES = ("/docs", "/openapi", "/redoc", "/assets")
 
 
 @app.middleware("http")
@@ -5487,7 +5488,12 @@ async def log_requests(request: Request, call_next):
 
 # ─── Serve Frontend ──────────────────────────────────────────────────────────
 
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+FRONTEND_DIR = Path(__file__).parent.parent / "dist"
+
+# Mount Vite build assets for fast serving (only if dist/assets exists)
+_assets_dir = FRONTEND_DIR / "assets"
+if _assets_dir.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
 
 
 @app.get("/")
