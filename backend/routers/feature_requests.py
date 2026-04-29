@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import datetime as _dt_mod
 import json
 import logging
+import tempfile
 from pathlib import Path
 
 import config_schema
@@ -23,9 +25,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from identity import Principal, require_scope
 from security import check_dispatch_rate, sanitize_log_value
 from system_utils import run_cmd
-
-import datetime as _dt_mod
-import tempfile
 
 UTC = getattr(_dt_mod, "UTC", _dt_mod.timezone.utc)  # noqa: UP017
 datetime = _dt_mod.datetime

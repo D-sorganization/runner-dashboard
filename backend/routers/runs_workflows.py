@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import contextlib
+import datetime as _dt_mod
 import json
 import logging
 import os
@@ -29,8 +30,6 @@ from gh_utils import gh_api, gh_api_raw
 from identity import Principal, require_scope
 from proxy_utils import proxy_to_hub, should_proxy_fleet_to_hub
 from system_utils import run_cmd
-
-import datetime as _dt_mod
 
 UTC = getattr(_dt_mod, "UTC", _dt_mod.timezone.utc)  # noqa: UP017
 datetime = _dt_mod.datetime
