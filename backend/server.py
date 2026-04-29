@@ -43,6 +43,7 @@ from urllib.parse import urlparse
 import httpx
 import psutil
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from identity import Principal, require_principal, require_scope  # noqa: B008
@@ -484,7 +485,7 @@ _AUTH_EXEMPT_PATHS = {
     "/api/auth/github",
     "/api/auth/callback",
 }
-_AUTH_EXEMPT_PREFIXES = ("/docs", "/openapi", "/redoc")
+_AUTH_EXEMPT_PREFIXES = ("/docs", "/openapi", "/redoc", "/assets")
 
 
 @app.middleware("http")
@@ -5484,10 +5485,12 @@ async def log_requests(request: Request, call_next):
         )
     return response
 
-
 # ─── Serve Frontend ──────────────────────────────────────────────────────────
 
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+FRONTEND_DIR = Path(__file__).parent.parent / "dist"
+
+# Mount Vite build assets for fast serving
+app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
 
 
 @app.get("/")
