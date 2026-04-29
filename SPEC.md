@@ -1,6 +1,6 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.9
+**Spec Version:** 2.5.10
 **Application Version:** 4.1.0 (see `VERSION`)
 **Last Updated:** 2026-04-29
 **Status:** Active
@@ -447,6 +447,7 @@ All endpoints are served under `http://localhost:8321/api/`.
 | POST | `/api/push/subscribe` | Store or update the caller's Web Push subscription and topic list |
 | DELETE | `/api/push/subscribe/{subscription_id}` | Remove the caller's subscription; admins may remove any subscription |
 | POST | `/api/push/test` | Admin-only test send to the caller's matching subscriptions |
+| GET | `/api/push/vapid-public-key` | VAPID public key for Web Push subscription setup |
 
 ### Fleet
 
@@ -885,7 +886,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 ## 7. Changelog
 
-### 2.5.9 - 2026-04-29
+### 2.5.10 - 2026-04-29
 - feat: add the first M04 touch primitive implementation slice with
   `TouchButton` and `SegmentedControl` contracts.
 
