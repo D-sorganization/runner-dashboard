@@ -1,6 +1,6 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.4
+**Spec Version:** 2.5.5
 **Application Version:** 4.1.0 (see `VERSION`)
 **Last Updated:** 2026-04-29
 **Status:** Active
@@ -144,6 +144,12 @@ the FastAPI app and router dependencies.
 All application logic is contained within `frontend/index.html`. There is no
 npm project, no `package.json`, and no build toolchain. The file is served
 directly by the FastAPI backend.
+
+`frontend/perf-budget.json` records the issue #200 mobile performance budget.
+While the frontend remains a no-build single-file SPA, the budget check enforces
+the target mobile shell, tab chunk, Lighthouse, INP, and FCP values plus an
+interim gzip ceiling for `frontend/index.html` and its inline JavaScript/CSS.
+Budget increases require a PR that edits the budget file with justification.
 
 Mobile layouts must remain usable at 375x812 and 412x915 viewport sizes. The
 header tab strip is horizontally scrollable, nonessential header status badges
@@ -897,6 +903,8 @@ Test coverage areas:
   policy defaults.
 - **`tests/test_frontend_integrity.py`** â€” static source checks for `frontend/index.html`:
   required tab function markers, absence of deprecated `HeavyTestsTab`, icon helper symbols.
+- **`tests/test_frontend_perf_budget.py`** â€” validates `frontend/perf-budget.json`
+  and enforces the interim gzip ceiling for the current no-build frontend artifact.
 
 `pytest>=8.0` and `pytest-asyncio>=0.23` are listed in `requirements.txt`.
 
