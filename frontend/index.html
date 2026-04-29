@@ -39,6 +39,7 @@
         --accent-yellow: #d29922;
         --accent-purple: #bc8cff;
         --accent-orange: #f0883e;
+        --mobile-hit-target: 44px;
         
         /* Glassmorphism Tokens */
         --glass-bg: rgba(28, 33, 51, 0.7);
@@ -1486,6 +1487,17 @@
         .btn {
           padding: 4px 10px;
           font-size: 11px;
+          min-height: var(--mobile-hit-target);
+        }
+        .tab-btn,
+        .subtab,
+        .report-item,
+        .form-input,
+        .form-select,
+        .search-bar,
+        .mobile-workflow-filters input,
+        .mobile-workflow-filters select {
+          min-height: var(--mobile-hit-target);
         }
         .form-row {
           flex-direction: column;
@@ -1615,6 +1627,16 @@
         }
         .fleet-mobile-kpi-value {
           font-size: 17px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
         }
       }
 
@@ -1759,6 +1781,10 @@
       }
       var h = React.createElement;
       var SERVICE_WORKER_CACHE_DENYLIST = [/^\/api\/credentials(?:\/|$)/];
+
+      function prefersReducedMotion() {
+        return window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
+      }
 
       function shouldBypassServiceWorkerCache(url) {
         try {
@@ -16528,7 +16554,7 @@
           minWidth: open ? width : 0,
           maxWidth: open ? width : 0,
           overflow: "hidden",
-          transition: "width 0.2s, min-width 0.2s, max-width 0.2s",
+          transition: prefersReducedMotion() ? "none" : "width 0.2s, min-width 0.2s, max-width 0.2s",
           flexShrink: 0,
           position: "relative",
           background: "var(--bg-secondary)",

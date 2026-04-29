@@ -229,7 +229,7 @@ def test_mobile_credentials_mutations_require_bottom_sheet_confirmation() -> Non
 def test_credentials_api_is_excluded_from_frontend_cache_contract() -> None:
     content = _read_index()
     assert "SERVICE_WORKER_CACHE_DENYLIST" in content
-    assert '/^\\/api\\/credentials(?:\\/|$)/' in content
+    assert "/^\\/api\\/credentials(?:\\/|$)/" in content
     assert "shouldBypassServiceWorkerCache(url)" in content
     assert 'cache: "no-store"' in content
     assert "navigator.serviceWorker" not in content
@@ -268,6 +268,53 @@ def test_mobile_read_mostly_reports_assessments_feature_requests_markers_present
     assert "feature-request-mobile-card" in content
     assert "Feature request history" in content
     assert "requestVoteCount" in content
+
+
+def test_mobile_a11y_hit_target_token_is_enforced() -> None:
+    content = _read_index()
+
+    assert "--mobile-hit-target: 44px;" in content
+    assert "@media (max-width: 768px)" in content
+    for selector in [
+        ".btn",
+        ".tab-btn",
+        ".subtab",
+        ".report-item",
+        ".form-input",
+        ".form-select",
+        ".search-bar",
+        ".mobile-workflow-filters input",
+        ".mobile-workflow-filters select",
+    ]:
+        assert selector in content
+    assert content.count("min-height: var(--mobile-hit-target);") >= 2
+
+
+def test_mobile_a11y_reduced_motion_contract_is_static_guarded() -> None:
+    content = _read_index()
+
+    assert "@media (prefers-reduced-motion: reduce)" in content
+    assert "animation-duration: 0.01ms !important;" in content
+    assert "animation-iteration-count: 1 !important;" in content
+    assert "transition-duration: 0.01ms !important;" in content
+    assert "function prefersReducedMotion()" in content
+    assert 'window.matchMedia("(prefers-reduced-motion: reduce)")' in content
+    assert 'transition: prefersReducedMotion() ? "none"' in content
+
+
+def test_mobile_a11y_dialogs_and_sections_are_labelled() -> None:
+    content = _read_index()
+
+    for marker in [
+        '"aria-label": "Runner status filters"',
+        '"aria-label": "Queue health summary"',
+        '"aria-label": "Stale queued runs"',
+        '"aria-label": "Mobile remediation dispatch"',
+        '"aria-label": "Confirm mobile credential change"',
+        '"aria-label": "Feature request history"',
+    ]:
+        assert marker in content
+    assert content.count('"aria-modal": "true"') >= 2
 
 
 # ---------------------------------------------------------------------------
