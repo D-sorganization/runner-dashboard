@@ -1,0 +1,41 @@
+# Weekly lockfile maintenance — Issue #163
+name: Lockfile Upgrade
+on:
+  schedule:
+    # Every Monday at 08:00 UTC
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@0c5e2b8115b80b4c7c5ddf6ff09aefeccbbb8624 # v5
+        with:
+          version: "latest"
+
+      - name: Upgrade Python lockfile
+        run: uv lock --upgrade
+
+      - name: Open PR with lockfile updates
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c12e265e54 # v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/weekly-lockfile-upgrade
+          title: "chore: weekly dependency lockfile upgrade"
+          body: |
+            Automated weekly upgrade of `uv.lock` via `uv lock --upgrade`.
+
+            - [ ] CI passes
+            - [ ] `pip-audit` clean
+            - [ ] `ruff check` clean
+            - [ ] `mypy` clean
+          commit-message: "chore: weekly lockfile upgrade"
+          delete-branch: true

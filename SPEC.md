@@ -1,4 +1,4 @@
-# SPEC.md — D-sorganization Runner Dashboard
+﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
 **Spec Version:** 2.5.1
 **Application Version:** 4.1.0 (see `VERSION`)
@@ -15,12 +15,12 @@ documented canonically in
 [`Repository_Management/docs/sibling-repos.md`](https://github.com/D-sorganization/Repository_Management/blob/main/docs/sibling-repos.md).
 Quick form:
 
-- **[`Repository_Management`](https://github.com/D-sorganization/Repository_Management)** — fleet orchestrator.
+- **[`Repository_Management`](https://github.com/D-sorganization/Repository_Management)** â€” fleet orchestrator.
   Publishes shared CI workflows, skills, templates, agent coordination.
   *Does not* own dashboard UI, backend, or HTTP API.
-- **`runner-dashboard`** (this repo) — operator console. Owns every dashboard
+- **`runner-dashboard`** (this repo) â€” operator console. Owns every dashboard
   tab, every `/api/*` endpoint, deployment + rollback machinery.
-- **[`Maxwell-Daemon`](https://github.com/D-sorganization/Maxwell-Daemon)** —
+- **[`Maxwell-Daemon`](https://github.com/D-sorganization/Maxwell-Daemon)** â€”
   autonomous local AI control plane. The Maxwell tab here calls the daemon
   over HTTP; the daemon never calls back.
 
@@ -119,8 +119,8 @@ coupling and makes each domain independently testable.
 
 | Router | Prefix | Responsibility |
 |---|---|---|
-| `routers/dispatch.py` | `/api/fleet/dispatch` | Fleet agent dispatcher — allowlisted hub-to-node commands |
-| `routers/credentials.py` | `/api` | Credential probe — tool/key presence without exposing values |
+| `routers/dispatch.py` | `/api/fleet/dispatch` | Fleet agent dispatcher â€” allowlisted hub-to-node commands |
+| `routers/credentials.py` | `/api` | Credential probe â€” tool/key presence without exposing values |
 | `routers/linear.py` | `/api/linear` | Optional Linear read API for workspaces, teams, and issue inventory |
 
 The migration from inline `@app.*` endpoints to bounded routers is ongoing.
@@ -135,7 +135,7 @@ the FastAPI app and router dependencies.
 
 **Type:** Self-contained Single-Page Application (SPA)
 **Entry point:** `frontend/index.html`
-**Build step:** None — served directly as a static HTML file
+**Build step:** None â€” served directly as a static HTML file
 **JavaScript framework:** React (loaded from CDN)
 **createElement API:** `h()` alias (no JSX, no transpiler)
 **Styling:** Inline styles + embedded `<style>` block
@@ -146,8 +146,8 @@ directly by the FastAPI backend.
 
 **Shared helper components** defined near the top of the script block:
 
-- `Collapse` — collapsible section with header and chevron.
-- `SubTabs` — horizontal sub-tab strip rendered inside a tab panel. Props:
+- `Collapse` â€” collapsible section with header and chevron.
+- `SubTabs` â€” horizontal sub-tab strip rendered inside a tab panel. Props:
   `tabs` (array of `{ key, label, badge, disabled }`), `activeKey`, `onChange`,
   `storageKey` (optional localStorage persistence key), `rightBadge` (optional
   element flush-right of the strip). Active tab is persisted to localStorage
@@ -155,18 +155,18 @@ directly by the FastAPI backend.
 
 #### Header Quick Dispatch
 
-The main header contains a **Quick Dispatch** button (⚡ Quick Dispatch ▾),
+The main header contains a **Quick Dispatch** button (âš¡ Quick Dispatch â–¾),
 flush-right next to the refresh control. Clicking it opens a popover form that
 lets any operator dispatch an ad-hoc agent task to any org repository without
 navigating to a specific tab. The popover provides:
 
-- **Repository** dropdown — populated from `GET /api/repos`
-- **Provider** dropdown — populated from `GET /api/agents/providers`
-- **Model** text field — shown only for providers that support model selection
+- **Repository** dropdown â€” populated from `GET /api/repos`
+- **Provider** dropdown â€” populated from `GET /api/agents/providers`
+- **Model** text field â€” shown only for providers that support model selection
   (`claude_code_cli`, `codex_cli`); defaults to `claude-opus-4-7`
-- **Branch ref** text field — defaults to `main`
-- **Prompt** textarea — minimum 10 characters
-- **Dispatch** button — POSTs to `POST /api/agents/quick-dispatch`; shows a
+- **Branch ref** text field â€” defaults to `main`
+- **Prompt** textarea â€” minimum 10 characters
+- **Dispatch** button â€” POSTs to `POST /api/agents/quick-dispatch`; shows a
   loading state, surfaces errors inline, and auto-closes on success
 
 Click-outside closes the popover. Rate-limit errors (HTTP 429) are surfaced
@@ -186,7 +186,7 @@ primary fleet machine. See Section 6 for deployment details.
 
 ---
 
-## 3. Feature List — Dashboard Tabs
+## 3. Feature List â€” Dashboard Tabs
 
 ### 3.1 Fleet Tab
 Real-time view of all self-hosted runners. Displays runner name, status (idle,
@@ -211,13 +211,13 @@ fleet nodes API. Supports drilling into individual node system status.
 Org-level runner and repository summary. Shows runner group assignments,
 available label sets, and aggregate health across all repos.
 
-### 3.5.1 `/api/linear/*` — optional Linear integration
+### 3.5.1 `/api/linear/*` â€” optional Linear integration
 
 When Linear is configured, the dashboard exposes:
 
-- `GET /api/linear/workspaces` — configured workspaces with auth status
-- `GET /api/linear/teams` — teams for one workspace or all configured workspaces
-- `GET /api/linear/issues` — Linear-only issue inventory in canonical dashboard shape
+- `GET /api/linear/workspaces` â€” configured workspaces with auth status
+- `GET /api/linear/teams` â€” teams for one workspace or all configured workspaces
+- `GET /api/linear/issues` â€” Linear-only issue inventory in canonical dashboard shape
 
 If Linear is not configured, Linear-backed issue reads return HTTP 503 with the
 standard not-configured detail. `GET /api/issues` accepts
@@ -226,11 +226,11 @@ default.
 
 ### 3.6 Tests Tab
 Unified testing hub with two sections:
-1. **CI Tests** — table of the latest `ci-standard` workflow run for each of
+1. **CI Tests** â€” table of the latest `ci-standard` workflow run for each of
    the 17 fleet repos, showing conclusion badge, branch, run number, and
    timestamp. Failed or cancelled runs show a **Re-run Failed** button that
    calls GitHub's `rerun-failed-jobs` API.
-2. **Integration Tests** — dispatches and monitors heavy integration test runs
+2. **Integration Tests** â€” dispatches and monitors heavy integration test runs
    (MuJoCo, Drake, Pinocchio physics stacks). Lists repos eligible for heavy
    testing, dispatches parameterized workflows, and optionally triggers
    Docker-based test environments.
@@ -259,15 +259,15 @@ Health status of local registered applications (processes, services defined in
 ### 3.12 Remediation Tab
 AI agent dispatch control panel organised into three sub-tabs:
 
-- **Automations** (default) — configures and dispatches remediation plans to
+- **Automations** (default) â€” configures and dispatches remediation plans to
   Jules, GAAI, Claude, or Codex agents. Shows dispatch history and plan
   preview. Supports per-repo agent routing, loop-guard configuration, and
   provider fallback chain escalation.
-- **PRs** — multi-select table of open pull requests fetched from
+- **PRs** â€” multi-select table of open pull requests fetched from
   `GET /api/prs?limit=2000`. Supports filtering by repo, author, and draft
   status. Bulk dispatch sends selected PRs to a chosen provider via
   `POST /api/prs/dispatch` with a confirmation modal.
-- **Issues** — taxonomy-aware GitHub Issues browser and bulk dispatcher
+- **Issues** â€” taxonomy-aware GitHub Issues browser and bulk dispatcher
   (`GET /api/issues?limit=2000`). Filter bar with repo, complexity,
   judgement, and "pickable only" controls persisted to `localStorage`.
   Multi-select table with type/complexity/effort/judgement pills. Non-pickable
@@ -317,7 +317,7 @@ All endpoints are served under `http://localhost:8321/api/`.
 | Method | Path | Description |
 |---|---|---|
 | GET | `/api/system` | Host system metrics (CPU, RAM, disk, GPU) |
-| GET | `/api/health` | Simple health check — returns `{"status": "ok"}` |
+| GET | `/api/health` | Simple health check â€” returns `{"status": "ok"}` |
 | GET | `/api/watchdog` | Watchdog status and last heartbeat |
 
 ### Deployment and Drift
@@ -779,10 +779,10 @@ adjusts the active runner count based on the policy defined in
 
 - Terminal colours and `ok`/`info`/`warn`/`fail` log helpers
 - Guard assertions: `require_dir`, `require_file`, `require_cmd`
-- `pip_install <pkg...>` — Python 3.11-preferring pip with `--break-system-packages` when supported
-- `sync_dir <src> <dest>` — rsync with rm/cp fallback
-- `backup_dir <path>` — timestamped `cp -a` backup
-- `dry_run "<description>"` — no-op gate when `DRY_RUN=true`
+- `pip_install <pkg...>` â€” Python 3.11-preferring pip with `--break-system-packages` when supported
+- `sync_dir <src> <dest>` â€” rsync with rm/cp fallback
+- `backup_dir <path>` â€” timestamped `cp -a` backup
+- `dry_run "<description>"` â€” no-op gate when `DRY_RUN=true`
 
 All new deploy scripts should source it with:
 
@@ -794,7 +794,13 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 ## 7. Changelog
 
-### 2.0.0 — 2026-04-23
+
+### 2.5.2 — 2026-04-28
+- chore: migrate to `uv` for dependency management and add `uv.lock`.
+- ci: refactor CI workflows to be `uv`-native, ensuring reproducible builds and faster bootstrap times (resolves #163).
+- ci: updated `ci-spec-check` to monitor `uv.lock` for freshness.
+
+### 2.0.0 â€” 2026-04-23
 
 Initial standalone release. Extracted from the `D-sorganization/Repository_Management`
 mono-repo as an independent repository.
@@ -830,14 +836,14 @@ supported working directory.
 
 Test coverage areas:
 
-- **`tests/test_dispatch_contract.py`** — unit tests for `backend/dispatch_contract.py`:
+- **`tests/test_dispatch_contract.py`** â€” unit tests for `backend/dispatch_contract.py`:
   envelope round-trips, confirmation gating for privileged actions, allowlist enforcement.
-- **`tests/test_remote_execution_contract.py`** — unit tests for `backend/remote_execution_contract.py`:
+- **`tests/test_remote_execution_contract.py`** â€” unit tests for `backend/remote_execution_contract.py`:
   private-host and private-URL detection, unknown-target rejection.
-- **`tests/test_agent_remediation.py`** — unit tests for `backend/agent_remediation.py`:
+- **`tests/test_agent_remediation.py`** â€” unit tests for `backend/agent_remediation.py`:
   `FailureContext` construction, workflow-type classification for lint and test workflows,
   policy defaults.
-- **`tests/test_frontend_integrity.py`** — static source checks for `frontend/index.html`:
+- **`tests/test_frontend_integrity.py`** â€” static source checks for `frontend/index.html`:
   required tab function markers, absence of deprecated `HeavyTestsTab`, icon helper symbols.
 
 `pytest>=8.0` and `pytest-asyncio>=0.23` are listed in `requirements.txt`.
@@ -871,16 +877,16 @@ All mutating `/api/*` endpoints require a principal.
 Scopes are enforced per-endpoint using the `require_scope(scope_name)` dependency.
 
 **Scope Presets:**
-- `admin` — Full access to all endpoints.
-- `operator` — Access to runners, workflows, and remediation dispatch.
-- `viewer` — Read-only access (default for unprivileged tokens).
-- `bot` — Scoped for agent tasks (remediation, workflows).
+- `admin` â€” Full access to all endpoints.
+- `operator` â€” Access to runners, workflows, and remediation dispatch.
+- `viewer` â€” Read-only access (default for unprivileged tokens).
+- `bot` â€” Scoped for agent tasks (remediation, workflows).
 
 **Audit Logging & Attribution:**
 Every mutating action is recorded in `DispatchAuditLogEntry` with dual-attribution:
-- `principal` — The ID of the authenticated user/agent.
-- `on_behalf_of` — Optional secondary attribution (e.g. when an admin impersonates a bot for debugging, the bot is the principal, and the admin is `on_behalf_of`).
-- `correlation_id` — Propagated across fleet nodes for distributed tracing.
+- `principal` â€” The ID of the authenticated user/agent.
+- `on_behalf_of` â€” Optional secondary attribution (e.g. when an admin impersonates a bot for debugging, the bot is the principal, and the admin is `on_behalf_of`).
+- `correlation_id` â€” Propagated across fleet nodes for distributed tracing.
 
 **Admin Impersonation Flow:**
 An admin can act as another principal (like a bot) for debugging. By providing the `X-Impersonate-Principal: <bot_id>` header, the admin adopts the target principal's scopes. The audit log records the target as the `principal` and the admin as `on_behalf_of`.
@@ -901,7 +907,7 @@ The backend injects the following headers on all responses:
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: SAMEORIGIN`
 - `Referrer-Policy: strict-origin-when-cross-origin`
-- `Content-Security-Policy` — allows self, CDN scripts (jsdelivr, cdnjs, unpkg)
+- `Content-Security-Policy` â€” allows self, CDN scripts (jsdelivr, cdnjs, unpkg)
 
 ### 9.3 Destructive Action Confirmation
 Critical fleet operations (runner stop, fleet restart) use a two-step
@@ -909,7 +915,7 @@ inline confirmation UI instead of `window.confirm()`.
 
 ### 9.4 Token Handling
 `GH_TOKEN` and `ANTHROPIC_API_KEY` must be supplied as environment variables
-only — never hardcoded in source files or configuration. The recommended setup
+only â€” never hardcoded in source files or configuration. The recommended setup
 path is the `configure-env-vars.sh` script, which writes tokens to the systemd
 override file so they are not visible in the process environment of child
 processes and are not stored in shell history.
@@ -999,8 +1005,8 @@ Aggregates open pull-requests across organisation repositories.
 |---|---|---|---|
 | `repo` | string (repeatable) | all org repos | Filter to specific `owner/repo` slugs |
 | `include_drafts` | bool | `true` | Include draft PRs |
-| `author` | string | — | Filter by author login |
-| `label` | string (repeatable) | — | Match any of these labels |
+| `author` | string | â€” | Filter by author login |
+| `label` | string (repeatable) | â€” | Match any of these labels |
 | `limit` | int | 500 | Maximum items returned (hard cap 2000) |
 
 **Response:**
@@ -1029,9 +1035,9 @@ Aggregates open pull-requests across organisation repositories.
 }
 ```
 
-- `agent_claim` — extracted from any `claim:*` label on the PR.
-- `linked_issues` — issue numbers found via `closes/fixes/resolves #N` in the PR body.
-- `errors` — per-repo error messages; a failing repo does not abort the whole request.
+- `agent_claim` â€” extracted from any `claim:*` label on the PR.
+- `linked_issues` â€” issue numbers found via `closes/fixes/resolves #N` in the PR body.
+- `errors` â€” per-repo error messages; a failing repo does not abort the whole request.
 - Responses are cached 30 seconds in-process keyed by query parameters.
 
 ### 11.2 `GET /api/prs/{owner}/{repo}/{number}`
@@ -1063,12 +1069,12 @@ filtering.
 |---|---|---|---|
 | `repo` | string (repeatable) | all org repos | Filter to specific `owner/repo` slugs |
 | `state` | `open` \| `all` | `open` | Issue state |
-| `label` | string (repeatable) | — | Match any of these labels |
-| `assignee` | string | — | Filter by assignee login |
+| `label` | string (repeatable) | â€” | Match any of these labels |
+| `assignee` | string | â€” | Filter by assignee login |
 | `pickable_only` | bool | `false` | Only return issues available for agent pickup |
-| `complexity` | string (repeatable) | — | Match any `complexity:*` value |
-| `effort` | string (repeatable) | — | Match any `effort:*` value |
-| `judgement` | string (repeatable) | — | Match any `judgement:*` value |
+| `complexity` | string (repeatable) | â€” | Match any `complexity:*` value |
+| `effort` | string (repeatable) | â€” | Match any `effort:*` value |
+| `judgement` | string (repeatable) | â€” | Match any `judgement:*` value |
 | `limit` | int | 500 | Maximum items returned (hard cap 2000) |
 
 **Response:**
@@ -1279,7 +1285,7 @@ Dispatches agents to one or more pull requests via `Agent-PR-Action.yml`.
 
 Same shape as PR dispatch, with two additional fields:
 
-- `"force": true` — skip pickability enforcement (requires PRIVILEGED access).
+- `"force": true` â€” skip pickability enforcement (requires PRIVILEGED access).
   When forced, `forced: true` is recorded in the audit log.
 - Pickability is enforced server-side: issues with `pickable=false` are rejected
   with `reason="not_pickable: <reason>"`.
@@ -1346,7 +1352,7 @@ Every dispatch envelope includes the following security fields:
 |-------|------|---------|
 | `envelope_id` | UUID4 (string) | Unique envelope identifier for replay detection |
 | `signature` | hex string | HMAC-SHA256 signature of the canonical envelope payload |
-| `issued_at` | ISO 8601 timestamp | Envelope creation time; must be within ±5 minutes of server time |
+| `issued_at` | ISO 8601 timestamp | Envelope creation time; must be within Â±5 minutes of server time |
 | `requested_by` | string | User/principal requesting the action |
 | `action` | string | Allowlisted action name (e.g., `control.runner.start`) |
 | `payload` | dict | Action-specific parameters (e.g., runner ID) |
@@ -1356,7 +1362,7 @@ Approval of privileged actions includes:
 | Field | Type | Purpose |
 |-------|------|---------|
 | `approved_by` | string | User approving the action |
-| `approved_at` | ISO 8601 timestamp | Approval time; must be within ±5 minutes of server time |
+| `approved_at` | ISO 8601 timestamp | Approval time; must be within Â±5 minutes of server time |
 | `approval_hmac` | hex string | HMAC-SHA256 signature binding approval to the envelope |
 
 ### 15.3 Signature Validation
@@ -1442,7 +1448,7 @@ interface accessible from any tab in the dashboard.
 
 ### 16.2 Toggle
 
-A button labelled "☰ Asst" in the header-right area toggles the sidebar
+A button labelled "â˜° Asst" in the header-right area toggles the sidebar
 open or closed. The button is highlighted (blue background) when the sidebar
 is open.
 
@@ -1453,7 +1459,7 @@ The user may configure it to dock to the left or right of the viewport.
 The default position is right.
 
 - Default width: 360px
-- Draggable resize handle: 280px – 600px range
+- Draggable resize handle: 280px â€“ 600px range
 - The main content shrinks to fill the remaining width
 
 ### 16.4 Persistence
@@ -1476,7 +1482,7 @@ Messages are displayed as chat bubbles. User messages dock right with a blue
 background; assistant replies dock left with a tertiary background. Assistant
 responses are rendered with a minimal inline Markdown renderer supporting
 bold, italic, inline code, fenced code blocks, links, and ordered/unordered
-lists — no external library required.
+lists â€” no external library required.
 
 Input is a textarea. Enter sends the message; Shift+Enter inserts a newline.
 
@@ -1517,7 +1523,7 @@ and passed down as props; all other sidebar state is internal.
 
 ### 16.1 Pydantic Version Upgrade
 
-**Updated:** `pydantic==2.10.6` → `pydantic==2.13.3`
+**Updated:** `pydantic==2.10.6` â†’ `pydantic==2.13.3`
 
 - Resolves compatibility issues with Python 3.14's PyO3 bindings
 - Maintains backward compatibility with all existing request/response schemas
@@ -1528,10 +1534,10 @@ and passed down as props; all other sidebar state is internal.
 Tests in `tests/test_api_integration.py` now include required HTTP headers for
 proper authentication and CSRF protection:
 
-- **`Authorization: Bearer test-key`** — Satisfies FastAPI app's
+- **`Authorization: Bearer test-key`** â€” Satisfies FastAPI app's
   `DASHBOARD_API_KEY` import-time validation. The dashboard expects a valid
   Bearer token for authenticated routes.
-- **`X-Requested-With: XMLHttpRequest`** — Standard CSRF protection header
+- **`X-Requested-With: XMLHttpRequest`** â€” Standard CSRF protection header
   required for state-changing requests (PUT, POST, DELETE). This header signals
   to the dashboard that the request originated from the frontend JS, not from
   an HTML form cross-origin submission.
@@ -1539,7 +1545,7 @@ proper authentication and CSRF protection:
 ### 16.3 Test Results
 
 **Before:** 158 passed, 8 failed, 1 xfailed  
-**After:** 166 passed, 1 xfailed ✓
+**After:** 166 passed, 1 xfailed âœ“
 
 The 8 previously failing tests required these headers:
 - Tests on routes that validate Bearer tokens
@@ -1623,14 +1629,14 @@ approve the protocol handler in the browser (native OS dialog).
 When the health check fails:
 
 ```
-┌─────────────────────────────────────────┐
-│ Dashboard backend is not responding      │
-│                                         │
-│ [Start Now]  [Manual Instructions]     │
-│                                         │
-│ If you continue to see this error,      │
-│ check ~/config/runner-dashboard/launcher.log
-└─────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Dashboard backend is not responding      â”‚
+â”‚                                         â”‚
+â”‚ [Start Now]  [Manual Instructions]     â”‚
+â”‚                                         â”‚
+â”‚ If you continue to see this error,      â”‚
+â”‚ check ~/config/runner-dashboard/launcher.log
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 - **"Start Now"** (Windows/macOS): Triggers `runner-dashboard://start` protocol
@@ -1665,7 +1671,7 @@ useEffect(() => {
 
 1. Frontend detects backend down
 2. Shows modal with "Start Now" button
-3. Click → `<a href="runner-dashboard://start">` (browser navigates)
+3. Click â†’ `<a href="runner-dashboard://start">` (browser navigates)
 4. Browser recognizes protocol, launches registered script
 5. Launcher script starts backend, checks health, opens browser to dashboard
 6. Modal auto-closes when health check succeeds
@@ -1674,21 +1680,21 @@ useEffect(() => {
 ### 17.5 Security Considerations
 
 **Protocol Handler:**
-- ✅ Only `runner-dashboard://` scheme (no collision with other apps)
-- ✅ Script is local, operator-controlled, no network access
-- ✅ Operator approves handler installation once during setup
-- ✅ Browser prevents non-local sites from triggering the protocol
-- ✅ Launcher script has hardcoded paths (no shell expansion)
+- âœ… Only `runner-dashboard://` scheme (no collision with other apps)
+- âœ… Script is local, operator-controlled, no network access
+- âœ… Operator approves handler installation once during setup
+- âœ… Browser prevents non-local sites from triggering the protocol
+- âœ… Launcher script has hardcoded paths (no shell expansion)
 
 **Health Endpoint:**
-- ✅ No authentication required (internal localhost:8321 only)
-- ✅ Returns minimal data (status + timestamp)
-- ✅ No secrets or operational state exposed
+- âœ… No authentication required (internal localhost:8321 only)
+- âœ… Returns minimal data (status + timestamp)
+- âœ… No secrets or operational state exposed
 
 **Recovery UI:**
-- ✅ "Manual Instructions" path requires operator terminal use
-- ✅ Protocol handler requires operator browser approval
-- ✅ No automatic remediation; all actions explicit
+- âœ… "Manual Instructions" path requires operator terminal use
+- âœ… Protocol handler requires operator browser approval
+- âœ… No automatic remediation; all actions explicit
 
 ### 17.6 Deployment
 
@@ -1700,7 +1706,7 @@ if [[ "$OS" == "Windows_NT" ]]; then
 fi
 ```
 
-**Operator sees:** "Allow runner-dashboard to launch an app?" → Click "Allow"
+**Operator sees:** "Allow runner-dashboard to launch an app?" â†’ Click "Allow"
 
 **Manual re-registration (if needed):**
 ```powershell
@@ -1710,15 +1716,15 @@ powershell -ExecutionPolicy Bypass -File deploy/register-protocol.ps1
 ### 17.7 Operator Documentation
 
 See [`docs/pwa-launcher-design.md`](docs/pwa-launcher-design.md) for:
-- Detailed architecture evaluation (Options 1–4)
+- Detailed architecture evaluation (Options 1â€“4)
 - Implementation checklist
 - Troubleshooting guide
 - Platform-specific instructions (Windows/macOS/Linux)
 
 ### 17.8 Success Criteria
 
-- ✅ "Start Now" button successfully starts backend and opens dashboard
-- ✅ No manual terminal commands needed for happy path
+- âœ… "Start Now" button successfully starts backend and opens dashboard
+- âœ… No manual terminal commands needed for happy path
 
 ---
 

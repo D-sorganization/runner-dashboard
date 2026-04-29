@@ -1,4 +1,4 @@
-# CI dispatch marker 2026-04-23
+﻿# CI dispatch marker 2026-04-23
 name: CI Standard
 on:
   push:
@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── Fleet-wide CI health gate (issue #154) ────────────────────────────────
+  # â”€â”€ Fleet-wide CI health gate (issue #154) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ci-health-check:
     runs-on: d-sorg-fleet
     timeout-minutes: 10
@@ -63,7 +63,7 @@ jobs:
             echo "$OVER"
             exit 1
           fi
-          echo "All source files ≤ 500 lines."
+          echo "All source files â‰¤ 500 lines."
       - name: Bootstrap environment
         run: |
           for py in python3.11 python3.12 python3.10 python3 python; do
@@ -75,16 +75,21 @@ jobs:
           source "$RUNNER_TEMP/health-venv/bin/activate"
           pip install --upgrade pip
           pip install pytest==8.1.1
-          if [ -f requirements.txt ]; then
+          if [ -f uv.lock ]; then
+            pip install uv
+            uv sync --frozen
+            # Use the uv-managed venv
+            echo "$(pwd)/.venv/bin" >> "$GITHUB_PATH"
+          elif [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
           echo "$RUNNER_TEMP/health-venv/bin" >> "$GITHUB_PATH"
-      - name: Fail-fast check — pytest can collect tests
+      - name: Fail-fast check â€” pytest can collect tests
         run: |
           if [ -d tests/ ]; then
             pytest --co -q tests/ || { echo "::error::pytest --co failed"; exit 1; }
           else
-            echo "No tests directory — skipping collect check"
+            echo "No tests directory â€” skipping collect check"
           fi
 
   quality-gate:
@@ -98,13 +103,20 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.11"
-      - name: Install quality tools in isolated venv
+      - name: Install dependencies with uv
         run: |
-          python -m venv "$RUNNER_TEMP/ci-tools"
-          . "$RUNNER_TEMP/ci-tools/bin/activate"
-          python -m pip install --upgrade pip
-          python -m pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7
-          echo "$RUNNER_TEMP/ci-tools/bin" >> "$GITHUB_PATH"
+          if [ -f uv.lock ]; then
+            pip install uv
+            uv sync --frozen
+            echo "$(pwd)/.venv/bin" >> "$GITHUB_PATH"
+          else
+            python -m venv "$RUNNER_TEMP/ci-tools"
+            . "$RUNNER_TEMP/ci-tools/bin/activate"
+            pip install --upgrade pip
+            pip install ruff==0.14.10 mypy==1.13.0 bandit==1.7.7
+            pip install -r requirements.txt
+            echo "$RUNNER_TEMP/ci-tools/bin" >> "$GITHUB_PATH"
+          fi
       - name: Check Tool Version Consistency
         run: |
           echo "Validating tool versions match .pre-commit-config.yaml..."
@@ -121,8 +133,8 @@ jobs:
         run: ruff check backend/
       - name: Check Formatting
         run: ruff format --check backend/
-      - name: Install backend dependencies
-        run: pip install -r requirements.txt types-PyYAML types-requests
+      - name: Install type stubs
+        run: pip install types-PyYAML types-requests
       - name: Type Check
         run: mypy backend/ --ignore-missing-imports --exclude 'backend/__pycache__' --no-implicit-optional
       - name: Run bandit security scan
@@ -146,13 +158,16 @@ jobs:
             exit 1
           fi
       - name: Security Audit (pip-audit)
-        continue-on-error: true
         env:
           PYTHONNOUSERSITE: "1"
         run: |
-          python -m venv "$RUNNER_TEMP/pip-audit-venv"
-          "$RUNNER_TEMP/pip-audit-venv/bin/pip" install --quiet pip-audit
-          "$RUNNER_TEMP/pip-audit-venv/bin/pip-audit" -r requirements.txt || echo "::warning::pip-audit found vulnerabilities (non-blocking)"
+          if [ -f uv.lock ]; then
+            pip-audit --progress-spinner=off
+          else
+            python -m venv "$RUNNER_TEMP/pip-audit-venv"
+            "$RUNNER_TEMP/pip-audit-venv/bin/pip" install --quiet pip-audit
+            "$RUNNER_TEMP/pip-audit-venv/bin/pip-audit" -r requirements.txt
+          fi
 
   security-scan:
     needs: [ci-health-check]
@@ -169,9 +184,16 @@ jobs:
         env:
           PYTHONNOUSERSITE: "1"
         run: |
-          python -m venv "$RUNNER_TEMP/security-venv"
-          "$RUNNER_TEMP/security-venv/bin/pip" install --quiet pip-audit
-          "$RUNNER_TEMP/security-venv/bin/pip-audit" -r requirements.txt --progress-spinner=off
+          if [ -f uv.lock ]; then
+            pip install uv
+            uv sync --frozen
+            echo "$(pwd)/.venv/bin" >> "$GITHUB_PATH"
+            pip-audit --progress-spinner=off
+          else
+            python -m venv "$RUNNER_TEMP/security-venv"
+            "$RUNNER_TEMP/security-venv/bin/pip" install --quiet pip-audit
+            "$RUNNER_TEMP/security-venv/bin/pip-audit" -r requirements.txt --progress-spinner=off
+          fi
 
   tests:
     needs:
@@ -198,8 +220,16 @@ jobs:
           done
           source "$RUNNER_TEMP/ci-venv/bin/activate"
           pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt
-          echo "$RUNNER_TEMP/ci-venv/bin" >> "$GITHUB_PATH"
+          if [ -f uv.lock ]; then
+            pip install uv
+            uv sync --frozen
+            echo "$(pwd)/.venv/bin" >> "$GITHUB_PATH"
+          else
+            source "$RUNNER_TEMP/ci-venv/bin/activate"
+            pip install --upgrade pip setuptools wheel
+            pip install -r requirements.txt
+            echo "$RUNNER_TEMP/ci-venv/bin" >> "$GITHUB_PATH"
+          fi
       - name: Run Python tests
         env:
           PYTHONPATH: backend
@@ -207,6 +237,6 @@ jobs:
           if [ -d tests/ ]; then
             pytest tests/ --tb=short -q
           else
-            echo "No tests directory found — skipping"
+            echo "No tests directory found â€” skipping"
             exit 0
           fi
