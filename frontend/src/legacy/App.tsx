@@ -1777,6 +1777,7 @@ function OrgTab(p) {
       { className: "toolbar" },
       h("input", {
         className: "search-bar",
+        "aria-label": "Search repositories",
         placeholder: "Search repos...",
         value: search,
         onChange: function (e) {
@@ -4067,7 +4068,7 @@ class LocalAppsErrorBoundary extends React.Component {
         h("div", { style: { marginBottom: 12, color: "var(--accent-red)", fontWeight: 600 } }, "Local Tools failed to render"),
         h("code", { style: { display: "block", fontSize: 12, color: "var(--accent-red)", marginBottom: 12, whiteSpace: "pre-wrap" } },
           String(this.state.error)),
-        h("button", { className: "btn", onClick: this.handleRetry }, "Retry"),
+        h("button", { className: "btn", onClick: this.handleRetry, "aria-label": "Retry loading data" }, "Retry"),
       );
     }
     return this.props.children;
@@ -4226,7 +4227,8 @@ function LocalAppsTab(p) {
             color: "var(--accent-yellow)",
             fontWeight: 600,
           },
-          title: (app.dirty_files || []).join("\n"),
+          title: (app.dirty_files || []).join("
+"),
         },
         app.dirty_files
           ? app.dirty_files.length +
@@ -4379,8 +4381,10 @@ function LocalAppsTab(p) {
                                 color: "var(--accent-yellow)",
                               },
                               title:
-                                "Uncommitted local changes:\n" +
-                                (app.dirty_files || []).join("\n"),
+                                "Uncommitted local changes:
+" +
+                                (app.dirty_files || []).join("
+"),
                             },
                             "\u26A0 dirty",
                           )
@@ -10876,7 +10880,7 @@ function CredentialsTab(p) {
     h(
       "div",
       { style: { display: "flex", gap: 8, marginBottom: 16, alignItems: "center" } },
-      h("button", { className: "btn", onClick: onRefresh, disabled: loading }, I.refresh(12), loading ? "Probing..." : "Re-probe"),
+      h("button", { className: "btn", onClick: onRefresh, disabled: loading, "aria-label": "Re-probe runner status" }, I.refresh(12), loading ? "Probing..." : "Re-probe"),
       h("span", { style: { fontSize: 12, color: "var(--text-muted)" } }, "Probes run locally. No secrets are shown."),
     ),
     error
@@ -11177,10 +11181,10 @@ function MaxwellTab(p) {
       h(Stat, { label: "Contract", value: daemonVersion || "unknown" }),
     ),
     h("div", { style: { display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" } },
-      h("button", { className: "btn", onClick: onRefresh, disabled: loading }, I.refresh(12), loading ? "Refreshing..." : "Refresh"),
-      !isRunning ? h("button", { className: "btn", onClick: function () { doControl("start"); }, disabled: controlling }, "Start Maxwell") : null,
-      isRunning ? h("button", { className: "btn", onClick: function () { doControl("stop"); }, disabled: controlling }, "Stop Maxwell") : null,
-      isRunning ? h("button", { className: "btn", onClick: function () { doControl("restart"); }, disabled: controlling }, "Restart Maxwell") : null,
+      h("button", { className: "btn", onClick: onRefresh, disabled: loading, "aria-label": "Refresh Maxwell status" }, I.refresh(12), loading ? "Refreshing..." : "Refresh"),
+      !isRunning ? h("button", { className: "btn", onClick: function () { doControl("start"); }, disabled: controlling, "aria-label": "Start Maxwell daemon" }, "Start Maxwell") : null,
+      isRunning ? h("button", { className: "btn", onClick: function () { doControl("stop"); }, disabled: controlling, "aria-label": "Stop Maxwell daemon" }, "Stop Maxwell") : null,
+      isRunning ? h("button", { className: "btn", onClick: function () { doControl("restart"); }, disabled: controlling, "aria-label": "Restart Maxwell daemon" }, "Restart Maxwell") : null,
     ),
     controlStatus ? h("div", { style: { padding: "10px 12px", borderRadius: 8, marginBottom: 12, background: controlStatus.ok ? "rgba(63,185,80,0.12)" : "rgba(248,81,73,0.12)", color: controlStatus.ok ? "var(--accent-green)" : "var(--accent-red)" } }, controlStatus.msg) : null,
     error ? h("div", { style: { padding: "10px 12px", borderRadius: 8, marginBottom: 12, background: "rgba(248,81,73,0.12)", color: "var(--accent-red)" } }, error) : null,
@@ -11222,6 +11226,7 @@ function MaxwellTab(p) {
               })
         ),
         showScrollButton ? h("button", {
+          "aria-label": "Scroll to bottom of chat",
           className: "btn maxwell-scroll-button",
           onClick: function () {
             setShowScrollButton(false);
@@ -11763,7 +11768,7 @@ function DashboardHelp(p) {
           },
           h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
             h("strong", null, "Dashboard Help"),
-            h("button", { onClick: function () { setIsOpen(false); }, className: "btn", style: { padding: "2px 8px" } }, "Close"),
+            h("button", { onClick: function () { setIsOpen(false); }, className: "btn", style: { padding: "2px 8px" }, "aria-label": "Close assessment dialog" }, "Close"),
           ),
           h("div", { style: { fontSize: 12, color: "var(--text-secondary)" } }, "Current tab: " + currentTab),
         ),
@@ -13602,16 +13607,19 @@ function ClineLauncherTab() {
         className: "btn btn-primary",
         disabled: !!busy["start"] || schedRunning,
         onClick: function () { action("start"); },
+        "aria-label": "Start scheduler",
       }, busy["start"] ? "starting..." : "Start scheduler"),
       h("button", {
         className: "btn",
         disabled: !!busy["stop"] || !schedRunning,
         onClick: function () { action("stop"); },
+        "aria-label": "Stop scheduler",
       }, busy["stop"] ? "stopping..." : "Stop scheduler"),
       h("button", {
         className: "btn",
         disabled: loading,
         onClick: function () { fetchRepos(); fetchStatus(); },
+        "aria-label": "Refresh scheduler status",
       }, loading ? "refreshing..." : "Refresh"),
     ),
 
@@ -13749,7 +13757,9 @@ function FeatureRequestsTab(props) {
     setDispatchStatus("dispatching");
     var finalPrompt = promptText;
     if (promptNotesEnabled && editingPromptNotes.trim()) {
-      finalPrompt = editingPromptNotes + "\n\n" + promptText;
+      finalPrompt = editingPromptNotes + "
+
+" + promptText;
     }
     onDispatch({
       repository: selRepo,
@@ -14562,7 +14572,7 @@ function DiagnosticsTab() {
   return h("div", { style: { padding: 20, maxWidth: 860 } },
     h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 } },
       h("h2", { style: { margin: 0, fontSize: 20, fontWeight: 700 } }, "Diagnostics"),
-      h("button", { style: btnStyle, onClick: fetchDiagnostics }, I.refresh(12), " Refresh"),
+      h("button", { style: btnStyle, onClick: fetchDiagnostics, "aria-label": "Refresh diagnostics" }, I.refresh(12), " Refresh"),
     ),
 
     isDrifted
@@ -14613,7 +14623,7 @@ function DiagnosticsTab() {
                 onClick: doRestartService,
                 disabled: restartLoading,
               }, restartLoading ? "Restarting…" : "Confirm Restart"),
-              h("button", { style: Object.assign({}, btnStyle, { background: "var(--card-bg)", color: "var(--text-primary)", border: "1px solid var(--border)" }), onClick: function () { setRestartConfirm(false); } }, "Cancel"),
+              h("button", { style: Object.assign({}, btnStyle, { background: "var(--card-bg)", color: "var(--text-primary)", border: "1px solid var(--border)" }), onClick: function () { setRestartConfirm(false); }, "aria-label": "Cancel restart" }, "Cancel"),
             )
           : h("button", {
               style: dangerBtnStyle,
@@ -14682,7 +14692,8 @@ function DiagnosticsTab() {
 function renderMarkdown(text) {
   if (!text) return [];
   var out = [];
-  var lines = text.split("\n");
+  var lines = text.split("
+");
   var i = 0;
   while (i < lines.length) {
     var line = lines[i];
@@ -14695,7 +14706,8 @@ function renderMarkdown(text) {
         i++;
       }
       out.push(h("pre", { key: out.length, style: { background: "var(--bg-tertiary)", borderRadius: 6, padding: "10px 12px", overflowX: "auto", fontSize: 12, margin: "6px 0" } },
-        h("code", null, codeLines.join("\n"))
+        h("code", null, codeLines.join("
+"))
       ));
       i++;
       continue;
@@ -14967,7 +14979,7 @@ function AssistantSidebar(props) {
   var settingsPanel = showSettings
     ? h("div", { style: { padding: "12px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", flex: 1 } },
         h("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-          h("button", { onClick: function () { setShowSettings(false); }, style: { background: "none", border: "none", color: "var(--accent-blue)", cursor: "pointer", fontSize: 13 } }, "← Back"),
+          h("button", { onClick: function () { setShowSettings(false); }, style: { background: "none", border: "none", color: "var(--accent-blue)", cursor: "pointer", fontSize: 13 }, "aria-label": "Back to settings" }, "← Back"),
           h("span", { style: { fontWeight: 600, fontSize: 13 } }, "Settings"),
         ),
         h("label", { style: { fontSize: 12, display: "flex", flexDirection: "column", gap: 4 } },
@@ -15283,6 +15295,8 @@ function QuickDispatchPopover() {
         },
         onClick: handleToggle,
         title: "Open Quick Dispatch",
+        "aria-label": "Open Quick Dispatch",
+        "aria-expanded": open,
       },
       "⚡ Quick Dispatch ▾",
     ),
@@ -15565,7 +15579,7 @@ loadData();
 h("h3", { style: { color: "var(--accent-green)", marginBottom: "8px" } }, "Token Successfully Created!"),
 h("p", { style: { marginBottom: "12px" } }, "Please copy this token now. You will not be able to see it again."),
 h("div", { style: { background: "var(--bg-secondary)", padding: "12px", borderRadius: "6px", fontFamily: "monospace", fontSize: "16px", wordBreak: "break-all", border: "1px solid var(--border)" } }, createdToken),
-h("button", { className: "btn", style: { marginTop: "12px" }, onClick: function() { setCreatedToken(null); } }, "Dismiss")
+h("button", { className: "btn", style: { marginTop: "12px" }, onClick: function() { setCreatedToken(null); }, "aria-label": "Dismiss token" }, "Dismiss")
     ),
 
     editingQuota && h("div", {
@@ -15602,8 +15616,8 @@ h("div", { className: "glass-card", style: { padding: "24px", width: "400px", ma
       })
     ),
     h("div", { style: { display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "16px" } },
-      h("button", { type: "button", className: "btn", onClick: function() { setEditingQuota(null); } }, "Cancel"),
-      h("button", { type: "submit", className: "btn", style: { background: "var(--accent-blue)", color: "white", borderColor: "var(--accent-blue)" } }, "Save")
+      h("button", { type: "button", className: "btn", onClick: function() { setEditingQuota(null); }, "aria-label": "Cancel editing quota" }, "Cancel"),
+      h("button", { type: "submit", className: "btn", style: { background: "var(--accent-blue)", color: "white", borderColor: "var(--accent-blue)" }, "aria-label": "Save quota settings" }, "Save")
     )
   )
 )
@@ -15635,8 +15649,8 @@ h("div", { className: "glass-card", style: { padding: "24px", width: "400px", ma
       })
     ),
     h("div", { style: { display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "16px" } },
-      h("button", { type: "button", className: "btn", onClick: function() { setMintingToken(null); } }, "Cancel"),
-      h("button", { type: "submit", className: "btn", style: { background: "var(--accent-green)", color: "white", borderColor: "var(--accent-green)" } }, "Mint")
+      h("button", { type: "button", className: "btn", onClick: function() { setMintingToken(null); }, "aria-label": "Cancel minting token" }, "Cancel"),
+      h("button", { type: "submit", className: "btn", style: { background: "var(--accent-green)", color: "white", borderColor: "var(--accent-green)" }, "aria-label": "Mint access token" }, "Mint")
     )
   )
 )
@@ -17960,7 +17974,7 @@ function App() {
                   h("div", { className: "progress-bar", style: { margin: "8px 0" } },
                     h("div", { className: "progress-fill blue", style: { width: "37%" } })
                   ),
-                  h("button", { className: "btn btn-red", style: { width: "100%", marginTop: "8px", justifyContent: "center" } }, "Relinquish Runner")
+                  h("button", { className: "btn btn-red", style: { width: "100%", marginTop: "8px", justifyContent: "center" }, "aria-label": "Relinquish runner" }, "Relinquish Runner")
                 ),
                 h("div", { className: "glass-card", style: { padding: "16px" } },
                   h("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: "12px" } },
@@ -17978,7 +17992,7 @@ function App() {
                   h("div", { className: "progress-bar", style: { margin: "8px 0" } },
                     h("div", { className: "progress-fill purple", style: { width: "100%" } })
                   ),
-                  h("button", { className: "btn", style: { width: "100%", marginTop: "8px", justifyContent: "center" } }, "View Logs")
+                  h("button", { className: "btn", style: { width: "100%", marginTop: "8px", justifyContent: "center" }, "aria-label": "View runner logs" }, "View Logs")
                 )
               )
             )
@@ -18286,7 +18300,9 @@ function App() {
                       "div",
                       null,
                       h("p", { style: { margin: "0 0 12px 0", color: "var(--text-secondary)", fontSize: "14px" } }, "The dashboard backend is not responding. To restart the service, run this command in a terminal:"),
-                      h("pre", { style: { background: "var(--bg-secondary)", padding: "12px", borderRadius: 4, margin: "0 0 16px 0", fontSize: "13px", overflow: "auto", color: "var(--text-primary)" } }, "systemctl --user restart runner-dashboard\n\nThen refresh this page."),
+                      h("pre", { style: { background: "var(--bg-secondary)", padding: "12px", borderRadius: 4, margin: "0 0 16px 0", fontSize: "13px", overflow: "auto", color: "var(--text-primary)" } }, "systemctl --user restart runner-dashboard
+
+Then refresh this page."),
                     ),
               );
             })(),
