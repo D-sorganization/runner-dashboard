@@ -85,6 +85,7 @@ from report_files import parse_report_metrics, sanitize_report_date  # noqa: E40
 from routers import credentials as _credentials_router  # noqa: E402
 from routers import dispatch as _dispatch_router  # noqa: E402
 from routers import linear as _linear_router  # noqa: E402
+from routers import linear_webhook as _linear_webhook_router  # noqa: E402
 
 # datetime.UTC added in Python 3.11; fall back to timezone.utc on older runtimes.
 UTC = getattr(_dt_mod, "UTC", _dt_mod.timezone.utc)  # noqa: UP017
@@ -445,6 +446,7 @@ app.include_router(_dispatch_router.router)
 _dispatch_router.set_replay_functions(_is_envelope_replay, _record_processed_envelope)
 app.include_router(_credentials_router.router)
 app.include_router(_linear_router.router)
+app.include_router(_linear_webhook_router.router)
 app.include_router(_push_router.router)
 app.include_router(admin_router.router)
 app.include_router(auth_router.router)
@@ -488,6 +490,7 @@ _AUTH_EXEMPT_PATHS = {
     "/icon.svg",
     "/api/auth/github",
     "/api/auth/callback",
+    "/api/linear/webhook",
 }
 _AUTH_EXEMPT_PREFIXES = ("/docs", "/openapi", "/redoc", "/assets")
 
@@ -502,6 +505,9 @@ async def _csrf_check(request: Request, call_next: Any) -> Any:
     POST / PUT / DELETE / PATCH request.
     """
     if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        # Skip exempt paths (e.g. external webhooks)
+        if request.url.path in _AUTH_EXEMPT_PATHS:
+            return await call_next(request)
         # Allow health / static routes without the header so monitoring tools
         # (e.g. curl health checks) still work.  Only enforce on /api/* paths.
         if request.url.path.startswith("/api/"):
@@ -513,7 +519,6 @@ async def _csrf_check(request: Request, call_next: Any) -> Any:
     return await call_next(request)
 
 
-@app.middleware("http")
 async def _add_security_headers(request: Request, call_next: Any) -> Any:
     """Inject standard security headers on every response (issue #7, #18)."""
     response = await call_next(request)
