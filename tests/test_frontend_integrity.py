@@ -225,6 +225,20 @@ def test_maxwell_mobile_chat_slice_markers_present() -> None:
     assert "TextDecoder" in content
 
 
+def test_mobile_read_mostly_reports_assessments_feature_requests_markers_present() -> None:
+    content = _read_index()
+    assert "reports-shell" in content
+    assert "reports-sidebar" in content
+    assert "reports-reader" in content
+    assert "report-open-raw" in content
+    assert "assessment-mobile-card-list" in content
+    assert "assessment-mobile-score" in content
+    assert "feature-request-mobile-list" in content
+    assert "feature-request-mobile-card" in content
+    assert "Feature request history" in content
+    assert "requestVoteCount" in content
+
+
 # ---------------------------------------------------------------------------
 # Single source of truth enforcement (issue #3)
 # ---------------------------------------------------------------------------
