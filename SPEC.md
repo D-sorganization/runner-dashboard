@@ -287,6 +287,16 @@ AI agent dispatch control panel organised into three sub-tabs:
 The active sub-tab is persisted to `localStorage` under the key
 `remediation-subtab`.
 
+On mobile-width viewports, the Remediation sub-tabs render as a segmented
+control. Tapping a failed run in Automations opens a bottom-sheet action surface
+with the recommended-provider dispatch action, an optional provider picker, a
+safety-plan preview action, and a desktop/run link. Mobile dispatch continues to
+call the existing `/api/agent-remediation/dispatch` path; it does not introduce a
+new dispatch envelope or bypass backend authorization and remediation invariants.
+After dispatch submission, the Remediation tab shows an in-flight status tile
+above the sub-tabs so the status remains visible while switching between
+Automations, PRs, and Issues.
+
 ### 3.13 Workflows Tab
 Browse and manually dispatch any workflow in any org repository. Supports
 input parameter forms generated from workflow `workflow_dispatch` definitions.
