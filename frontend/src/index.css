@@ -27,6 +27,57 @@
   /* Vibrant Gradients */
   --grad-quota: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
   --grad-fair: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  
+  /* Spacing Scale */
+  --space-0: 0px;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 14px;
+  --space-8: 16px;
+  --space-9: 20px;
+  --space-10: 24px;
+  --space-11: 32px;
+  --space-12: 40px;
+  --space-13: 48px;
+  --space-14: 64px;
+  --space-15: 80px;
+  
+  /* Touch Targets */
+  --comfortable-hit-target: 48px;
+  --bottom-nav-height: 64px;
+  
+  /* Type Scale */
+  --font-title: 20px;
+  --font-section-title: 16px;
+  --font-body: 14px;
+  --font-meta: 12px;
+  --font-micro: 11px;
+  
+  /* Line Heights */
+  --line-height-tight: 1.2;
+  --line-height-body: 1.5;
+  --line-height-relaxed: 1.65;
+  
+  /* Motion / Animation Timing */
+  --motion-instant: 0ms;
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-slow: 240ms;
+  
+  /* Motion Easing */
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --easing-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+  
+  /* Breakpoint Reference (px values for documentation) */
+  --bp-xs: 360px;
+  --bp-sm: 390px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
 }
 
 .glass-card {
