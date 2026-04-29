@@ -1,6 +1,6 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.10
+**Spec Version:** 2.5.11
 **Application Version:** 4.1.0 (see `VERSION`)
 **Last Updated:** 2026-04-29
 **Status:** Active
@@ -885,6 +885,18 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 ---
 
 ## 7. Changelog
+
+### 2.5.11 - 2026-04-29
+- feat: add mobile design system tokens module (issue #188) with
+  `colorTokens`, `surfaceTokens`, `spacingTokens`, `touchTokens`,
+  `cssVariableMap`, and `toCssVariables()` exported from `frontend/src/design/tokens.ts`.
+- feat: add `ThemeProvider.tsx` component that injects token CSS custom properties
+  plus motion timing and easing variables at runtime.
+- feat: add `frontend/src/design/index.ts` barrel export for the Vite
+  component import entry point.
+- feat: expand CSS custom properties in `frontend/src/index.css` for glass
+  surface tokens, spacing scale, and hit-target dimensions.
+
 
 ### 2.5.10 - 2026-04-29
 - feat: add the first M04 touch primitive implementation slice with
