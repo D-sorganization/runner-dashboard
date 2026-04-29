@@ -110,6 +110,8 @@ surface task action details without exposing secrets.
 | `pr_inventory.py` | Fetch and normalise open PRs across repos (issue #80) |
 | `issue_inventory.py` | Fetch and normalise open issues with taxonomy (issue #81) |
 | `linear_inventory.py` | Fetch and normalise Linear issues into the canonical issue inventory shape |
+| `health.py` | Health check endpoints (`/api/health`, `/health`) extracted from server.py (issue #159) |
+| `metrics.py` | System metrics endpoints (`/api/system`, `/api/fleet/status`) extracted from server.py (issue #159) |
 
 **Bounded domain routers (`backend/routers/`):**
 
@@ -169,6 +171,8 @@ mobile-only read surface for runner monitoring cards over the existing runner,
 run, and machine telemetry payloads; desktop machine and runner tables remain
 the canonical wide-screen surface.
 
+
+PushSettings (issue #192) is a mobile-friendly React component for per-topic Web Push subscription management. It is located at `frontend/src/pages/PushSettings.tsx` and uses `GET /api/push/vapid-public-key` to fetch the VAPID key before subscribing to selected push topics via `POST /api/push/subscribe`.
 Mobile accessibility guards are part of the frontend source contract. At
 mobile viewport widths, primary interactive controls must use the shared
 `--mobile-hit-target` token with a minimum `44px` target size. CSS animations
@@ -894,7 +898,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 ## 7. Changelog
 
+### 2.5.11 - 2026-04-29
+- feat: add authenticated session tracking and remote logout endpoints for the
+  mobile auth surface, including hashed session listing and bulk revocation.
+
 ### 2.5.10 - 2026-04-29
+- feat: add VAPID public key endpoint (`/api/push/vapid-public-key`) and `PushSettings` frontend component with per-topic subscription toggles for Web Push notifications (issue #192).
 - feat: add the first M04 touch primitive implementation slice with
   `TouchButton` and `SegmentedControl` contracts.
 
@@ -968,6 +977,7 @@ Test coverage areas:
 - **`tests/test_mobile_test_harness.py`** - validates the issue #202 mobile
   viewport profiles, smoke-page marker contract, touch helper exports, and the
   explicit visual-regression opt-in gate.
+- **`tests/api/test_push.py`** - tests for `backend/push.py` VAPID public key endpoint response shape and principal import integrity.
 
 `pytest>=8.0` and `pytest-asyncio>=0.23` are listed in `requirements.txt`.
 
@@ -997,6 +1007,18 @@ Principals are stored in `config/principals.yml`. The system fails closed: reque
 All mutating `/api/*` endpoints require a principal.
 - Humans authenticate via session cookies (from GitHub OAuth).
 - Bots authenticate via `Authorization: Bearer <token>`.
+- Human logins also register a durable dashboard session record in
+  `~/.config/runner-dashboard/sessions.json` (overridable via
+  `DASHBOARD_SESSIONS_PATH`) with `session_id`, `principal_id`, timestamps,
+  user agent, IP address, and optional revocation time.
+- Session records expire after `DASHBOARD_SESSION_TTL_SECONDS` (default 86400
+  seconds), cap each principal at `DASHBOARD_MAX_SESSIONS_PER_PRINCIPAL`
+  active sessions (default 10), and expose only hashed session identifiers to
+  API callers.
+- Auth routes now include `GET /api/auth/sessions` for listing active sessions,
+  `DELETE /api/auth/sessions/{session_id_hash}` for per-session remote logout,
+  and `POST /api/auth/logout/all` for bulk revocation with
+  `exclude_current=true` by default.
 Scopes are enforced per-endpoint using the `require_scope(scope_name)` dependency.
 
 **Mobile Biometric Unlock (WebAuthn):**

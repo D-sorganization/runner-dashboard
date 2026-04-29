@@ -1,3 +1,6 @@
+// Design Tokens — Single source of truth for the runner-dashboard visual system.
+// These values are mirrored in frontend/src/index.css as CSS custom properties.
+
 export const colorTokens = {
   bgPrimary: "#0f1117",
   bgSecondary: "#161b22",
@@ -25,6 +28,25 @@ export const surfaceTokens = {
   glassBlur: "blur(12px)",
 } as const;
 
+export const spacingTokens = {
+  0: "0px",
+  1: "2px",
+  2: "4px",
+  3: "6px",
+  4: "8px",
+  5: "10px",
+  6: "12px",
+  7: "14px",
+  8: "16px",
+  9: "20px",
+  10: "24px",
+  11: "32px",
+  12: "40px",
+  13: "48px",
+  14: "64px",
+  15: "80px",
+} as const;
+
 export const touchTokens = {
   minimumHitTarget: "44px",
   comfortableHitTarget: "48px",
@@ -49,7 +71,33 @@ export const cssVariableMap = {
   "--accent-yellow": colorTokens.accentYellow,
   "--accent-purple": colorTokens.accentPurple,
   "--accent-orange": colorTokens.accentOrange,
+
+  "--glass-bg": surfaceTokens.glassBg,
+  "--glass-border": surfaceTokens.glassBorder,
+  "--glass-border-light": surfaceTokens.glassBorderLight,
+  "--glass-shadow": surfaceTokens.glassShadow,
+  "--glass-blur": surfaceTokens.glassBlur,
+
   "--mobile-hit-target": touchTokens.minimumHitTarget,
+  "--comfortable-hit-target": touchTokens.comfortableHitTarget,
+  "--bottom-nav-height": touchTokens.bottomNavHeight,
+
+  "--space-0": spacingTokens[0],
+  "--space-1": spacingTokens[1],
+  "--space-2": spacingTokens[2],
+  "--space-3": spacingTokens[3],
+  "--space-4": spacingTokens[4],
+  "--space-5": spacingTokens[5],
+  "--space-6": spacingTokens[6],
+  "--space-7": spacingTokens[7],
+  "--space-8": spacingTokens[8],
+  "--space-9": spacingTokens[9],
+  "--space-10": spacingTokens[10],
+  "--space-11": spacingTokens[11],
+  "--space-12": spacingTokens[12],
+  "--space-13": spacingTokens[13],
+  "--space-14": spacingTokens[14],
+  "--space-15": spacingTokens[15],
 } as const;
 
 export function toCssVariables(): string {
