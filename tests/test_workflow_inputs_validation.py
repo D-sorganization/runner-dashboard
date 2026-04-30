@@ -63,24 +63,34 @@ def test_validate_rejects_oversized_value() -> None:
     assert "length" in str(exc.value.detail).lower() or "long" in str(exc.value.detail).lower()
 
 
-def test_validate_rejects_non_string_value() -> None:
-    inputs = {"flag": True}
-    with pytest.raises(HTTPException) as exc:
-        validate_workflow_inputs(inputs)
-    assert exc.value.status_code == 400
+def test_validate_accepts_bool_value() -> None:
+    """GitHub Actions workflow_dispatch supports `boolean` typed inputs."""
+    out = validate_workflow_inputs({"flag": True})
+    assert out == {"flag": "True"}
 
 
-def test_validate_rejects_int_value() -> None:
-    inputs = {"count": 5}
-    with pytest.raises(HTTPException) as exc:
-        validate_workflow_inputs(inputs)
-    assert exc.value.status_code == 400
+def test_validate_accepts_int_value() -> None:
+    """GitHub Actions workflow_dispatch supports `number` typed inputs."""
+    out = validate_workflow_inputs({"count": 5})
+    assert out == {"count": "5"}
+
+
+def test_validate_accepts_float_value() -> None:
+    out = validate_workflow_inputs({"ratio": 1.5})
+    assert out == {"ratio": "1.5"}
 
 
 def test_validate_rejects_none_value() -> None:
     inputs = {"x": None}
     with pytest.raises(HTTPException) as exc:
         validate_workflow_inputs(inputs)
+    assert exc.value.status_code == 400
+
+
+def test_validate_rejects_list_value() -> None:
+    """Containers (list/dict) are not valid workflow_dispatch input values."""
+    with pytest.raises(HTTPException) as exc:
+        validate_workflow_inputs({"items": ["a", "b"]})
     assert exc.value.status_code == 400
 
 
@@ -132,12 +142,14 @@ def test_dispatch_too_many_keys_returns_400(client: TestClient) -> None:
     assert resp.status_code == 400
 
 
-def test_dispatch_non_string_value_returns_400(client: TestClient) -> None:
+def test_dispatch_unsupported_value_returns_400(client: TestClient) -> None:
+    """Containers (list/dict) are rejected — workflow_dispatch supports only
+    str/bool/number scalar values."""
     body = {
         "repository": "Runner_Dashboard",
         "workflow_id": "ci.yml",
         "ref": "main",
-        "inputs": {"flag": True},
+        "inputs": {"items": ["a", "b"]},
     }
     resp = client.post("/api/workflows/dispatch", json=body)
     assert resp.status_code == 400
@@ -186,13 +198,13 @@ def test_feature_request_too_many_keys_returns_400(client: TestClient) -> None:
     assert resp.status_code == 400
 
 
-def test_feature_request_non_string_value_returns_400(client: TestClient) -> None:
+def test_feature_request_unsupported_value_returns_400(client: TestClient) -> None:
     body = {
         "repository": "Runner_Dashboard",
         "branch": "main",
         "provider": "jules_api",
         "prompt": "ok",
-        "inputs": {"flag": 1},
+        "inputs": {"nested": {"k": "v"}},
     }
     resp = client.post("/api/feature-requests/dispatch", json=body)
     assert resp.status_code == 400
