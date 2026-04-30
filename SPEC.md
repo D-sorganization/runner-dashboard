@@ -1,8 +1,8 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.13
+**Spec Version:** 2.5.14
 **Application Version:** 4.1.0 (see `VERSION`)
-**Last Updated:** 2026-04-30T00:00:00Z
+**Last Updated:** 2026-04-30T13:45:00Z
 **Status:** Active
 
 ---
@@ -1979,6 +1979,7 @@ Identity Manager (`identity_manager.mint_service_token`).
 To ensure identity and quotas are respected across the entire fleet:
 - **Cross-Node Principal Propagation**: The \CommandEnvelope\ in \dispatch_contract.py\ includes \principal\, \on_behalf_of\, and \correlation_id\. These fields are now included in the canonical JSON payload used to generate the HMAC-SHA256 signature, ensuring that malicious actors cannot forge identities during cross-node dispatch.
 - **Hub-Side Merged Audit View**: A new endpoint \/api/fleet/audit\ aggregates orchestration audit logs from all nodes in the \FLEET_NODES\ configuration. It supports filtering by \principal\ and merges entries sorted by timestamp. Local audit logs can be retrieved via \/api/audit\.
+- **Append-Only Audit Log Format**: The orchestration audit log file (`~/actions-runners/dashboard/orchestration_audit.json`) is stored as newline-delimited JSON (NDJSON) and written via O_APPEND. Reads tail the last N lines via a bounded deque without rewriting the file, so audit entries are never silently dropped (issue #412). Legacy single-JSON-array files are migrated to NDJSON lazily on first read. A module-level counter `_audit_log_corrupt_total` (exposed via `get_audit_log_corrupt_total()`) increments on corrupt-line read failures so operators can detect silent corruption. Rotation is handled out-of-band (e.g. logrotate); the writer never truncates.
 - **Admin API**: The \/api/admin/*\ router provides endpoints for managing the identity system:
   - \GET /api/admin/principals\: List all registered principals and their quotas.
   - \GET /api/admin/tokens\: List all active service token hashes.
