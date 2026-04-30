@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
+import { Skeleton } from "../primitives/Skeleton";
 import { TouchButton } from "../primitives/TouchButton";
 
 /**
@@ -330,7 +331,7 @@ export function AgentDispatchPage() {
     );
   }
 
-  if (loading) return <div aria-live="polite" style={{ padding: "24px", textAlign: "center", color: "var(--text-muted)", fontSize: "14px" }}>Loading dispatch data…</div>;
+  if (loading) return <div aria-live="polite" style={{ padding: "24px" }}><Skeleton aria-label="Loading dispatch data" height={48} lines={4} radius={6} /></div>;
   if (error && !loading) return <div aria-live="assertive" role="alert" style={{ padding: "24px", textAlign: "center", color: "var(--accent-red)", fontSize: "14px" }}><div style={{ marginBottom: "12px" }}>{error}</div><TouchButton onClick={fetchData} variant="primary">Retry</TouchButton></div>;
 
   return (

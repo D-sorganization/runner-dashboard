@@ -1020,6 +1020,38 @@ th.sortable.active .sort-indicator {
   }
 }
 
+/* ── Skeleton primitive ── */
+.skeleton {
+  display: block;
+  width: 100%;
+}
+.skeleton-bar {
+  display: block;
+  background: var(--bg-tertiary);
+  background-image: linear-gradient(
+    90deg,
+    var(--bg-tertiary) 0%,
+    var(--bg-hover) 50%,
+    var(--bg-tertiary) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+.skeleton-reduced-motion .skeleton-bar {
+  animation: none;
+  background-image: none;
+  background-color: var(--bg-tertiary);
+}
+
 /* ── Report viewer ── */
 .report-content {
   background: var(--bg-tertiary);

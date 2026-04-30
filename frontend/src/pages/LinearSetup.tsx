@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Skeleton } from "../primitives";
 
 interface WorkspaceSummary {
   id: string;
@@ -46,7 +47,7 @@ export function LinearSetup() {
   if (loading) {
     return (
       <div className="glass-card" style={{ padding: "16px", margin: "16px" }}>
-        <p style={{ fontSize: "14px" }}>Loading Linear workspace configuration…</p>
+        <Skeleton aria-label="Loading Linear workspace configuration" height={20} lines={3} radius={4} />
       </div>
     );
   }

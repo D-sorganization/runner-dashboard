@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Skeleton } from "../../primitives";
 import { KpiHeader } from "./KpiHeader";
 import { RunnerCard } from "./RunnerCard";
 import { StatusPill } from "./StatusPill";
@@ -86,8 +87,8 @@ export function FleetMobile() {
 
   if (loading) {
     return (
-      <div aria-live="polite" className="fleet-mobile-loading" style={{ padding: "24px", textAlign: "center" }}>
-        Loading fleet…
+      <div aria-live="polite" className="fleet-mobile-loading" style={{ padding: "24px" }}>
+        <Skeleton aria-label="Loading fleet" height={72} lines={5} radius={8} />
       </div>
     );
   }
