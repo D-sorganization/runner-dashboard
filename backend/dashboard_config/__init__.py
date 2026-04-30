@@ -82,6 +82,13 @@ if _nodes_raw:
 RUN_JOB_ENRICHMENT_LIMIT = int(os.environ.get("RUN_JOB_ENRICHMENT_LIMIT", "50"))
 MAX_CACHE_SIZE = 500
 CACHE_EVICT_BATCH = 50
+DEFAULT_CACHE_TTL = float(os.environ.get("DASHBOARD_CACHE_TTL", "30"))
+
+# CPU history ring-buffer depth (one sample per /api/system poll; 60 ≈ 1 min at 1 Hz)
+CPU_HISTORY_MAXLEN = int(os.environ.get("DASHBOARD_CPU_HISTORY_MAXLEN", "60"))
+
+assert MAX_CACHE_SIZE > 0, "MAX_CACHE_SIZE must be positive"
+assert CPU_HISTORY_MAXLEN > 0, "CPU_HISTORY_MAXLEN must be positive"
 
 # Scheduler / Services
 RUNNER_SCHEDULER_BIN = os.environ.get("RUNNER_SCHEDULER_BIN", "/usr/local/bin/runner-scheduler")
