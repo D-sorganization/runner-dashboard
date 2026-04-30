@@ -26,6 +26,7 @@ import logging
 import logging.handlers
 import os
 import platform
+import random
 import re
 import secrets
 import shlex
@@ -933,15 +934,17 @@ async def _enrich_run_with_job_placement(run: dict) -> dict:
 
 
 def _classify_node_offline(exc: Exception | None = None, *, status_code: int | None = None) -> dict:
-    """Classify why a fleet node is not fully reachable."""
-    message = str(exc) if exc else ""
-    lower = message.lower()
+    """Classify why a fleet node is not fully reachable.
+
+    Uses typed exception checks (httpx exception hierarchy and OSError.errno)
+    rather than fragile substring matching on str(exc).
+    """
     if status_code is not None:
         return {
             "offline_reason": "dashboard_unhealthy",
             "offline_detail": f"Dashboard returned HTTP {status_code}",
         }
-    if isinstance(exc, httpx.TimeoutException) or "timed out" in lower:
+    if isinstance(exc, httpx.TimeoutException):
         return {
             "offline_reason": "computer_offline",
             "offline_detail": "Dashboard host timed out over the fleet network.",
@@ -966,19 +969,13 @@ def _classify_node_offline(exc: Exception | None = None, *, status_code: int | N
                 "offline_reason": "computer_offline",
                 "offline_detail": "Fleet network could not reach the computer.",
             }
-    if "connection refused" in lower:
         return {
             "offline_reason": "wsl_connection_lost",
             "offline_detail": "Dashboard port refused the connection.",
         }
-    if "network is unreachable" in lower or "no route to host" in lower:
-        return {
-            "offline_reason": "computer_offline",
-            "offline_detail": "Fleet network route to the computer is unavailable.",
-        }
     return {
         "offline_reason": "unknown",
-        "offline_detail": message or "Dashboard node is unreachable.",
+        "offline_detail": str(exc) if exc else "Dashboard node is unreachable.",
     }
 
 
@@ -2974,19 +2971,23 @@ async def log_requests(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
     elapsed = round((time.time() - start) * 1000, 1)
-    skip = (
-        "/api/system",
-        "/api/repos",
-        "/api/reports",
-        "/api/heavy-tests",
-        "/api/scheduled-workflows",
-    )
-    if not request.url.path.startswith(skip):
+    path = request.url.path
+    status = response.status_code
+
+    # Always log errors regardless of path — incident reconstruction requires them.
+    is_error = status >= 400
+
+    # High-volume paths are sampled at 1/10 to reduce noise without losing
+    # visibility.  The filter list is configurable via dashboard_config.LOG_FILTER_PATHS
+    # (env var LOG_FILTER_PATHS, comma-separated path prefixes).
+    is_filtered = path.startswith(dashboard_config.LOG_FILTER_PATHS)
+
+    if is_error or not is_filtered or random.random() < 0.1:
         log.info(
             "%s %s → %s (%sms)",
             request.method,
-            request.url.path,
-            response.status_code,
+            path,
+            status,
             elapsed,
         )
     return response

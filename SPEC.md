@@ -2,7 +2,7 @@
 
 **Spec Version:** 2.5.13
 **Application Version:** 4.1.0 (see `VERSION`)
-**Last Updated:** 2026-04-30T13:00:00Z
+**Last Updated:** 2026-04-30T17:30:00Z
 **Status:** Active
 
 ---
@@ -754,6 +754,7 @@ env var.
 | `RUNNER_SCHEDULER_BIN` | `/usr/local/bin/runner-scheduler` | Runner scheduler binary path |
 | `RUNNER_SCHEDULER_SERVICE` | `runner-scheduler.service` | Scheduler systemd service name |
 | `RUN_JOB_ENRICHMENT_LIMIT` | `50` | Max runs to enrich with job data |
+| `LOG_FILTER_PATHS` | `/api/scheduled-workflows,/api/heavy-tests,/api/reports` | Comma-separated path prefixes sampled at 1/10 in request logs; errors always logged |
 
 ### 5.2 machine_registry.yml
 
@@ -1139,6 +1140,30 @@ The function:
 Every generated prompt also includes the constant
 `PROMPT_UNTRUSTED_SYSTEM_INSTRUCTION` as a preamble, instructing the model
 not to follow any instructions found inside the delimiters.
+
+### 9.8 Secret Scanning (Issue #396)
+
+The repo enforces a defence-in-depth gate against accidentally committed
+credentials:
+
+- `gitleaks` and `detect-secrets` run as `pre-commit` hooks (configured in
+  `.pre-commit-config.yaml`, both pinned by SHA).
+- A dedicated `CI Secrets` workflow (`.github/workflows/ci-secrets.yml`)
+  runs `gitleaks` on every pull request and push to `main`, plus a
+  `detect-secrets` baseline-integrity check that fails when any new
+  finding appears outside the audited `.secrets.baseline`.
+- `tests/test_no_secrets_in_repo.py` runs in the standard pytest suite and
+  greps every git-tracked file for well-known credential prefixes
+  (GitHub PATs, AWS access keys, OpenAI / Anthropic / Slack tokens, PEM
+  private-key blocks). Inline `# pragma: allowlist secret` suppresses a
+  single line; `_ALLOWED_PATHS` skips known-safe files (the baseline, the
+  gitleaks config, this test file).
+- `.gitleaks.toml` extends the upstream default ruleset with allowlists
+  for the well-known fake VAPID test key in `backend/push.py` (tracked
+  for removal as a follow-up under #396) and standard documentation
+  placeholders.
+- Operational procedure (rotation, baseline refresh, leak response) lives
+  in `docs/runbooks/secret-scanning.md`.
 
 ---
 
@@ -1974,6 +1999,23 @@ automatically. Service tokens for bot principals can be minted via the
 Identity Manager (`identity_manager.mint_service_token`).
 <!-- spec-trigger-145 -->
 
+### 18.6 CI Action Pinning & Tool Version Parity (Issue #390)
+
+To prevent silent drift between local development and CI, the repository
+enforces two invariants:
+
+- **Single SHA per action:** every `actions/<name>@<sha>` reference in
+  `.github/workflows/*.yml` must resolve to one 40-char SHA across all
+  files, with one consistent `# vN` comment. The `verify-action-pin-uniformity`
+  step in `ci-standard.yml` (job `ci-health-check`) enforces this, and
+  `tests/test_workflow_action_pinning.py` provides a fast pytest guard.
+- **Tool version parity:** `pyproject.toml [dependency-groups.dev]` pins
+  `ruff` and `mypy` exactly (e.g. `ruff==0.14.10`, `mypy==1.13.0`) to
+  match the `rev:` values in `.pre-commit-config.yaml`. The
+  `verify-tool-version-parity` step in `ci-standard.yml` enforces this,
+  preventing `uv sync` from installing a newer linter/type-checker than
+  CI uses.
+
 ### 18.5 Cross-Fleet Coherence & Admin API (Wave 4)
 
 To ensure identity and quotas are respected across the entire fleet:
@@ -1985,5 +2027,6 @@ To ensure identity and quotas are respected across the entire fleet:
   - \POST /api/admin/principals/{id}/token\: Mint a new service token for a bot principal.
   - \DELETE /api/admin/tokens/{token_hash}\: Revoke a service token.
   - \PATCH /api/admin/principals/{id}/quota\: Update quotas (\max_runners\, \gent_spend_usd_day\, \local_app_slots\) for a specific principal.
-< ! - -   U p d a t e d :   2 0 2 6 - 0 4 - 2 9 T 1 8 : 3 8 : 1 6   - - >  
+< ! - -   U p d a t e d :   2 0 2 6 - 0 4 - 2 9 T 1 8 : 3 8 : 1 6   - - > 
+ 
  
