@@ -87,6 +87,7 @@ from routers import fleet as _fleet_router  # noqa: E402
 from routers import linear as _linear_router  # noqa: E402
 from routers import linear_webhook as _linear_webhook_router  # noqa: E402
 from routers import queue as _queue_router  # noqa: E402
+from routers import queue_diagnostics as _queue_diagnostics_router  # noqa: E402
 from routers.queue import _queue_impl  # noqa: E402
 from routers import runners as _runners_router  # noqa: E402
 from routers import runs_workflows as _runs_workflows_router  # noqa: E402
@@ -468,6 +469,7 @@ app.include_router(_agent_launcher_router.router)
 app.include_router(_system_router.router)
 app.include_router(_fleet_router.router)
 app.include_router(_queue_router.router)
+app.include_router(_queue_diagnostics_router.router)
 app.include_router(_runners_router.router)
 app.include_router(_runs_workflows_router.router)
 app.include_router(_assistant_router.router)
