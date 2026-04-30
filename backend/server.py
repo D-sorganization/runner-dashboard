@@ -930,15 +930,17 @@ async def _enrich_run_with_job_placement(run: dict) -> dict:
 
 
 def _classify_node_offline(exc: Exception | None = None, *, status_code: int | None = None) -> dict:
-    """Classify why a fleet node is not fully reachable."""
-    message = str(exc) if exc else ""
-    lower = message.lower()
+    """Classify why a fleet node is not fully reachable.
+
+    Uses typed exception checks (httpx exception hierarchy and OSError.errno)
+    rather than fragile substring matching on str(exc).
+    """
     if status_code is not None:
         return {
             "offline_reason": "dashboard_unhealthy",
             "offline_detail": f"Dashboard returned HTTP {status_code}",
         }
-    if isinstance(exc, httpx.TimeoutException) or "timed out" in lower:
+    if isinstance(exc, httpx.TimeoutException):
         return {
             "offline_reason": "computer_offline",
             "offline_detail": "Dashboard host timed out over the fleet network.",
@@ -963,19 +965,13 @@ def _classify_node_offline(exc: Exception | None = None, *, status_code: int | N
                 "offline_reason": "computer_offline",
                 "offline_detail": "Fleet network could not reach the computer.",
             }
-    if "connection refused" in lower:
         return {
             "offline_reason": "wsl_connection_lost",
             "offline_detail": "Dashboard port refused the connection.",
         }
-    if "network is unreachable" in lower or "no route to host" in lower:
-        return {
-            "offline_reason": "computer_offline",
-            "offline_detail": "Fleet network route to the computer is unavailable.",
-        }
     return {
         "offline_reason": "unknown",
-        "offline_detail": message or "Dashboard node is unreachable.",
+        "offline_detail": str(exc) if exc else "Dashboard node is unreachable.",
     }
 
 
