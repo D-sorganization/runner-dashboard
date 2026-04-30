@@ -113,9 +113,7 @@ def test_load_mapping_config_workspace_unknown_mapping_ref(tmp_path: Path) -> No
 def test_load_mapping_config_wrong_auth_kind(tmp_path: Path) -> None:
     bad_config = {
         **MINIMAL_CONFIG,
-        "workspaces": [
-            {**MINIMAL_CONFIG["workspaces"][0], "auth": {"kind": "oauth", "env": "MY_ENV"}}
-        ],
+        "workspaces": [{**MINIMAL_CONFIG["workspaces"][0], "auth": {"kind": "oauth", "env": "MY_ENV"}}],
     }
     path = tmp_path / "cfg.json"
     path.write_text(json.dumps(bad_config), encoding="utf-8")
@@ -200,7 +198,18 @@ def test_derived_labels_unknown_labels_ignored() -> None:
 def test_apply_mapping_returns_mapping_result_keys() -> None:
     issue = {"priority": 1, "estimate": 3}
     result = ltm.apply_mapping(issue, MINIMAL_MAPPING)
-    for key in ("type", "complexity", "effort", "judgement", "quick_win", "panel_review", "domains", "wave", "derived_labels", "source_signals"):
+    for key in (
+        "type",
+        "complexity",
+        "effort",
+        "judgement",
+        "quick_win",
+        "panel_review",
+        "domains",
+        "wave",
+        "derived_labels",
+        "source_signals",
+    ):
         assert key in result
 
 

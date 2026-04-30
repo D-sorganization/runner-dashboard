@@ -211,6 +211,7 @@ def test_check_dispatch_rate_exceeds_limit(monkeypatch) -> None:
 
     # FastAPI HTTPException is raised
     from fastapi import HTTPException
+
     assert isinstance(exc_info.value, HTTPException)
     assert exc_info.value.status_code == 429
 

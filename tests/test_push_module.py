@@ -49,7 +49,9 @@ def _make_keys(p256dh: str = "AAAA" * 30, auth: str = "BBBB" * 10) -> PushKeys:
     return PushKeys(p256dh=p256dh, auth=auth)
 
 
-def _upsert(db: Path, endpoint: str = "https://push.example.com/sub/1", topics: list[str] | None = None) -> PushSubscription:
+def _upsert(
+    db: Path, endpoint: str = "https://push.example.com/sub/1", topics: list[str] | None = None
+) -> PushSubscription:
     return upsert_subscription(
         user_id="user-1",
         endpoint=endpoint,
