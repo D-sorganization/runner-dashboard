@@ -425,7 +425,7 @@ async def api_dispatch_to_prs(
     request: Request,
     *,
     principal: Principal = Depends(require_scope("github.dispatch")),  # noqa: B008
-) -> dict | JSONResponse:
+) -> dict:
     """Dispatch agents to one or more pull requests."""
     body = await request.json()
     if not isinstance(body, dict):
@@ -452,7 +452,7 @@ async def api_dispatch_to_prs(
         status_code = int(result.get("status_code", 400))
         if status_code == 429:
             retry_after = int(result.get("retry_after", 60))
-            return JSONResponse(
+            return JSONResponse(  # type: ignore[return-value]
                 status_code=429,
                 content={"detail": result["error"], "retry_after_seconds": retry_after},
                 headers={"Retry-After": str(retry_after)},
@@ -468,7 +468,7 @@ async def api_dispatch_to_issues(
     request: Request,
     *,
     principal: Principal = Depends(require_scope("github.dispatch")),  # noqa: B008
-) -> dict | JSONResponse:
+) -> dict:
     """Dispatch agents to one or more issues."""
     body = await request.json()
     if not isinstance(body, dict):
@@ -495,7 +495,7 @@ async def api_dispatch_to_issues(
         status_code = int(result.get("status_code", 400))
         if status_code == 429:
             retry_after = int(result.get("retry_after", 60))
-            return JSONResponse(
+            return JSONResponse(  # type: ignore[return-value]
                 status_code=429,
                 content={"detail": result["error"], "retry_after_seconds": retry_after},
                 headers={"Retry-After": str(retry_after)},
