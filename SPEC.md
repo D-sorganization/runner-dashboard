@@ -1141,6 +1141,30 @@ Every generated prompt also includes the constant
 `PROMPT_UNTRUSTED_SYSTEM_INSTRUCTION` as a preamble, instructing the model
 not to follow any instructions found inside the delimiters.
 
+### 9.8 Secret Scanning (Issue #396)
+
+The repo enforces a defence-in-depth gate against accidentally committed
+credentials:
+
+- `gitleaks` and `detect-secrets` run as `pre-commit` hooks (configured in
+  `.pre-commit-config.yaml`, both pinned by SHA).
+- A dedicated `CI Secrets` workflow (`.github/workflows/ci-secrets.yml`)
+  runs `gitleaks` on every pull request and push to `main`, plus a
+  `detect-secrets` baseline-integrity check that fails when any new
+  finding appears outside the audited `.secrets.baseline`.
+- `tests/test_no_secrets_in_repo.py` runs in the standard pytest suite and
+  greps every git-tracked file for well-known credential prefixes
+  (GitHub PATs, AWS access keys, OpenAI / Anthropic / Slack tokens, PEM
+  private-key blocks). Inline `# pragma: allowlist secret` suppresses a
+  single line; `_ALLOWED_PATHS` skips known-safe files (the baseline, the
+  gitleaks config, this test file).
+- `.gitleaks.toml` extends the upstream default ruleset with allowlists
+  for the well-known fake VAPID test key in `backend/push.py` (tracked
+  for removal as a follow-up under #396) and standard documentation
+  placeholders.
+- Operational procedure (rotation, baseline refresh, leak response) lives
+  in `docs/runbooks/secret-scanning.md`.
+
 ---
 
 ## 10. Prompt Notes and Agent Dispatch Configuration
