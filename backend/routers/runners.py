@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cache_utils import cache_get, cache_set
@@ -119,7 +120,7 @@ async def get_matlab_runner_health(request: Request) -> dict:
         "online": sum(1 for r in summaries if r["status"] == "online"),
         "busy": sum(1 for r in summaries if r["busy"]),
         "offline": sum(1 for r in summaries if r["status"] != "online"),
-        "generated_at": __import__("datetime").datetime.now(__import__("datetime").UTC).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
     cache_set("matlab_runner_health", res)
     return res
