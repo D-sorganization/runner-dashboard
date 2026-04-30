@@ -67,7 +67,7 @@ async def update_agent_remediation_config(
     request: Request,
     *,
     principal: Principal = Depends(require_scope("remediation.dispatch")),  # noqa: B008
-) -> dict:  # noqa: B008
+) -> dict | JSONResponse:  # noqa: B008
     """Persist the remediation policy so the dashboard can tune auto-routing."""
     body = await request.json()
     if not isinstance(body, dict):
@@ -341,7 +341,7 @@ async def dispatch_agent_remediation(
     }
     await _append_remediation_history(
         {
-            "timestamp": _dt_mod.datetime.now(_dt_mod.timezone.utc).isoformat(),
+            "timestamp": _dt_mod.datetime.now(_dt_mod.UTC).isoformat(),
             "repository": full_repository,
             "workflow_name": context.workflow_name,
             "branch": context.branch,
@@ -420,12 +420,12 @@ async def api_quick_dispatch(
 # ─── Bulk PR / Issue Agent Dispatch ──────────────────────────────────────────
 
 
-@router.post("/api/prs/dispatch")
+@router.post("/api/prs/dispatch", response_model=None)
 async def api_dispatch_to_prs(
     request: Request,
     *,
     principal: Principal = Depends(require_scope("github.dispatch")),  # noqa: B008
-) -> dict:
+) -> dict | JSONResponse:
     """Dispatch agents to one or more pull requests."""
     body = await request.json()
     if not isinstance(body, dict):
@@ -463,12 +463,12 @@ async def api_dispatch_to_prs(
     return dict(result)
 
 
-@router.post("/api/issues/dispatch")
+@router.post("/api/issues/dispatch", response_model=None)
 async def api_dispatch_to_issues(
     request: Request,
     *,
     principal: Principal = Depends(require_scope("github.dispatch")),  # noqa: B008
-) -> dict:
+) -> dict | JSONResponse:
     """Dispatch agents to one or more issues."""
     body = await request.json()
     if not isinstance(body, dict):
