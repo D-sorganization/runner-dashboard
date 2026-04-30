@@ -1,8 +1,8 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.12
+**Spec Version:** 2.5.13
 **Application Version:** 4.1.0 (see `VERSION`)
-**Last Updated:** 2026-04-29T20:30:00Z
+**Last Updated:** 2026-04-30T13:30:00Z
 **Status:** Active
 
 ---
@@ -176,7 +176,7 @@ the canonical wide-screen surface.
 
 
 PushSettings (issue #192) is a mobile-friendly React component for per-topic Web Push subscription management. It is located at `frontend/src/pages/PushSettings.tsx` and uses `GET /api/push/vapid-public-key` to fetch the VAPID key before subscribing to selected push topics via `POST /api/push/subscribe`.
-The Vite entrypoint in `frontend/src/main.tsx` includes a minimal tracer-bullet route shim for `/settings/push`: when the browser pathname resolves to that route, it renders `PushSettings` directly; all other paths continue to render the main dashboard app. This keeps the PushSettings work isolated while the Vite migration remains in progress.
+The Vite entrypoint in `frontend/src/main.tsx` includes a minimal tracer-bullet route shim for `/settings/push`: when the browser pathname resolves to that route, it renders `PushSettings` directly; all other paths continue to render the main dashboard app. The same entrypoint also resolves a small set of PWA pathnames to dashboard tabs via a `PATHNAME_TO_TAB` map (`/dispatch` -> agent-dispatch, `/queue` -> queue, `/maxwell` -> maxwell, `/remediate` -> remediation), passing the result as an `initialTab` prop to `App` so PWA shortcut launches and Web Share Target invocations land on the intended tab instead of the default overview (issue #419). This keeps the PushSettings work isolated while the Vite migration remains in progress.
 Mobile accessibility guards are part of the frontend source contract. At
 mobile viewport widths, primary interactive controls must use the shared
 `--mobile-hit-target` token with a minimum `44px` target size. CSS animations
