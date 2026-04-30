@@ -104,8 +104,7 @@ def test_dev_login_session_survives_restart(
     # --- Simulate restart: load a fresh IdentityManager from the same config dir ---
     mgr_after_restart = IdentityManager(config_dir=tmp_path / "config")
     assert "dev-user" in mgr_after_restart.principals, (
-        "dev-user must be present in reloaded IdentityManager — "
-        "session cookie would break without it"
+        "dev-user must be present in reloaded IdentityManager — session cookie would break without it"
     )
 
     principal = mgr_after_restart.principals["dev-user"]
@@ -154,9 +153,7 @@ def test_dev_login_cookie_works_after_restart(
     monkeypatch.setattr(auth_module, "identity_manager", mgr2)
 
     # dev-user must be known to mgr2
-    assert "dev-user" in mgr2.principals, (
-        "Reloaded identity manager must know dev-user so its cookie resolves"
-    )
+    assert "dev-user" in mgr2.principals, "Reloaded identity manager must know dev-user so its cookie resolves"
 
 
 # ---------------------------------------------------------------------------

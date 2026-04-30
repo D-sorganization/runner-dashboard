@@ -47,8 +47,17 @@ def _manifest() -> dict:
 
 def test_manifest_has_required_fields() -> None:
     m = _manifest()
-    for field in ["name", "short_name", "description", "start_url", "scope",
-                  "display", "background_color", "theme_color", "icons"]:
+    for field in [
+        "name",
+        "short_name",
+        "description",
+        "start_url",
+        "scope",
+        "display",
+        "background_color",
+        "theme_color",
+        "icons",
+    ]:
         assert field in m, f"manifest missing required field: {field}"
 
 
@@ -70,25 +79,19 @@ def test_manifest_has_png_icons_at_required_sizes() -> None:
     png_icons = [ic for ic in icons if ic.get("type") == "image/png"]
     sizes_present = {ic["sizes"] for ic in png_icons}
     for required_size in ["192x192", "256x256", "384x384", "512x512"]:
-        assert required_size in sizes_present, (
-            f"manifest missing PNG icon at {required_size}"
-        )
+        assert required_size in sizes_present, f"manifest missing PNG icon at {required_size}"
 
 
 def test_manifest_has_png_icons_with_any_purpose() -> None:
     m = _manifest()
-    any_pngs = [
-        ic for ic in m.get("icons", [])
-        if ic.get("type") == "image/png" and "any" in ic.get("purpose", "")
-    ]
+    any_pngs = [ic for ic in m.get("icons", []) if ic.get("type") == "image/png" and "any" in ic.get("purpose", "")]
     assert len(any_pngs) >= 2, "manifest must have at least two PNG icons with purpose=any"
 
 
 def test_manifest_has_png_icons_with_maskable_purpose() -> None:
     m = _manifest()
     maskable_pngs = [
-        ic for ic in m.get("icons", [])
-        if ic.get("type") == "image/png" and "maskable" in ic.get("purpose", "")
+        ic for ic in m.get("icons", []) if ic.get("type") == "image/png" and "maskable" in ic.get("purpose", "")
     ]
     assert len(maskable_pngs) >= 1, "manifest must have at least one PNG icon with purpose=maskable"
 
@@ -99,7 +102,7 @@ def test_png_icon_files_exist_on_disk() -> None:
         assert path.exists(), f"PNG icon file missing: {path.relative_to(_REPO)}"
         # Validate PNG signature
         sig = path.read_bytes()[:8]
-        assert sig == b'\x89PNG\r\n\x1a\n', f"{path.name} is not a valid PNG"
+        assert sig == b"\x89PNG\r\n\x1a\n", f"{path.name} is not a valid PNG"
 
 
 def test_apple_touch_icon_png_exists() -> None:
@@ -107,7 +110,7 @@ def test_apple_touch_icon_png_exists() -> None:
     path = _ICONS_DIR / "icon-180.png"
     assert path.exists(), "icons/icon-180.png required for iOS apple-touch-icon"
     sig = path.read_bytes()[:8]
-    assert sig == b'\x89PNG\r\n\x1a\n', "icon-180.png is not a valid PNG"
+    assert sig == b"\x89PNG\r\n\x1a\n", "icon-180.png is not a valid PNG"
 
 
 # ---------------------------------------------------------------------------
@@ -118,12 +121,11 @@ def test_apple_touch_icon_png_exists() -> None:
 def test_index_html_apple_touch_icon_references_png() -> None:
     html = (_FRONTEND / "index.html").read_text(encoding="utf-8")
     assert "apple-touch-icon" in html, "index.html must have apple-touch-icon link"
-    assert "icon-180.png" in html, (
-        "apple-touch-icon must point to icons/icon-180.png (not icon.svg)"
-    )
-    assert 'href="/icon.svg"' not in html or "apple-touch-icon" not in html.split('href="/icon.svg"')[0].rsplit('\n', 1)[-1], (
-        "apple-touch-icon must not reference icon.svg"
-    )
+    assert "icon-180.png" in html, "apple-touch-icon must point to icons/icon-180.png (not icon.svg)"
+    assert (
+        'href="/icon.svg"' not in html
+        or "apple-touch-icon" not in html.split('href="/icon.svg"')[0].rsplit("\n", 1)[-1]
+    ), "apple-touch-icon must not reference icon.svg"
 
 
 # ---------------------------------------------------------------------------
@@ -136,12 +138,8 @@ def test_manifest_has_real_screenshot_wide() -> None:
     screenshots = m.get("screenshots", [])
     wide = [s for s in screenshots if s.get("form_factor") == "wide"]
     assert len(wide) >= 1, "manifest must have at least one wide screenshot"
-    assert all(s.get("type") == "image/png" for s in wide), (
-        "wide screenshots must be PNG, not SVG"
-    )
-    assert all("1280" in s.get("sizes", "") for s in wide), (
-        "wide screenshot must be 1280px wide"
-    )
+    assert all(s.get("type") == "image/png" for s in wide), "wide screenshots must be PNG, not SVG"
+    assert all("1280" in s.get("sizes", "") for s in wide), "wide screenshot must be 1280px wide"
 
 
 def test_manifest_has_real_screenshot_mobile() -> None:
@@ -157,7 +155,7 @@ def test_screenshot_files_exist_on_disk() -> None:
         path = _SCREENSHOTS_DIR / fname
         assert path.exists(), f"Screenshot file missing: {path.relative_to(_REPO)}"
         sig = path.read_bytes()[:8]
-        assert sig == b'\x89PNG\r\n\x1a\n', f"{fname} is not a valid PNG"
+        assert sig == b"\x89PNG\r\n\x1a\n", f"{fname} is not a valid PNG"
 
 
 # ---------------------------------------------------------------------------

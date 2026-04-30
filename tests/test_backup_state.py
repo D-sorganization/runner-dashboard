@@ -41,26 +41,20 @@ def test_script_defines_backup_state_function() -> None:
 
 def test_script_uses_default_backup_dir() -> None:
     text = _SCRIPT.read_text(encoding="utf-8")
-    assert "/var/backups/runner-dashboard" in text, (
-        "default BACKUP_DIR must be /var/backups/runner-dashboard"
-    )
+    assert "/var/backups/runner-dashboard" in text, "default BACKUP_DIR must be /var/backups/runner-dashboard"
 
 
 def test_script_retains_thirty_backups() -> None:
     text = _SCRIPT.read_text(encoding="utf-8")
     # Either +31 (skip first 30) or +$((BACKUP_RETENTION+1)) — accept the literal default.
-    assert "+31" in text or "BACKUP_RETENTION" in text, (
-        "retention policy must keep the most recent 30 backups"
-    )
+    assert "+31" in text or "BACKUP_RETENTION" in text, "retention policy must keep the most recent 30 backups"
 
 
 def test_script_calls_backup_state_in_main() -> None:
     text = _SCRIPT.read_text(encoding="utf-8")
     # Backup must be invoked from main() so cron picks it up.
     main_section = text.split("main()", 1)[-1]
-    assert "backup_state" in main_section, (
-        "main() must invoke backup_state so cron triggers it"
-    )
+    assert "backup_state" in main_section, "main() must invoke backup_state so cron triggers it"
 
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash unavailable")

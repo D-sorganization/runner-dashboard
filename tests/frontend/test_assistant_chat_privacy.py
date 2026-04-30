@@ -21,6 +21,7 @@ def _read_privacy_doc() -> str:
 # AC 1 — "Save chat history" toggle defaults to OFF
 # ---------------------------------------------------------------------------
 
+
 def test_save_history_key_defined() -> None:
     src = _read_app()
     assert 'saveHistory: "assistant:saveHistory"' in src
@@ -39,6 +40,7 @@ def test_save_history_checkbox_label() -> None:
 # ---------------------------------------------------------------------------
 # AC 2 — Auto-clear after 24 h
 # ---------------------------------------------------------------------------
+
 
 def test_24h_ttl_constant_defined() -> None:
     src = _read_app()
@@ -61,6 +63,7 @@ def test_ls_load_transcript_checks_expiry() -> None:
 # AC 3 — docs/privacy.md exists and documents the feature
 # ---------------------------------------------------------------------------
 
+
 def test_privacy_doc_exists() -> None:
     doc = _read_privacy_doc()
     assert len(doc) > 0
@@ -80,6 +83,7 @@ def test_privacy_doc_mentions_24h_expiry() -> None:
 # AC 4 — "Clear chat history" button present in sidebar
 # ---------------------------------------------------------------------------
 
+
 def test_clear_chat_history_button_present() -> None:
     src = _read_app()
     assert '"Clear chat history"' in src
@@ -95,6 +99,7 @@ def test_clear_button_removes_transcript_from_ls() -> None:
 # ---------------------------------------------------------------------------
 # AC 5 — With toggle off, transcript NOT written to localStorage
 # ---------------------------------------------------------------------------
+
 
 def test_transcript_persist_guarded_by_save_history() -> None:
     src = _read_app()
