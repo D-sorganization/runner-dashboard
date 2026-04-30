@@ -9,12 +9,12 @@ from pathlib import Path
 
 def _read_app() -> str:
     repo = Path(__file__).resolve().parents[2]
-    return (repo / "frontend/src/legacy/App.tsx").read_text()
+    return (repo / "frontend/src/legacy/App.tsx").read_text(encoding="utf-8")
 
 
 def _read_privacy_doc() -> str:
     repo = Path(__file__).resolve().parents[2]
-    return (repo / "docs/privacy.md").read_text()
+    return (repo / "docs/privacy.md").read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -35,6 +35,12 @@ def test_save_history_defaults_false() -> None:
 def test_save_history_checkbox_label() -> None:
     src = _read_app()
     assert '"Save chat history"' in src
+
+
+def test_save_history_header_toggle_present() -> None:
+    src = _read_app()
+    assert 'title: "Save chat history"' in src
+    assert '"aria-label": "Save chat history"' in src
 
 
 # ---------------------------------------------------------------------------
