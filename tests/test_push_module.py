@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -32,7 +31,6 @@ from push import (  # noqa: E402
     send_push,
     upsert_subscription,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -78,7 +76,7 @@ def test_push_subscription_request_valid() -> None:
 
 
 def test_push_subscription_request_rejects_http_non_loopback() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         PushSubscriptionRequest(
             endpoint="http://evil.example.com/sub/1",
             keys=PushKeys(p256dh="A" * 20, auth="B" * 10),
@@ -105,7 +103,7 @@ def test_push_subscription_request_allows_loopback_127() -> None:
 
 
 def test_push_subscription_request_rejects_unknown_topic() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         PushSubscriptionRequest(
             endpoint="https://push.example.com/sub/1",
             keys=PushKeys(p256dh="A" * 20, auth="B" * 10),
@@ -148,12 +146,12 @@ def test_push_test_request_valid_custom_topic() -> None:
 
 
 def test_push_test_request_rejects_unknown_topic() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         PushTestRequest(topic="not.a.real.topic")
 
 
 def test_push_test_request_rejects_non_internal_deep_link() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         PushTestRequest(deep_link="https://evil.com/page")
 
 

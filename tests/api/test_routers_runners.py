@@ -24,9 +24,9 @@ if str(_BACKEND) not in sys.path:
 os.environ.setdefault("DASHBOARD_API_KEY", "test-key")
 
 import server  # noqa: E402
-from routers import runners as runners_router  # noqa: E402
-from routers import runner_groups as groups_router  # noqa: E402
 from routers import runner_diagnostics as diagnostics_router  # noqa: E402
+from routers import runner_groups as groups_router  # noqa: E402
+from routers import runners as runners_router  # noqa: E402
 
 
 @pytest.fixture

@@ -18,7 +18,6 @@ sys.path.insert(0, str(_BACKEND_DIR))
 
 import linear_taxonomy_map as ltm  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -173,7 +172,7 @@ def test_derived_labels_passthrough_applied() -> None:
 def test_derived_labels_default_judgement_added_when_none() -> None:
     issue = {}
     labels = ltm.derived_labels(issue, MINIMAL_MAPPING)
-    assert any(l.startswith("judgement:") for l in labels)
+    assert any(label.startswith("judgement:") for label in labels)
     assert "judgement:objective" in labels
 
 

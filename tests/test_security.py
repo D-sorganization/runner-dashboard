@@ -4,9 +4,7 @@ import time
 from pathlib import Path  # noqa: E402
 
 import pytest  # noqa: E402
-
 import security  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # sanitize_log_value
