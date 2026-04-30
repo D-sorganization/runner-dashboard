@@ -1,8 +1,8 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.13
+**Spec Version:** 2.5.14
 **Application Version:** 4.1.0 (see `VERSION`)
-**Last Updated:** 2026-04-30T00:00:00Z
+**Last Updated:** 2026-04-30T17:00:00Z
 **Status:** Active
 
 ---
@@ -926,6 +926,15 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 ---
 
 ## 7. Changelog
+
+### 2.5.14 - 2026-04-30
+- refactor: consolidate duplicated `_sanitize_log_value` and `_utc_now` helpers
+  into shared modules (issue #404, partial). The dispatch router now re-exports
+  `security.sanitize_log_value`, and a new `backend/time_utils.py` exposes
+  `utc_now()` (datetime) and `utc_now_iso()` (ISO-8601 string with `Z`
+  suffix) reused by `agent_remediation`, `dispatch_contract`, `push`,
+  `remote_execution_contract`, `scheduled_workflows`, and
+  `agent_dispatch_router`. No public API or wire-format changes.
 
 ### 2.5.11 - 2026-04-29
 - feat: add authenticated session tracking and remote logout endpoints for the
