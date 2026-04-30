@@ -49,13 +49,17 @@ fi
 
 # 4. Install + enable the systemd unit
 echo "==> Installing systemd unit"
-sudo install -Dm 0644 "$SCRIPT_DIR/runner-autoscaler.service" \
-    /etc/systemd/system/runner-autoscaler.service
-sudo install -d -m 0755 /etc/systemd/system/runner-autoscaler.service.d
-sudo tee /etc/systemd/system/runner-autoscaler.service.d/schedule-config.conf > /dev/null <<EOF
-[Service]
-Environment=RUNNER_SCHEDULE_CONFIG=${SCHEDULE_CONFIG}
-EOF
+
+TEMPLATE_FILE="$SCRIPT_DIR/runner-autoscaler.service"
+if [[ ! -f "$TEMPLATE_FILE" ]]; then
+    echo "ERROR: Template not found at $TEMPLATE_FILE"
+    exit 1
+fi
+
+sed -e "s|YOUR_USER|$RUNNER_USER|g" \
+    -e "s|/home/YOUR_USER|$HOME|g" \
+    -e "s|RUNNER_SCHEDULE_CONFIG=.*|RUNNER_SCHEDULE_CONFIG=${SCHEDULE_CONFIG}|g" \
+    "$TEMPLATE_FILE" | sudo tee /etc/systemd/system/runner-autoscaler.service > /dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable runner-autoscaler.service
 sudo systemctl restart runner-autoscaler.service
