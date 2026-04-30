@@ -1,8 +1,8 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.13
+**Spec Version:** 2.5.14
 **Application Version:** 4.1.0 (see `VERSION`)
-**Last Updated:** 2026-04-30T00:00:00Z
+**Last Updated:** 2026-04-30T16:40:00Z
 **Status:** Active
 
 ---
@@ -516,6 +516,24 @@ env var.
 | GET | `/api/workflows/list` | All dispatchable workflows in the org |
 | POST | `/api/workflows/dispatch` | Manually dispatch a workflow |
 | GET | `/api/scheduled-workflows` | Cron-scheduled workflow inventory |
+
+#### `workflow_dispatch` input validation
+
+Both `POST /api/workflows/dispatch` and `POST /api/feature-requests/dispatch`
+validate any caller-supplied `inputs` mapping **before** any temp-file or
+subprocess I/O. The shared validator (`backend/input_validation.py`) enforces:
+
+- `MAX_INPUT_KEYS = 20` — request fails with HTTP 400 if the mapping has more
+  than 20 keys.
+- `MAX_INPUT_VALUE_LENGTH = 1000` — request fails with HTTP 400 if any value
+  exceeds 1000 characters.
+- All values must be strings (GitHub `workflow_dispatch` inputs are always
+  strings); non-string values yield HTTP 400.
+- Non-string keys and non-mapping bodies are also rejected with HTTP 400.
+
+These caps protect the dashboard from oversized payloads being serialized to
+disk before GitHub's own 422 response. Per-workflow-id key whitelists are
+out of scope; size and type checks are the abuse-resistance contract.
 
 ### Repositories
 
