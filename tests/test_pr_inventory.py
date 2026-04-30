@@ -179,7 +179,9 @@ class TestParseAgentClaim:
 class TestFetchRepoPrs:
     @pytest.mark.asyncio
     async def test_gh_failure_returns_error(self) -> None:
-        with patch.object(pr_inventory, "_run_gh", new=AsyncMock(return_value=(1, "", "auth error"))):
+        with patch.object(
+            pr_inventory, "_run_gh", new=AsyncMock(return_value=(1, "", "auth error"))
+        ):
             items, err = await pr_inventory.fetch_repo_prs("org/repo")
         assert items == []
         assert err is not None
@@ -187,7 +189,9 @@ class TestFetchRepoPrs:
 
     @pytest.mark.asyncio
     async def test_json_decode_error_returns_error(self) -> None:
-        with patch.object(pr_inventory, "_run_gh", new=AsyncMock(return_value=(0, "not json", ""))):
+        with patch.object(
+            pr_inventory, "_run_gh", new=AsyncMock(return_value=(0, "not json", ""))
+        ):
             items, err = await pr_inventory.fetch_repo_prs("org/repo")
         assert items == []
         assert err is not None
@@ -242,7 +246,9 @@ class TestFetchAllPrs:
             return [pr_inventory._normalise_pr(p, full_name) for p in prs], None
 
         with patch.object(pr_inventory, "fetch_repo_prs", side_effect=fake_fetch):
-            result = await pr_inventory.fetch_all_prs(["org/repo"], include_drafts=False)
+            result = await pr_inventory.fetch_all_prs(
+                ["org/repo"], include_drafts=False
+            )
 
         assert result["total"] == 1
         assert result["items"][0]["draft"] is False

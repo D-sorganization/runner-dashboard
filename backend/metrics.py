@@ -52,7 +52,11 @@ async def get_system_metrics():
         per_cpu = psutil.cpu_percent(interval=0, percpu=True)
         current_cpu = psutil.cpu_percent(interval=0)
         _cpu_history.append(current_cpu)
-        cpu_avg_1m = round(sum(_cpu_history) / len(_cpu_history), 1) if _cpu_history else current_cpu
+        cpu_avg_1m = (
+            round(sum(_cpu_history) / len(_cpu_history), 1)
+            if _cpu_history
+            else current_cpu
+        )
         uptime_seconds = time.time() - psutil.boot_time()
         dashboard_uptime = time.time() - BOOT_TIME
         disk_pressure = _disk_pressure_snapshot(
@@ -166,7 +170,9 @@ async def get_system_metrics():
     per_cpu = psutil.cpu_percent(interval=0, percpu=True)
     current_cpu = psutil.cpu_percent(interval=0)
     _cpu_history.append(current_cpu)
-    cpu_avg_1m = round(sum(_cpu_history) / len(_cpu_history), 1) if _cpu_history else current_cpu
+    cpu_avg_1m = (
+        round(sum(_cpu_history) / len(_cpu_history), 1) if _cpu_history else current_cpu
+    )
 
     # Uptime
     uptime_seconds = time.time() - psutil.boot_time()
@@ -222,7 +228,9 @@ async def get_system_metrics():
         "hardware_specs": hardware_specs,
         "workload_capacity": _workload_capacity_from_specs(hardware_specs),
         "runner_processes": get_per_runner_resources(),
-        "runner_capacity": _get_runner_capacity_snapshot() if _get_runner_capacity_snapshot else {},
+        "runner_capacity": (
+            _get_runner_capacity_snapshot() if _get_runner_capacity_snapshot else {}
+        ),
     }
 
 
@@ -277,7 +285,9 @@ async def get_fleet_status(request: Request):
     if FLEET_NODES:
         import asyncio  # noqa: PLC0415
 
-        results = await asyncio.gather(*[fetch_node(n, u) for n, u in FLEET_NODES.items()])
+        results = await asyncio.gather(
+            *[fetch_node(n, u) for n, u in FLEET_NODES.items()]
+        )
         for name, data in results:
             responses[name] = data
 

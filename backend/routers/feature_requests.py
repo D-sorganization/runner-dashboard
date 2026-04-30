@@ -34,8 +34,12 @@ router = APIRouter(tags=["feature_requests"])
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 
-_FEATURE_REQUESTS_PATH = Path.home() / "actions-runners" / "dashboard" / "feature_requests.json"
-_PROMPT_TEMPLATES_PATH = Path.home() / "actions-runners" / "dashboard" / "prompt_templates.json"
+_FEATURE_REQUESTS_PATH = (
+    Path.home() / "actions-runners" / "dashboard" / "feature_requests.json"
+)
+_PROMPT_TEMPLATES_PATH = (
+    Path.home() / "actions-runners" / "dashboard" / "prompt_templates.json"
+)
 _PROMPT_NOTES_PATH = Path.home() / "actions-runners" / "dashboard" / "prompt_notes.json"
 
 # ─── Async locks ──────────────────────────────────────────────────────────────
@@ -95,14 +99,18 @@ async def list_prompt_templates() -> dict:
     templates_data = []
     try:
         if _PROMPT_TEMPLATES_PATH.exists():
-            templates_data = json.loads(_PROMPT_TEMPLATES_PATH.read_text(encoding="utf-8"))
+            templates_data = json.loads(
+                _PROMPT_TEMPLATES_PATH.read_text(encoding="utf-8")
+            )
     except Exception:  # noqa: BLE001
         pass
 
     prompt_notes_data = {"notes": "", "enabled": True}
     try:
         if _PROMPT_NOTES_PATH.exists():
-            prompt_notes_data = json.loads(_PROMPT_NOTES_PATH.read_text(encoding="utf-8"))
+            prompt_notes_data = json.loads(
+                _PROMPT_NOTES_PATH.read_text(encoding="utf-8")
+            )
     except Exception:  # noqa: BLE001
         pass
 
@@ -117,7 +125,9 @@ async def list_prompt_templates() -> dict:
 async def save_prompt_template(
     request: Request,
     *,
-    principal: Principal = Depends(require_scope("feature-requests.manage")),  # noqa: B008
+    principal: Principal = Depends(
+        require_scope("feature-requests.manage")
+    ),  # noqa: B008
 ) -> dict:
     """Save a prompt template."""
     body = await request.json()
@@ -129,8 +139,12 @@ async def save_prompt_template(
         try:
             templates: list[dict] = []
             if _PROMPT_TEMPLATES_PATH.exists():
-                templates = json.loads(_PROMPT_TEMPLATES_PATH.read_text(encoding="utf-8"))
-            existing_idx = next((i for i, t in enumerate(templates) if t.get("name") == name), None)
+                templates = json.loads(
+                    _PROMPT_TEMPLATES_PATH.read_text(encoding="utf-8")
+                )
+            existing_idx = next(
+                (i for i, t in enumerate(templates) if t.get("name") == name), None
+            )
             template = {
                 "name": name,
                 "content": content,
@@ -186,7 +200,9 @@ async def update_prompt_notes(
 async def dispatch_feature_request(
     request: Request,
     *,
-    principal: Principal = Depends(require_scope("feature-requests.manage")),  # noqa: B008
+    principal: Principal = Depends(
+        require_scope("feature-requests.manage")
+    ),  # noqa: B008
 ) -> dict:
     """Dispatch a feature implementation request via CI remediation workflow."""
     client_ip = request.client.host if request.client else "unknown"
@@ -214,7 +230,9 @@ async def dispatch_feature_request(
     prompt_notes_data: dict[str, object] = {"notes": "", "enabled": True}
     try:
         if _PROMPT_NOTES_PATH.exists():
-            prompt_notes_data = json.loads(_PROMPT_NOTES_PATH.read_text(encoding="utf-8"))
+            prompt_notes_data = json.loads(
+                _PROMPT_NOTES_PATH.read_text(encoding="utf-8")
+            )
     except Exception:  # noqa: BLE001
         pass
 
@@ -225,7 +243,9 @@ async def dispatch_feature_request(
         full_prompt = f"{notes_val}\n\n{prompt}"
 
     injected_standards = "\n\n".join(
-        f"[{s.upper()}] {STANDARDS_INJECTION[s]}" for s in standards if s in STANDARDS_INJECTION
+        f"[{s.upper()}] {STANDARDS_INJECTION[s]}"
+        for s in standards
+        if s in STANDARDS_INJECTION
     )
     if injected_standards:
         full_prompt = f"{full_prompt}\n\n## Engineering Standards\n{injected_standards}"
@@ -263,7 +283,9 @@ async def dispatch_feature_request(
             "prompt": full_prompt[:10000],
         },
     }
-    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".json", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", suffix=".json", delete=False
+    ) as f:
         json.dump(payload, f)
         pf = f.name
     try:

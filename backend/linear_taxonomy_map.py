@@ -98,7 +98,9 @@ def derived_labels(linear_issue: dict[str, Any], mapping: dict[str, Any]) -> lis
     return labels
 
 
-def apply_mapping(linear_issue: dict[str, Any], mapping: dict[str, Any]) -> MappingResult:
+def apply_mapping(
+    linear_issue: dict[str, Any], mapping: dict[str, Any]
+) -> MappingResult:
     """Apply a mapping policy to a raw Linear issue payload."""
     labels, source_signals = _derive_labels_and_signals(linear_issue, mapping)
     taxonomy = parse_taxonomy(labels)
@@ -131,7 +133,9 @@ def _derive_labels_and_signals(
     estimate_labels = _labels_for_estimate(mapping.get("estimate", {}), estimate)
     labels.extend(estimate_labels)
 
-    state = linear_issue.get("state") if isinstance(linear_issue.get("state"), dict) else {}
+    state = (
+        linear_issue.get("state") if isinstance(linear_issue.get("state"), dict) else {}
+    )
     state_type = state.get("type") if isinstance(state, dict) else None
     state_labels = _labels_for_exact_key(mapping.get("state_type", {}), state_type)
     labels.extend(state_labels)
@@ -176,7 +180,9 @@ def _derive_labels_and_signals(
     return labels, source_signals
 
 
-def _validate_workspace(index: int, workspace: dict[str, Any], mappings: dict[str, Any]) -> None:
+def _validate_workspace(
+    index: int, workspace: dict[str, Any], mappings: dict[str, Any]
+) -> None:
     for field in (
         "id",
         "auth",
@@ -201,16 +207,25 @@ def _validate_workspace(index: int, workspace: dict[str, Any], mappings: dict[st
     if not isinstance(auth.get("env"), str) or not auth["env"]:
         raise ValueError(f"workspaces[{index}].auth.env must be a non-empty string")
 
-    if not isinstance(workspace["teams"], list) or not all(isinstance(team, str) for team in workspace["teams"]):
+    if not isinstance(workspace["teams"], list) or not all(
+        isinstance(team, str) for team in workspace["teams"]
+    ):
         raise ValueError(f"workspaces[{index}].teams must be a list of strings")
 
     mapping_name = workspace["mapping"]
     if not isinstance(mapping_name, str) or not mapping_name:
         raise ValueError(f"workspaces[{index}].mapping must be a non-empty string")
     if mapping_name not in mappings:
-        raise ValueError(f"workspaces[{index}] references missing mapping '{mapping_name}'")
+        raise ValueError(
+            f"workspaces[{index}] references missing mapping '{mapping_name}'"
+        )
 
-    for field in ("trigger_label", "webhook_secret_env", "default_repository", "prefer_source"):
+    for field in (
+        "trigger_label",
+        "webhook_secret_env",
+        "default_repository",
+        "prefer_source",
+    ):
         if not isinstance(workspace[field], str) or not workspace[field]:
             raise ValueError(f"workspaces[{index}].{field} must be a non-empty string")
 
@@ -219,9 +234,17 @@ def _validate_mapping(mapping_name: str, mapping: Any) -> None:
     if not isinstance(mapping, dict):
         raise ValueError(f"mappings.{mapping_name} must be an object")
 
-    for field in ("priority", "estimate", "state_type", "label_aliases", "label_passthrough_prefixes"):
+    for field in (
+        "priority",
+        "estimate",
+        "state_type",
+        "label_aliases",
+        "label_passthrough_prefixes",
+    ):
         if field not in mapping:
-            raise ValueError(f"mappings.{mapping_name} missing required field '{field}'")
+            raise ValueError(
+                f"mappings.{mapping_name} missing required field '{field}'"
+            )
 
     for field in ("priority", "estimate", "state_type", "label_aliases"):
         if not isinstance(mapping[field], dict):
@@ -230,17 +253,25 @@ def _validate_mapping(mapping_name: str, mapping: Any) -> None:
     for field in ("priority", "estimate", "state_type", "label_aliases"):
         for key, value in mapping[field].items():
             if not isinstance(key, str):
-                raise ValueError(f"mappings.{mapping_name}.{field} keys must be strings")
+                raise ValueError(
+                    f"mappings.{mapping_name}.{field} keys must be strings"
+                )
             if not _is_string_list(value):
-                raise ValueError(f"mappings.{mapping_name}.{field}.{key} must be a list of strings")
+                raise ValueError(
+                    f"mappings.{mapping_name}.{field}.{key} must be a list of strings"
+                )
 
     prefixes = mapping["label_passthrough_prefixes"]
     if not _is_string_list(prefixes):
-        raise ValueError(f"mappings.{mapping_name}.label_passthrough_prefixes must be a list of strings")
+        raise ValueError(
+            f"mappings.{mapping_name}.label_passthrough_prefixes must be a list of strings"
+        )
 
     default_judgement = mapping.get("default_judgement", "objective")
     if not isinstance(default_judgement, str) or not default_judgement:
-        raise ValueError(f"mappings.{mapping_name}.default_judgement must be a non-empty string")
+        raise ValueError(
+            f"mappings.{mapping_name}.default_judgement must be a non-empty string"
+        )
 
 
 def _labels_for_exact_key(source: Any, value: Any) -> list[str]:
@@ -288,7 +319,9 @@ def _linear_label_names(linear_issue: dict[str, Any]) -> list[str]:
 def _matches_passthrough(label_name: str, prefixes: Any) -> bool:
     if not isinstance(prefixes, list):
         return False
-    return any(isinstance(prefix, str) and label_name.startswith(prefix) for prefix in prefixes)
+    return any(
+        isinstance(prefix, str) and label_name.startswith(prefix) for prefix in prefixes
+    )
 
 
 def _dedupe_stable(labels: list[str]) -> list[str]:

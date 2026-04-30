@@ -27,7 +27,9 @@ async def gh_api(endpoint: str) -> dict:
     try:
         return json.loads(stdout) if stdout.strip() else {}
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=502, detail=f"Invalid JSON from GitHub API: {stdout}") from exc
+        raise HTTPException(
+            status_code=502, detail=f"Invalid JSON from GitHub API: {stdout}"
+        ) from exc
 
 
 # gh_api_admin is an alias kept for call-site clarity.
@@ -36,7 +38,9 @@ gh_api_admin = gh_api
 
 async def gh_api_raw(endpoint: str) -> str:
     """Call the GitHub API via gh CLI and return the raw body text."""
-    code, stdout, stderr = await run_cmd(["gh", "api", "-H", "Accept: application/vnd.github.raw", endpoint])
+    code, stdout, stderr = await run_cmd(
+        ["gh", "api", "-H", "Accept: application/vnd.github.raw", endpoint]
+    )
     if code != 0:
         raise HTTPException(status_code=502, detail=f"GitHub API error: {stderr}")
     return stdout

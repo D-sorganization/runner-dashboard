@@ -45,9 +45,9 @@ log = logging.getLogger("dashboard.agent_dispatch")
 _PR_DISPATCH_HISTORY_PATH = Path(os.environ.get("PR_DISPATCH_HISTORY_PATH", "")) or (
     Path.home() / "actions-runners" / "dashboard" / "pr_dispatch_history.json"
 )
-_ISSUE_DISPATCH_HISTORY_PATH = Path(os.environ.get("ISSUE_DISPATCH_HISTORY_PATH", "")) or (
-    Path.home() / "actions-runners" / "dashboard" / "issue_dispatch_history.json"
-)
+_ISSUE_DISPATCH_HISTORY_PATH = Path(
+    os.environ.get("ISSUE_DISPATCH_HISTORY_PATH", "")
+) or (Path.home() / "actions-runners" / "dashboard" / "issue_dispatch_history.json")
 
 _pr_dispatch_history_lock: asyncio.Lock = asyncio.Lock()
 _issue_dispatch_history_lock: asyncio.Lock = asyncio.Lock()
@@ -83,7 +83,9 @@ class PRDispatchRequest(BaseModel):
     prompt: str = Field(default="", max_length=10_000)
     model: str = Field(default="", max_length=200)
     principal: str = Field(default="", max_length=200)
-    confirmation: DispatchConfirmationBody = Field(default_factory=DispatchConfirmationBody)
+    confirmation: DispatchConfirmationBody = Field(
+        default_factory=DispatchConfirmationBody
+    )
 
 
 class IssueDispatchRequest(BaseModel):
@@ -93,7 +95,9 @@ class IssueDispatchRequest(BaseModel):
     model: str = Field(default="", max_length=200)
     principal: str = Field(default="", max_length=200)
     force: bool = False
-    confirmation: DispatchConfirmationBody = Field(default_factory=DispatchConfirmationBody)
+    confirmation: DispatchConfirmationBody = Field(
+        default_factory=DispatchConfirmationBody
+    )
 
 
 class RejectedTarget(BaseModel):
@@ -257,7 +261,9 @@ async def _dispatch_one(
         if code != 0:
             stderr_lower = stderr.lower()
             if "workflow" in stderr_lower and (
-                "not found" in stderr_lower or "does not exist" in stderr_lower or "422" in stderr_lower
+                "not found" in stderr_lower
+                or "does not exist" in stderr_lower
+                or "422" in stderr_lower
             ):
                 reason = f"workflow_not_configured: {workflow_file} does not exist in Repository_Management"
             else:
@@ -376,14 +382,28 @@ async def dispatch_to_prs(
                             runner_id=f"virtual-{env_id}",
                             duration_seconds=3600,
                             task_id=env_id,
-                            metadata={"source": "agent_dispatch_router", "repo": repo, "number": num},
+                            metadata={
+                                "source": "agent_dispatch_router",
+                                "repo": repo,
+                                "number": num,
+                            },
                         )
                     except (ValueError, PermissionError) as exc:
-                        log.warning("Failed to acquire virtual lease for %s: %s", req.principal, exc)
+                        log.warning(
+                            "Failed to acquire virtual lease for %s: %s",
+                            req.principal,
+                            exc,
+                        )
 
     # Handle quota rejected targets
     for repo, num in rejected_due_to_quota:
-        rejected.append({"repository": repo, "number": num, "reason": "quota_exceeded: max_runners reached"})
+        rejected.append(
+            {
+                "repository": repo,
+                "number": num,
+                "reason": "quota_exceeded: max_runners reached",
+            }
+        )
 
     # ── Audit log ─────────────────────────────────────────────────────────────
     audit_entry: dict[str, Any] = {
@@ -399,9 +419,13 @@ async def dispatch_to_prs(
     }
     # ── Record spend (Wave 3) ─────────────────────────────────────────────────
     if req.principal and accepted_count > 0:
-        quota_enforcement.quota_enforcement.add_spend(req.principal, accepted_count * 0.10)
+        quota_enforcement.quota_enforcement.add_spend(
+            req.principal, accepted_count * 0.10
+        )
 
-    await _append_history(audit_entry, _PR_DISPATCH_HISTORY_PATH, _pr_dispatch_history_lock)
+    await _append_history(
+        audit_entry, _PR_DISPATCH_HISTORY_PATH, _pr_dispatch_history_lock
+    )
 
     return BulkDispatchResponse(
         accepted=accepted_count,
@@ -523,7 +547,9 @@ async def dispatch_to_issues(
     rejected: list[dict[str, Any]] = list(pre_rejected)
     accepted_count = 0
 
-    for (repo, num), (env_id, fp, reason) in zip(filtered_targets, results, strict=True):
+    for (repo, num), (env_id, fp, reason) in zip(
+        filtered_targets, results, strict=True
+    ):
         if reason:
             rejected.append({"repository": repo, "number": num, "reason": reason})
         else:
@@ -544,14 +570,28 @@ async def dispatch_to_issues(
                             runner_id=f"virtual-{env_id}",
                             duration_seconds=3600,
                             task_id=env_id,
-                            metadata={"source": "agent_dispatch_router", "repo": repo, "number": num},
+                            metadata={
+                                "source": "agent_dispatch_router",
+                                "repo": repo,
+                                "number": num,
+                            },
                         )
                     except (ValueError, PermissionError) as exc:
-                        log.warning("Failed to acquire virtual lease for %s: %s", req.principal, exc)
+                        log.warning(
+                            "Failed to acquire virtual lease for %s: %s",
+                            req.principal,
+                            exc,
+                        )
 
     # Handle quota rejected targets
     for repo, num in rejected_due_to_quota:
-        rejected.append({"repository": repo, "number": num, "reason": "quota_exceeded: max_runners reached"})
+        rejected.append(
+            {
+                "repository": repo,
+                "number": num,
+                "reason": "quota_exceeded: max_runners reached",
+            }
+        )
 
     # ── Audit log ─────────────────────────────────────────────────────────────
     audit_entry: dict[str, Any] = {
@@ -568,9 +608,13 @@ async def dispatch_to_issues(
     }
     # ── Record spend (Wave 3) ─────────────────────────────────────────────────
     if req.principal and accepted_count > 0:
-        quota_enforcement.quota_enforcement.add_spend(req.principal, accepted_count * 0.10)
+        quota_enforcement.quota_enforcement.add_spend(
+            req.principal, accepted_count * 0.10
+        )
 
-    await _append_history(audit_entry, _ISSUE_DISPATCH_HISTORY_PATH, _issue_dispatch_history_lock)
+    await _append_history(
+        audit_entry, _ISSUE_DISPATCH_HISTORY_PATH, _issue_dispatch_history_lock
+    )
 
     return BulkDispatchResponse(
         accepted=accepted_count,

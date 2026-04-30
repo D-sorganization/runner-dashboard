@@ -24,8 +24,15 @@ from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/auth/webauthn", tags=["auth"])
 
-_CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "runner-dashboard"
-_CREDENTIALS_PATH = Path(os.environ.get("DASHBOARD_WEBAUTHN_CREDENTIALS", _CONFIG_DIR / "webauthn_credentials.json"))
+_CONFIG_DIR = (
+    Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    / "runner-dashboard"
+)
+_CREDENTIALS_PATH = Path(
+    os.environ.get(
+        "DASHBOARD_WEBAUTHN_CREDENTIALS", _CONFIG_DIR / "webauthn_credentials.json"
+    )
+)
 _CHALLENGE_SESSION_KEY = "webauthn_challenges"
 _CHALLENGE_TTL_SECONDS = 300
 
@@ -69,17 +76,27 @@ class AssertCompleteRequest(BaseModel):
 
 
 def _b64url_token(byte_count: int = 32) -> str:
-    return base64.urlsafe_b64encode(secrets.token_bytes(byte_count)).decode("ascii").rstrip("=")
+    return (
+        base64.urlsafe_b64encode(secrets.token_bytes(byte_count))
+        .decode("ascii")
+        .rstrip("=")
+    )
 
 
 def _challenge_secret() -> bytes:
-    secret = os.environ.get("DASHBOARD_WEBAUTHN_CHALLENGE_SECRET") or os.environ.get("SESSION_SECRET")
+    secret = os.environ.get("DASHBOARD_WEBAUTHN_CHALLENGE_SECRET") or os.environ.get(
+        "SESSION_SECRET"
+    )
     if not secret:
-        secret = os.environ.get("DASHBOARD_API_KEY", "runner-dashboard-development-secret")
+        secret = os.environ.get(
+            "DASHBOARD_API_KEY", "runner-dashboard-development-secret"
+        )
     return secret.encode("utf-8")
 
 
-def _sign_challenge(challenge: str, user_id: str, ceremony: str, expires_at: float) -> str:
+def _sign_challenge(
+    challenge: str, user_id: str, ceremony: str, expires_at: float
+) -> str:
     payload = f"{challenge}.{user_id}.{ceremony}.{int(expires_at)}".encode()
     digest = hmac.new(_challenge_secret(), payload, hashlib.sha256).digest()
     return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
@@ -101,10 +118,14 @@ def _load_credentials(path: Path = _CREDENTIALS_PATH) -> list[WebAuthnCredential
     return records
 
 
-def _save_credentials(records: list[WebAuthnCredentialRecord], path: Path = _CREDENTIALS_PATH) -> None:
+def _save_credentials(
+    records: list[WebAuthnCredentialRecord], path: Path = _CREDENTIALS_PATH
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = [record.model_dump() for record in records]
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     try:
         path.chmod(0o600)
     except OSError:
@@ -112,22 +133,34 @@ def _save_credentials(records: list[WebAuthnCredentialRecord], path: Path = _CRE
 
 
 def _active_credentials_for(user_id: str) -> list[WebAuthnCredentialRecord]:
-    return [record for record in _load_credentials() if record.user_id == user_id and record.revoked_at is None]
+    return [
+        record
+        for record in _load_credentials()
+        if record.user_id == user_id and record.revoked_at is None
+    ]
 
 
 def _store_challenge(request: Request, challenge: WebAuthnChallenge) -> None:
     if not hasattr(request, "session"):
-        raise HTTPException(status_code=500, detail="Session middleware is required for WebAuthn")
+        raise HTTPException(
+            status_code=500, detail="Session middleware is required for WebAuthn"
+        )
     stored = request.session.get(_CHALLENGE_SESSION_KEY, [])
     if not isinstance(stored, list):
         stored = []
     now = time.time()
-    stored = [item for item in stored if isinstance(item, dict) and float(item.get("expires_at", 0)) > now]
+    stored = [
+        item
+        for item in stored
+        if isinstance(item, dict) and float(item.get("expires_at", 0)) > now
+    ]
     stored.append(challenge.model_dump())
     request.session[_CHALLENGE_SESSION_KEY] = stored
 
 
-def _new_challenge(request: Request, principal: Principal, ceremony: str) -> WebAuthnChallenge:
+def _new_challenge(
+    request: Request, principal: Principal, ceremony: str
+) -> WebAuthnChallenge:
     challenge_value = _b64url_token()
     expires_at = time.time() + _CHALLENGE_TTL_SECONDS
     challenge = WebAuthnChallenge(
@@ -164,7 +197,9 @@ async def register_complete(
     _principal: Principal = Depends(require_principal),  # noqa: B008
 ) -> None:
     """Fail closed until a pinned WebAuthn verifier validates attestation."""
-    raise HTTPException(status_code=501, detail="WebAuthn registration verification is not implemented")
+    raise HTTPException(
+        status_code=501, detail="WebAuthn registration verification is not implemented"
+    )
 
 
 @router.post("/assert/begin")
@@ -176,14 +211,23 @@ async def assert_begin(
     """Start an assertion ceremony for the current authenticated user."""
     credentials = _active_credentials_for(principal.id)
     if body.credential_id:
-        credentials = [record for record in credentials if record.credential_id == body.credential_id]
+        credentials = [
+            record
+            for record in credentials
+            if record.credential_id == body.credential_id
+        ]
     if not credentials:
-        raise HTTPException(status_code=404, detail="No active WebAuthn credential registered for this user")
+        raise HTTPException(
+            status_code=404,
+            detail="No active WebAuthn credential registered for this user",
+        )
     challenge = _new_challenge(request, principal, "assert")
     return {
         "challenge": challenge.challenge,
         "challenge_signature": challenge.signature,
-        "allow_credentials": [{"id": record.credential_id, "type": "public-key"} for record in credentials],
+        "allow_credentials": [
+            {"id": record.credential_id, "type": "public-key"} for record in credentials
+        ],
         "timeout_ms": _CHALLENGE_TTL_SECONDS * 1000,
     }
 
@@ -194,11 +238,15 @@ async def assert_complete(
     _principal: Principal = Depends(require_principal),  # noqa: B008
 ) -> None:
     """Fail closed until a pinned WebAuthn verifier validates assertion data."""
-    raise HTTPException(status_code=501, detail="WebAuthn assertion verification is not implemented")
+    raise HTTPException(
+        status_code=501, detail="WebAuthn assertion verification is not implemented"
+    )
 
 
 @router.get("/credentials")
-async def list_webauthn_credentials(principal: Principal = Depends(require_principal)) -> dict[str, Any]:  # noqa: B008
+async def list_webauthn_credentials(
+    principal: Principal = Depends(require_principal),
+) -> dict[str, Any]:  # noqa: B008
     """List active credential metadata for the current principal."""
     return {
         "credentials": [
@@ -223,7 +271,11 @@ async def revoke_webauthn_credential(
     changed = False
     now = time.time()
     for record in records:
-        if record.user_id == principal.id and record.credential_id == credential_id and record.revoked_at is None:
+        if (
+            record.user_id == principal.id
+            and record.credential_id == credential_id
+            and record.revoked_at is None
+        ):
             record.revoked_at = now
             changed = True
     if not changed:

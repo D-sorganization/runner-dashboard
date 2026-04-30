@@ -60,14 +60,20 @@ class LeaseManager:
     def prune_expired(self):
         now = time.time()
         initial_count = len(self.leases)
-        self.leases = [lease for lease in self.leases if lease.expires_at is None or lease.expires_at > now]
+        self.leases = [
+            lease
+            for lease in self.leases
+            if lease.expires_at is None or lease.expires_at > now
+        ]
         if len(self.leases) < initial_count:
             self.save_leases()
 
     def get_active_leases(self, principal_id: str | None = None) -> list[LeaseRecord]:
         self.prune_expired()
         if principal_id:
-            return [lease for lease in self.leases if lease.principal_id == principal_id]
+            return [
+                lease for lease in self.leases if lease.principal_id == principal_id
+            ]
         return self.leases
 
     def acquire_lease(
@@ -99,14 +105,23 @@ class LeaseManager:
                     )
                     self.leases[i] = updated
                     self.save_leases()
-                    log.info("Lease UPDATED principal=%s runner=%s task=%s", principal.id, runner_id, task_id)
+                    log.info(
+                        "Lease UPDATED principal=%s runner=%s task=%s",
+                        principal.id,
+                        runner_id,
+                        task_id,
+                    )
                     return updated
-                raise ValueError(f"Runner {runner_id} is already leased by {lease.principal_id}")
+                raise ValueError(
+                    f"Runner {runner_id} is already leased by {lease.principal_id}"
+                )
 
         # 2. Check principal quota
         active_count = len(self.get_active_leases(principal.id))
         if active_count >= principal.quotas.max_runners:
-            raise PermissionError(f"Principal {principal.id} has reached runner quota ({principal.quotas.max_runners})")
+            raise PermissionError(
+                f"Principal {principal.id} has reached runner quota ({principal.quotas.max_runners})"
+            )
 
         # 3. Create lease
         record = LeaseRecord(
@@ -119,7 +134,12 @@ class LeaseManager:
         )
         self.leases.append(record)
         self.save_leases()
-        log.info("Lease ACQUIRED principal=%s runner=%s task=%s", principal.id, runner_id, task_id)
+        log.info(
+            "Lease ACQUIRED principal=%s runner=%s task=%s",
+            principal.id,
+            runner_id,
+            task_id,
+        )
         return record
 
     def release_lease(self, runner_id: str, principal_id: str | None = None):
@@ -129,10 +149,14 @@ class LeaseManager:
             self.leases = [
                 lease
                 for lease in self.leases
-                if not (lease.runner_id == runner_id and lease.principal_id == principal_id)
+                if not (
+                    lease.runner_id == runner_id and lease.principal_id == principal_id
+                )
             ]
         else:
-            self.leases = [lease for lease in self.leases if lease.runner_id != runner_id]
+            self.leases = [
+                lease for lease in self.leases if lease.runner_id != runner_id
+            ]
 
         if len(self.leases) < initial_count:
             self.save_leases()

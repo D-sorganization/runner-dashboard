@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Batch A-O assessment for all D-Sorganization repos."""
 
-import subprocess, json
+import json
+import subprocess
 from pathlib import Path
 
 REPOS = [
@@ -22,7 +23,10 @@ for repo in REPOS:
         continue
     try:
         out = subprocess.check_output(
-            ["python", "assessments/assess_repo.py", repo], stderr=subprocess.STDOUT, text=True, timeout=120
+            ["python", "assessments/assess_repo.py", repo],
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=120,
         )
         data = json.loads(out)
         results.append(

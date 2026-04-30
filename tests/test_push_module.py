@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +32,6 @@ from push import (  # noqa: E402
     upsert_subscription,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -49,7 +47,11 @@ def _make_keys(p256dh: str = "AAAA" * 30, auth: str = "BBBB" * 10) -> PushKeys:
     return PushKeys(p256dh=p256dh, auth=auth)
 
 
-def _upsert(db: Path, endpoint: str = "https://push.example.com/sub/1", topics: list[str] | None = None) -> PushSubscription:
+def _upsert(
+    db: Path,
+    endpoint: str = "https://push.example.com/sub/1",
+    topics: list[str] | None = None,
+) -> PushSubscription:
     return upsert_subscription(
         user_id="user-1",
         endpoint=endpoint,
@@ -253,28 +255,36 @@ def test_delete_subscription_nonexistent_row(db_path: Path) -> None:
 
 
 class _OkTransport:
-    async def send(self, subscription: PushSubscription, payload: dict[str, Any]) -> int:
+    async def send(
+        self, subscription: PushSubscription, payload: dict[str, Any]
+    ) -> int:
         return 200
 
 
 class _StaleTransport:
     """Returns 410 Gone — subscription should be purged."""
 
-    async def send(self, subscription: PushSubscription, payload: dict[str, Any]) -> int:
+    async def send(
+        self, subscription: PushSubscription, payload: dict[str, Any]
+    ) -> int:
         return 410
 
 
 class _ErrorTransport:
     """Returns 500 Internal Server Error."""
 
-    async def send(self, subscription: PushSubscription, payload: dict[str, Any]) -> int:
+    async def send(
+        self, subscription: PushSubscription, payload: dict[str, Any]
+    ) -> int:
         return 500
 
 
 class _RaisingTransport:
     """Raises an exception instead of returning a status code."""
 
-    async def send(self, subscription: PushSubscription, payload: dict[str, Any]) -> int:
+    async def send(
+        self, subscription: PushSubscription, payload: dict[str, Any]
+    ) -> int:
         raise RuntimeError("network failure")
 
 
@@ -339,12 +349,26 @@ def test_send_push_exception_counted_as_failed(db_path: Path) -> None:
 
 def test_send_push_unknown_topic_raises(db_path: Path) -> None:
     with pytest.raises(ValueError, match="unsupported topic"):
-        _run(send_push("not.a.topic", {"title": "Bad"}, transport=_OkTransport(), db_path=db_path))
+        _run(
+            send_push(
+                "not.a.topic",
+                {"title": "Bad"},
+                transport=_OkTransport(),
+                db_path=db_path,
+            )
+        )
 
 
 def test_send_push_oversized_payload_raises(db_path: Path) -> None:
     with pytest.raises(ValueError, match="4 KB"):
-        _run(send_push("agent.completed", {"data": "x" * 5000}, transport=_OkTransport(), db_path=db_path))
+        _run(
+            send_push(
+                "agent.completed",
+                {"data": "x" * 5000},
+                transport=_OkTransport(),
+                db_path=db_path,
+            )
+        )
 
 
 def test_send_push_no_matching_subscribers_returns_zeros(db_path: Path) -> None:

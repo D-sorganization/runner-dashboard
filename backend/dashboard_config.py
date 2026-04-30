@@ -22,7 +22,11 @@ MAX_RUNNERS = int(os.environ.get("MAX_RUNNERS", str(REQUESTED_NUM_RUNNERS)))
 NUM_RUNNERS = min(REQUESTED_NUM_RUNNERS, MAX_RUNNERS)
 
 # Runner Aliases (for machine name normalization)
-RUNNER_ALIASES = [a.strip().lower() for a in os.environ.get("RUNNER_ALIASES", "").split(",") if a.strip()]
+RUNNER_ALIASES = [
+    a.strip().lower()
+    for a in os.environ.get("RUNNER_ALIASES", "").split(",")
+    if a.strip()
+]
 
 # Disk Thresholds
 DISK_WARN_PERCENT = float(os.environ.get("DASHBOARD_DISK_WARN_PERCENT", "85"))
@@ -59,15 +63,27 @@ MAX_CACHE_SIZE = 500
 CACHE_EVICT_BATCH = 50
 
 # Scheduler / Services
-RUNNER_SCHEDULER_BIN = os.environ.get("RUNNER_SCHEDULER_BIN", "/usr/local/bin/runner-scheduler")
-RUNNER_SCHEDULER_SERVICE = os.environ.get("RUNNER_SCHEDULER_SERVICE", "runner-scheduler.service")
+RUNNER_SCHEDULER_BIN = os.environ.get(
+    "RUNNER_SCHEDULER_BIN", "/usr/local/bin/runner-scheduler"
+)
+RUNNER_SCHEDULER_SERVICE = os.environ.get(
+    "RUNNER_SCHEDULER_SERVICE", "runner-scheduler.service"
+)
 RUNNER_SCHEDULER_APPLY_CMD = os.environ.get("RUNNER_SCHEDULER_APPLY_CMD", "")
 SYSTEMCTL_BIN = os.environ.get("SYSTEMCTL_BIN") or "/usr/bin/systemctl"
-RUNNER_SCHEDULER_STATE = Path(os.environ.get("RUNNER_SCHEDULER_STATE", "/var/lib/runner-scheduler/state.json"))
-RUNNER_SCHEDULE_CONFIG = Path(os.environ.get("RUNNER_SCHEDULE_CONFIG", "/etc/runner-scheduler/schedule.json"))
+RUNNER_SCHEDULER_STATE = Path(
+    os.environ.get("RUNNER_SCHEDULER_STATE", "/var/lib/runner-scheduler/state.json")
+)
+RUNNER_SCHEDULE_CONFIG = Path(
+    os.environ.get("RUNNER_SCHEDULE_CONFIG", "/etc/runner-scheduler/schedule.json")
+)
 
-WSL_KEEPALIVE_SERVICE = os.environ.get("WSL_KEEPALIVE_SERVICE", "wsl-runner-keepalive.service")
-WSL_KEEPALIVE_TASK_NAME = os.environ.get("WSL_KEEPALIVE_TASK_NAME", "WSL-Runner-KeepAlive")
+WSL_KEEPALIVE_SERVICE = os.environ.get(
+    "WSL_KEEPALIVE_SERVICE", "wsl-runner-keepalive.service"
+)
+WSL_KEEPALIVE_TASK_NAME = os.environ.get(
+    "WSL_KEEPALIVE_TASK_NAME", "WSL-Runner-KeepAlive"
+)
 
 
 def runner_scheduler_apply_command() -> list[str]:
@@ -79,8 +95,16 @@ def runner_scheduler_apply_command() -> list[str]:
 
 # Deployment
 VERSION = "1.2.0"
-DEPLOYMENT_FILE = Path(os.environ.get("RUNNER_DASHBOARD_DEPLOYMENT_FILE", BACKEND_DIR.parent / "deployment.json"))
-EXPECTED_VERSION_FILE = Path(os.environ.get("RUNNER_DASHBOARD_EXPECTED_VERSION_FILE", BACKEND_DIR.parent / "VERSION"))
+DEPLOYMENT_FILE = Path(
+    os.environ.get(
+        "RUNNER_DASHBOARD_DEPLOYMENT_FILE", BACKEND_DIR.parent / "deployment.json"
+    )
+)
+EXPECTED_VERSION_FILE = Path(
+    os.environ.get(
+        "RUNNER_DASHBOARD_EXPECTED_VERSION_FILE", BACKEND_DIR.parent / "VERSION"
+    )
+)
 
 # LLM
 DEFAULT_LLM_MODEL = os.environ.get("DASHBOARD_LLM_MODEL", "claude-haiku-4-5-20251001")

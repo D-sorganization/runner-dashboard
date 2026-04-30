@@ -46,7 +46,11 @@ async def sync_github_leases(issues: list[dict[str, Any]]):
         principal = identity_manager.get_principal(principal_id)
         if not principal:
             # For Wave 3, we only sync known principals defined in principals.yml
-            log.debug("Unknown agent principal %s for issue %s", principal_id, issue.get("number"))
+            log.debug(
+                "Unknown agent principal %s for issue %s",
+                principal_id,
+                issue.get("number"),
+            )
             continue
 
         # Runner mapping: GitHub claims often don't specify the runner ID.

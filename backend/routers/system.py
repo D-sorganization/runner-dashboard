@@ -57,7 +57,9 @@ def _disk_pressure_snapshot(
         status = "warning"
         reasons.append(f"disk usage >= {DISK_WARN_PERCENT:g}%")
     if free_gb <= DISK_MIN_FREE_GB:
-        free_space_status = "critical" if free_gb <= max(5.0, DISK_MIN_FREE_GB / 2) else "warning"
+        free_space_status = (
+            "critical" if free_gb <= max(5.0, DISK_MIN_FREE_GB / 2) else "warning"
+        )
         if status != "critical":
             status = free_space_status
         reasons.append(f"free space <= {DISK_MIN_FREE_GB:g} GB")
@@ -105,7 +107,9 @@ def _local_hardware_specs(gpu: dict | None = None) -> dict:
         "wsl_memory_gb": round(mem.total / (1024**3), 1),
         "gpu_count": len(gpu_devices),
         "gpu_vram_gb": max(gpu_vram_values) if gpu_vram_values else None,
-        "accelerators": [device.get("name") for device in gpu_devices if device.get("name")],
+        "accelerators": [
+            device.get("name") for device in gpu_devices if device.get("name")
+        ],
         "platform": platform.platform(),
     }
 
@@ -171,8 +175,12 @@ def get_gpu_info() -> dict:
                         "vram_percent": vram_pct,
                         "gpu_util_percent": float(parts[4]),
                         "temp_c": float(parts[5]),
-                        "power_draw_w": (float(parts[6]) if parts[6] != "[N/A]" else None),
-                        "power_limit_w": (float(parts[7]) if parts[7] != "[N/A]" else None),
+                        "power_draw_w": (
+                            float(parts[6]) if parts[6] != "[N/A]" else None
+                        ),
+                        "power_limit_w": (
+                            float(parts[7]) if parts[7] != "[N/A]" else None
+                        ),
                     }
                 )
         return {"gpus": gpus, "count": len(gpus)}
@@ -211,7 +219,9 @@ def get_per_runner_resources() -> list[dict]:
         for proc in psutil.process_iter(proc_fields):
             try:
                 cmdline = " ".join(proc.info.get("cmdline") or [])
-                is_runner = runner_dir in cmdline or ("Runner.Listener" in cmdline and f"runner-{i}" in cmdline)
+                is_runner = runner_dir in cmdline or (
+                    "Runner.Listener" in cmdline and f"runner-{i}" in cmdline
+                )
                 if is_runner:
                     runner_info["cpu_percent"] += proc.info.get("cpu_percent", 0) or 0
                     mem = proc.info.get("memory_info")
@@ -265,7 +275,11 @@ async def get_system_metrics():
         per_cpu = psutil.cpu_percent(interval=0, percpu=True)
         current_cpu = psutil.cpu_percent(interval=0)
         _cpu_history.append(current_cpu)
-        cpu_avg_1m = round(sum(_cpu_history) / len(_cpu_history), 1) if _cpu_history else current_cpu
+        cpu_avg_1m = (
+            round(sum(_cpu_history) / len(_cpu_history), 1)
+            if _cpu_history
+            else current_cpu
+        )
         uptime_seconds = time.time() - psutil.boot_time()
         dashboard_uptime = time.time() - (_boot_time or time.time())
         disk_pressure = _disk_pressure_snapshot(
@@ -379,7 +393,9 @@ async def get_system_metrics():
     per_cpu = psutil.cpu_percent(interval=0, percpu=True)
     current_cpu = psutil.cpu_percent(interval=0)
     _cpu_history.append(current_cpu)
-    cpu_avg_1m = round(sum(_cpu_history) / len(_cpu_history), 1) if _cpu_history else current_cpu
+    cpu_avg_1m = (
+        round(sum(_cpu_history) / len(_cpu_history), 1) if _cpu_history else current_cpu
+    )
 
     # Uptime
     uptime_seconds = time.time() - psutil.boot_time()
@@ -435,5 +451,7 @@ async def get_system_metrics():
         "hardware_specs": hardware_specs,
         "workload_capacity": _workload_capacity_from_specs(hardware_specs),
         "runner_processes": get_per_runner_resources(),
-        "runner_capacity": _get_runner_capacity_snapshot() if _get_runner_capacity_snapshot else {},
+        "runner_capacity": (
+            _get_runner_capacity_snapshot() if _get_runner_capacity_snapshot else {}
+        ),
     }

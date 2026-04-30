@@ -51,7 +51,9 @@ async def test_api_key_auth_provider_reads_env(monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.asyncio
-async def test_api_key_auth_provider_missing_env_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_api_key_auth_provider_missing_env_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("LINEAR_API_KEY", raising=False)
 
     provider = ApiKeyAuthProvider("LINEAR_API_KEY")
@@ -63,7 +65,9 @@ async def test_api_key_auth_provider_missing_env_raises(monkeypatch: pytest.Monk
 
 
 @pytest.mark.asyncio
-async def test_api_key_auth_provider_per_workspace_env(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_api_key_auth_provider_per_workspace_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("LINEAR_API_KEY", "lin_api_default")
     monkeypatch.setenv("LINEAR_ENG_API_KEY", "lin_api_eng")
     provider = ApiKeyAuthProvider("LINEAR_API_KEY", {"eng": "LINEAR_ENG_API_KEY"})
@@ -158,7 +162,11 @@ async def test_fetch_issues_paginates_until_limit() -> None:
 
     issues = await client.fetch_issues("workspace", limit=3)
 
-    assert issues == [{"identifier": "ENG-1"}, {"identifier": "ENG-2"}, {"identifier": "ENG-3"}]
+    assert issues == [
+        {"identifier": "ENG-1"},
+        {"identifier": "ENG-2"},
+        {"identifier": "ENG-3"},
+    ]
     assert http_client.requests[0]["json"]["variables"]["after"] is None
     assert http_client.requests[1]["json"]["variables"]["after"] == "cursor-1"
     assert http_client.requests[1]["json"]["variables"]["first"] == 1
@@ -201,7 +209,9 @@ async def test_fetch_issue_returns_none_on_not_found() -> None:
 @pytest.mark.asyncio
 async def test_fetch_teams_returns_nodes_verbatim() -> None:
     nodes = [{"id": "team-id", "key": "ENG", "name": "Engineering"}]
-    http_client = FakeAsyncClient([json_response({"data": {"teams": {"nodes": nodes}}})])
+    http_client = FakeAsyncClient(
+        [json_response({"data": {"teams": {"nodes": nodes}}})]
+    )
     client = LinearClient(StaticAuthProvider(), http_client=http_client)  # type: ignore[arg-type]
 
     assert await client.fetch_teams("workspace") == nodes
@@ -209,8 +219,14 @@ async def test_fetch_teams_returns_nodes_verbatim() -> None:
 
 @pytest.mark.asyncio
 async def test_fetch_workspace_returns_organization_record() -> None:
-    organization = {"id": "org-id", "name": "D-sorganization", "urlKey": "d-sorganization"}
-    http_client = FakeAsyncClient([json_response({"data": {"organization": organization}})])
+    organization = {
+        "id": "org-id",
+        "name": "D-sorganization",
+        "urlKey": "d-sorganization",
+    }
+    http_client = FakeAsyncClient(
+        [json_response({"data": {"organization": organization}})]
+    )
     client = LinearClient(StaticAuthProvider(), http_client=http_client)  # type: ignore[arg-type]
 
     assert await client.fetch_workspace("workspace") == organization

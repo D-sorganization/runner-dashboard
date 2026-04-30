@@ -108,7 +108,9 @@ def _require_local_request(request: Request) -> None:
     """Enforce that the request originates from localhost (issue #45)."""
     client_host = request.client.host if request.client else ""
     if client_host not in ("127.0.0.1", "::1", "localhost"):
-        raise HTTPException(status_code=403, detail="This endpoint is only accessible locally")
+        raise HTTPException(
+            status_code=403, detail="This endpoint is only accessible locally"
+        )
 
 
 def _write_env_var(env_file: Path, key: str, value: str) -> None:
@@ -160,12 +162,20 @@ def _patch_maxwell_yaml_api_key(env_var: str, value: str) -> None:
             return
         changed = False
         for backend_name in backends:
-            if backend_name in cfg["backends"] and isinstance(cfg["backends"][backend_name], dict):
+            if backend_name in cfg["backends"] and isinstance(
+                cfg["backends"][backend_name], dict
+            ):
                 cfg["backends"][backend_name]["api_key"] = value
                 changed = True
         if changed:
             with open(_MAXWELL_YAML, "w") as f:
-                yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+                yaml.dump(
+                    cfg,
+                    f,
+                    default_flow_style=False,
+                    allow_unicode=True,
+                    sort_keys=False,
+                )
             log.info("Patched maxwell YAML api_key for backends %s", backends)
     except Exception:
         log.exception("Could not patch maxwell YAML api_key for env_var=%s", env_var)
@@ -180,9 +190,13 @@ def _clear_maxwell_yaml_api_key(env_var: str) -> None:
 
 
 class SetKeyRequest(BaseModel):
-    provider: str = Field(..., description="Provider id, e.g. 'claude', 'gemini', 'codex'")
+    provider: str = Field(
+        ..., description="Provider id, e.g. 'claude', 'gemini', 'codex'"
+    )
     key: str = Field(..., min_length=1, description="The API key value (never logged)")
-    restart_maxwell: bool = Field(default=True, description="Restart maxwell-daemon after saving")
+    restart_maxwell: bool = Field(
+        default=True, description="Restart maxwell-daemon after saving"
+    )
 
 
 class ClearKeyRequest(BaseModel):
@@ -203,7 +217,11 @@ async def get_credentials(request: Request) -> dict:
     if gh_binary:
         try:
             _excluded = {"SECRET", "PASSWORD", "ANTHROPIC_API_KEY", "DASHBOARD_API_KEY"}
-            _safe_env = {k: v for k, v in os.environ.items() if not any(exc in k.upper() for exc in _excluded)}
+            _safe_env = {
+                k: v
+                for k, v in os.environ.items()
+                if not any(exc in k.upper() for exc in _excluded)
+            }
             result = subprocess.run(
                 ["gh", "auth", "status"],
                 capture_output=True,
@@ -225,7 +243,11 @@ async def get_credentials(request: Request) -> dict:
             "authenticated": gh_auth_ok,
             "reachable": gh_auth_ok,
             "usable": gh_auth_ok,
-            "status": ("ready" if gh_auth_ok else ("not_authed" if gh_binary else "not_installed")),
+            "status": (
+                "ready"
+                if gh_auth_ok
+                else ("not_authed" if gh_binary else "not_installed")
+            ),
             "detail": gh_auth_detail,
             "config_source": "system" if gh_binary else "unavailable",
             "docs_url": "https://cli.github.com/",
@@ -245,7 +267,11 @@ async def get_credentials(request: Request) -> dict:
             "reachable": jules_binary is not None,
             "usable": jules_binary is not None,
             "status": "ready" if jules_binary else "not_installed",
-            "detail": (f"Found at {jules_binary}" if jules_binary else "jules not found on PATH"),
+            "detail": (
+                f"Found at {jules_binary}"
+                if jules_binary
+                else "jules not found on PATH"
+            ),
             "config_source": "system" if jules_binary else "unavailable",
             "docs_url": "https://jules.google/docs/",
             "setup_hint": "Install Jules CLI from jules.google",
@@ -264,8 +290,14 @@ async def get_credentials(request: Request) -> dict:
             "reachable": jules_api_key,
             "usable": jules_api_key,
             "status": "ready" if jules_api_key else "missing_key",
-            "detail": ("API key present" if jules_api_key else "JULES_API_KEY or GOOGLE_API_KEY not set"),
-            "config_source": (_env_source("JULES_API_KEY") if jules_api_key else "unavailable"),
+            "detail": (
+                "API key present"
+                if jules_api_key
+                else "JULES_API_KEY or GOOGLE_API_KEY not set"
+            ),
+            "config_source": (
+                _env_source("JULES_API_KEY") if jules_api_key else "unavailable"
+            ),
             "docs_url": "https://jules.google/docs/api/",
             "setup_hint": "Set JULES_API_KEY environment variable",
             "key_provider": "jules",
@@ -287,15 +319,23 @@ async def get_credentials(request: Request) -> dict:
             "binary_found": codex_binary is not None,
             "key_status": "set" if openai_key else "missing",
             "status": (
-                "ready" if (codex_binary and openai_key) else ("missing_key" if codex_binary else "not_installed")
+                "ready"
+                if (codex_binary and openai_key)
+                else ("missing_key" if codex_binary else "not_installed")
             ),
             "detail": (
                 "Ready"
                 if (codex_binary and openai_key)
-                else ("OPENAI_API_KEY not set" if codex_binary else "codex not on PATH or npm-global")
+                else (
+                    "OPENAI_API_KEY not set"
+                    if codex_binary
+                    else "codex not on PATH or npm-global"
+                )
             ),
             "config_source": (
-                _env_source("OPENAI_API_KEY") if openai_key else ("system" if codex_binary else "unavailable")
+                _env_source("OPENAI_API_KEY")
+                if openai_key
+                else ("system" if codex_binary else "unavailable")
             ),
             "docs_url": "https://github.com/openai/codex",
             "setup_hint": "npm install -g @openai/codex then set OPENAI_API_KEY",
@@ -318,15 +358,23 @@ async def get_credentials(request: Request) -> dict:
             "binary_found": claude_binary is not None,
             "key_status": "set" if anthropic_key else "missing",
             "status": (
-                "ready" if (claude_binary and anthropic_key) else ("missing_key" if claude_binary else "not_installed")
+                "ready"
+                if (claude_binary and anthropic_key)
+                else ("missing_key" if claude_binary else "not_installed")
             ),
             "detail": (
                 "Ready"
                 if (claude_binary and anthropic_key)
-                else ("ANTHROPIC_API_KEY not set" if claude_binary else "claude not found on PATH")
+                else (
+                    "ANTHROPIC_API_KEY not set"
+                    if claude_binary
+                    else "claude not found on PATH"
+                )
             ),
             "config_source": (
-                _env_source("ANTHROPIC_API_KEY") if anthropic_key else ("system" if claude_binary else "unavailable")
+                _env_source("ANTHROPIC_API_KEY")
+                if anthropic_key
+                else ("system" if claude_binary else "unavailable")
             ),
             "docs_url": "https://docs.anthropic.com/claude-code",
             "setup_hint": "npm install -g @anthropic-ai/claude-code then set ANTHROPIC_API_KEY",
@@ -335,7 +383,14 @@ async def get_credentials(request: Request) -> dict:
     )
 
     # Cline (VS Code extension) — check globalStorage path AND `code --list-extensions`
-    _cline_storage = Path.home() / ".config" / "Code" / "User" / "globalStorage" / "saoudrizwan.claude-dev"
+    _cline_storage = (
+        Path.home()
+        / ".config"
+        / "Code"
+        / "User"
+        / "globalStorage"
+        / "saoudrizwan.claude-dev"
+    )
     _cline_by_path = _cline_storage.exists()
     _cline_by_ext = False
     _vscode_binary = shutil.which("code")
@@ -357,10 +412,16 @@ async def get_credentials(request: Request) -> dict:
         else (
             "VS Code extension installed (code --list-extensions)"
             if _cline_by_ext
-            else ("VS Code found but Cline not installed" if _vscode_binary else "VS Code not found")
+            else (
+                "VS Code found but Cline not installed"
+                if _vscode_binary
+                else "VS Code not found"
+            )
         )
     )
-    _cline_compatible_key = _env_present("ANTHROPIC_API_KEY") or _env_present("OPENAI_API_KEY")
+    _cline_compatible_key = _env_present("ANTHROPIC_API_KEY") or _env_present(
+        "OPENAI_API_KEY"
+    )
     probes.append(
         {
             "id": "cline",
@@ -407,15 +468,23 @@ async def get_credentials(request: Request) -> dict:
             "binary_found": gemini_binary is not None,
             "key_status": "set" if google_key else "missing",
             "status": (
-                "ready" if (gemini_binary and google_key) else ("missing_key" if gemini_binary else "not_installed")
+                "ready"
+                if (gemini_binary and google_key)
+                else ("missing_key" if gemini_binary else "not_installed")
             ),
             "detail": (
                 "Ready"
                 if (gemini_binary and google_key)
-                else ("GOOGLE_API_KEY not set" if gemini_binary else "gemini not found on PATH")
+                else (
+                    "GOOGLE_API_KEY not set"
+                    if gemini_binary
+                    else "gemini not found on PATH"
+                )
             ),
             "config_source": (
-                _env_source("GOOGLE_API_KEY") if google_key else ("system" if gemini_binary else "unavailable")
+                _env_source("GOOGLE_API_KEY")
+                if google_key
+                else ("system" if gemini_binary else "unavailable")
             ),
             "docs_url": "https://aistudio.google.com/apikey",
             "setup_hint": "npm install -g @google/gemini-cli then set GOOGLE_API_KEY",
@@ -435,7 +504,11 @@ async def get_credentials(request: Request) -> dict:
             "reachable": ollama_binary is not None,
             "usable": ollama_binary is not None,
             "status": "ready" if ollama_binary else "not_installed",
-            "detail": (f"Found at {ollama_binary}" if ollama_binary else "ollama not found on PATH"),
+            "detail": (
+                f"Found at {ollama_binary}"
+                if ollama_binary
+                else "ollama not found on PATH"
+            ),
             "config_source": "system" if ollama_binary else "unavailable",
             "docs_url": "https://ollama.com/",
             "setup_hint": "Install from ollama.com",
@@ -457,7 +530,11 @@ async def get_credentials(request: Request) -> dict:
             probes.append(
                 {
                     "id": f"linear:{workspace_id}",
-                    "label": "Linear" if workspace_id == "personal" else f"Linear ({workspace_id})",
+                    "label": (
+                        "Linear"
+                        if workspace_id == "personal"
+                        else f"Linear ({workspace_id})"
+                    ),
                     "icon": "linear",
                     "installed": True,
                     "authenticated": auth_status == "ok",
@@ -494,7 +571,14 @@ async def get_credentials(request: Request) -> dict:
 async def get_cline_status(request: Request) -> dict:
     """Return Cline extension detection status."""
     _require_local_request(request)
-    _cline_storage = Path.home() / ".config" / "Code" / "User" / "globalStorage" / "saoudrizwan.claude-dev"
+    _cline_storage = (
+        Path.home()
+        / ".config"
+        / "Code"
+        / "User"
+        / "globalStorage"
+        / "saoudrizwan.claude-dev"
+    )
     _cline_by_path = _cline_storage.exists()
     _cline_by_ext = False
     _vscode_binary = shutil.which("code")
@@ -510,7 +594,9 @@ async def get_cline_status(request: Request) -> dict:
         except Exception:
             pass
     cline_installed = _cline_by_path or _cline_by_ext
-    _compatible_key = _env_present("ANTHROPIC_API_KEY") or _env_present("OPENAI_API_KEY")
+    _compatible_key = _env_present("ANTHROPIC_API_KEY") or _env_present(
+        "OPENAI_API_KEY"
+    )
     return {
         "status": (
             "extension_installed"
@@ -591,7 +677,9 @@ async def get_ollama_models(request: Request) -> dict:
         raise
     except Exception as exc:
         log.exception("Failed to list ollama models")
-        raise HTTPException(status_code=500, detail=f"Failed to list models: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list models: {exc}"
+        ) from exc
 
 
 # Key management endpoints
@@ -624,7 +712,9 @@ async def set_credential_key(body: SetKeyRequest, request: Request) -> dict:
         _write_env_var(_DASHBOARD_ENV, env_var, value)
     except Exception as exc:
         log.exception("Failed to write env var %s", env_var)
-        raise HTTPException(status_code=500, detail=f"Failed to write key: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to write key: {exc}"
+        ) from exc
 
     os.environ[env_var] = value
     log.info("Set %s for provider=%s (length=%d)", env_var, provider, len(value))
@@ -649,7 +739,11 @@ async def set_credential_key(body: SetKeyRequest, request: Request) -> dict:
                 "detail": (stdout + stderr).decode(errors="replace").strip()[:200],
             }
         except Exception as exc:
-            restart_result = {"attempted": True, "success": False, "detail": str(exc)[:200]}
+            restart_result = {
+                "attempted": True,
+                "success": False,
+                "detail": str(exc)[:200],
+            }
 
     return {
         "ok": True,
@@ -674,7 +768,9 @@ async def clear_credential_key(body: ClearKeyRequest, request: Request) -> dict:
         _clear_env_var(_MAXWELL_ENV, env_var)
         _clear_env_var(_DASHBOARD_ENV, env_var)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to clear key: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to clear key: {exc}"
+        ) from exc
 
     os.environ.pop(env_var, None)
     _clear_maxwell_yaml_api_key(env_var)
@@ -698,9 +794,18 @@ async def clear_credential_key(body: ClearKeyRequest, request: Request) -> dict:
                 "detail": (stdout + stderr).decode(errors="replace").strip()[:200],
             }
         except Exception as exc:
-            restart_result = {"attempted": True, "success": False, "detail": str(exc)[:200]}
+            restart_result = {
+                "attempted": True,
+                "success": False,
+                "detail": str(exc)[:200],
+            }
 
-    return {"ok": True, "env_var": env_var, "provider": provider, "maxwell_restart": restart_result}
+    return {
+        "ok": True,
+        "env_var": env_var,
+        "provider": provider,
+        "maxwell_restart": restart_result,
+    }
 
 
 class LaunchAuthRequest(BaseModel):
@@ -736,7 +841,9 @@ async def launch_auth(body: LaunchAuthRequest, request: Request) -> dict:
 
     job_id = f"{provider_id}-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
     client_host = request.client.host if request.client else "unknown"
-    log.info("launch_auth: provider=%s job_id=%s by=%s", provider_id, job_id, client_host)
+    log.info(
+        "launch_auth: provider=%s job_id=%s by=%s", provider_id, job_id, client_host
+    )
 
     # Fire-and-forget subprocess (auth flows are interactive and blocking)
     try:
@@ -753,6 +860,8 @@ async def launch_auth(body: LaunchAuthRequest, request: Request) -> dict:
         ) from exc
     except Exception as exc:
         log.warning("launch_auth failed: %s", exc)
-        raise HTTPException(status_code=500, detail="Failed to launch auth subprocess") from exc
+        raise HTTPException(
+            status_code=500, detail="Failed to launch auth subprocess"
+        ) from exc
 
     return {"ok": True, "provider_id": provider_id, "job_id": job_id}

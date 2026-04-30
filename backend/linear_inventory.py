@@ -89,9 +89,15 @@ async def fetch_all_issues(
     effort_set = set(effort) if effort else set()
     judgement_set = set(judgement) if judgement else set()
 
-    workspaces = [workspace for workspace in config.get("workspaces", []) if isinstance(workspace, dict)]
+    workspaces = [
+        workspace
+        for workspace in config.get("workspaces", [])
+        if isinstance(workspace, dict)
+    ]
     config_mappings = config.get("mappings")
-    mappings: dict[Any, Any] = config_mappings if isinstance(config_mappings, dict) else {}
+    mappings: dict[Any, Any] = (
+        config_mappings if isinstance(config_mappings, dict) else {}
+    )
     cache_key = _cache_key(
         workspaces,
         state=state,
@@ -111,9 +117,13 @@ async def fetch_all_issues(
         mapping_name = workspace.get("mapping")
         mapping = mappings.get(mapping_name) if isinstance(mapping_name, str) else None
         if not isinstance(mapping, dict):
-            setup_errors.append(f"{workspace.get('id') or '<unknown>'}: missing mapping {mapping_name!r}")
+            setup_errors.append(
+                f"{workspace.get('id') or '<unknown>'}: missing mapping {mapping_name!r}"
+            )
             continue
-        tasks.append(fetch_workspace_issues(workspace, mapping, client, state=state, limit=limit))
+        tasks.append(
+            fetch_workspace_issues(workspace, mapping, client, state=state, limit=limit)
+        )
 
     results = await asyncio.gather(*tasks) if tasks else []
     items: list[dict] = []
@@ -124,7 +134,9 @@ async def fetch_all_issues(
             errors.append(error)
             continue
         for item in workspace_items:
-            pickable, blocked_by = is_pickable(item, has_open_pr=item["linked_pr"] is not None)
+            pickable, blocked_by = is_pickable(
+                item, has_open_pr=item["linked_pr"] is not None
+            )
             item["pickable"] = pickable
             item["pickable_blocked_by"] = blocked_by
 
@@ -148,7 +160,11 @@ async def fetch_all_issues(
 def _normalise_issue(issue: dict[str, Any], mapping: dict[str, Any]) -> dict:
     mapping_result = apply_mapping(issue, mapping)
     labels = list(mapping_result["derived_labels"])
-    taxonomy = {key: value for key, value in mapping_result.items() if key not in {"derived_labels", "source_signals"}}
+    taxonomy = {
+        key: value
+        for key, value in mapping_result.items()
+        if key not in {"derived_labels", "source_signals"}
+    }
     issue_state = issue.get("state")
     state: dict[str, Any] = issue_state if isinstance(issue_state, dict) else {}
     state_type = state.get("type")
@@ -161,7 +177,11 @@ def _normalise_issue(issue: dict[str, Any], mapping: dict[str, Any]) -> dict:
         "title": issue.get("title") or "",
         "url": issue.get("url") or "",
         "author": _person_name(issue.get("creator")),
-        "assignees": [_person_name(issue.get("assignee"))] if _person_name(issue.get("assignee")) else [],
+        "assignees": (
+            [_person_name(issue.get("assignee"))]
+            if _person_name(issue.get("assignee"))
+            else []
+        ),
         "labels": labels,
         "state": "closed" if state_type in CLOSED_STATE_TYPES else "open",
         "age_hours": _age_hours(issue.get("createdAt") or ""),
@@ -177,10 +197,18 @@ def _normalise_issue(issue: dict[str, Any], mapping: dict[str, Any]) -> dict:
             "url": issue.get("url") or "",
             "team_key": _nested_str(issue, "team", "key"),
             "team_name": _nested_str(issue, "team", "name"),
-            "priority": issue.get("priority") if isinstance(issue.get("priority"), int) else 0,
+            "priority": (
+                issue.get("priority") if isinstance(issue.get("priority"), int) else 0
+            ),
             "priority_label": issue.get("priorityLabel") or "",
-            "estimate": issue.get("estimate") if isinstance(issue.get("estimate"), int) else None,
-            "state_name": state.get("name") if isinstance(state.get("name"), str) else "",
+            "estimate": (
+                issue.get("estimate")
+                if isinstance(issue.get("estimate"), int)
+                else None
+            ),
+            "state_name": (
+                state.get("name") if isinstance(state.get("name"), str) else ""
+            ),
             "state_type": state_type if isinstance(state_type, str) else "",
             "project_id": _nested_optional_str(issue, "project", "id"),
             "cycle_number": _nested_optional_int(issue, "cycle", "number"),
@@ -267,7 +295,11 @@ def _linear_label_names(issue: dict[str, Any]) -> list[str]:
     nodes = labels.get("nodes") if isinstance(labels, dict) else labels
     if not isinstance(nodes, list):
         return []
-    return [node["name"] for node in nodes if isinstance(node, dict) and isinstance(node.get("name"), str)]
+    return [
+        node["name"]
+        for node in nodes
+        if isinstance(node, dict) and isinstance(node.get("name"), str)
+    ]
 
 
 def _cache_key(

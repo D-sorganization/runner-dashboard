@@ -22,7 +22,9 @@ def runner_svc_path(runner_num: int) -> Path:
     return RUNNER_BASE_DIR / f"runner-{runner_num}" / "svc.sh"
 
 
-async def run_runner_svc(runner_num: int, action: str, timeout: int = 30) -> tuple[int, str, str]:
+async def run_runner_svc(
+    runner_num: int, action: str, timeout: int = 30
+) -> tuple[int, str, str]:
     """Execute ./svc.sh <action> for a runner."""
     svc_path = runner_svc_path(runner_num)
     if not svc_path.exists():
@@ -59,7 +61,11 @@ def _runner_sort_key(runner: dict) -> tuple[str, int, str]:
 
 def _is_matlab_runner(runner: dict) -> bool:
     """Return True if the runner appears to have MATLAB installed (by labels)."""
-    labels = [lbl.get("name", "").lower() for lbl in runner.get("labels", []) if isinstance(lbl, dict)]
+    labels = [
+        lbl.get("name", "").lower()
+        for lbl in runner.get("labels", [])
+        if isinstance(lbl, dict)
+    ]
     return "matlab" in labels or "windows-matlab" in labels
 
 
@@ -70,7 +76,9 @@ def _matlab_runner_summary(runner: dict) -> dict:
         "name": runner.get("name"),
         "status": runner.get("status"),
         "busy": runner.get("busy"),
-        "labels": [lbl.get("name") for lbl in runner.get("labels", []) if isinstance(lbl, dict)],
+        "labels": [
+            lbl.get("name") for lbl in runner.get("labels", []) if isinstance(lbl, dict)
+        ],
     }
 
 
@@ -119,7 +127,9 @@ async def get_matlab_runner_health(request: Request) -> dict:
         "online": sum(1 for r in summaries if r["status"] == "online"),
         "busy": sum(1 for r in summaries if r["busy"]),
         "offline": sum(1 for r in summaries if r["status"] != "online"),
-        "generated_at": __import__("datetime").datetime.now(__import__("datetime").UTC).isoformat(),
+        "generated_at": __import__("datetime")
+        .datetime.now(__import__("datetime").UTC)
+        .isoformat(),
     }
     cache_set("matlab_runner_health", res)
     return res
@@ -137,11 +147,15 @@ async def stop_runner(
     num = runner_num_from_id(runner_id, runners)
 
     if num is None:
-        raise HTTPException(status_code=404, detail=f"Runner ID {runner_id} not found locally")
+        raise HTTPException(
+            status_code=404, detail=f"Runner ID {runner_id} not found locally"
+        )
 
     code, stdout, stderr = await run_runner_svc(num, "stop")
     if code != 0:
-        raise HTTPException(status_code=500, detail=f"Failed to stop runner {num}: {stderr}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to stop runner {num}: {stderr}"
+        )
 
     return {"status": "stopped", "runner": num, "output": stdout.strip()}
 
@@ -158,10 +172,14 @@ async def start_runner(
     num = runner_num_from_id(runner_id, runners)
 
     if num is None:
-        raise HTTPException(status_code=404, detail=f"Runner ID {runner_id} not found locally")
+        raise HTTPException(
+            status_code=404, detail=f"Runner ID {runner_id} not found locally"
+        )
 
     code, stdout, stderr = await run_runner_svc(num, "start")
     if code != 0:
-        raise HTTPException(status_code=500, detail=f"Failed to start runner {num}: {stderr}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start runner {num}: {stderr}"
+        )
 
     return {"status": "started", "runner": num, "output": stdout.strip()}

@@ -19,7 +19,9 @@ class QuotaUpdateRequest(BaseModel):
 @router.get("/principals")
 def list_principals(_auth: Principal = Depends(require_scope("admin"))):  # noqa: B008
     """List all registered principals and their quotas."""
-    return {"principals": [p.model_dump() for p in identity_manager.principals.values()]}
+    return {
+        "principals": [p.model_dump() for p in identity_manager.principals.values()]
+    }
 
 
 @router.get("/tokens")
@@ -47,7 +49,9 @@ def create_service_token(
 
 
 @router.delete("/tokens/{token_hash}")
-def revoke_service_token(token_hash: str, _auth: Principal = Depends(require_scope("admin"))):  # noqa: B008
+def revoke_service_token(
+    token_hash: str, _auth: Principal = Depends(require_scope("admin"))
+):  # noqa: B008
     """Revoke a service token by its hash."""
     identity_manager.revoke_token(token_hash)
     return {"success": True}
@@ -76,7 +80,11 @@ def update_principal_quota(
 
     with open(identity_manager.principals_path, "w") as f:
         yaml.dump(
-            {"principals": [p.model_dump() for p in identity_manager.principals.values()]},
+            {
+                "principals": [
+                    p.model_dump() for p in identity_manager.principals.values()
+                ]
+            },
             f,
         )
 

@@ -6,19 +6,15 @@ import time
 from pathlib import Path
 
 import pytest
-
 from session_management import (
-    _load_sessions,
-    _prune_expired_sessions,
-    _save_sessions,
     generate_session_id,
+    hash_session_id,
     is_session_active,
     list_sessions_for_principal,
     register_session,
     revoke_all_sessions_for_principal,
     revoke_session,
     session_count_for_principal,
-    hash_session_id,
 )
 
 
@@ -30,14 +26,18 @@ def _set_sessions_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return sessions_path
 
 
-def test_generate_session_id_format(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_session_id_format(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _set_sessions_path(tmp_path, monkeypatch)
     sid = generate_session_id()
     assert sid.startswith("sess_")
     assert len(sid) > 30
 
 
-def test_register_and_list_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_register_and_list_sessions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _set_sessions_path(tmp_path, monkeypatch)
 
     sid1 = register_session("user-1", user_agent="Mozilla/5.0", ip_address="127.0.0.1")
@@ -70,7 +70,9 @@ def test_revoke_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     assert result2 is False
 
 
-def test_revoke_all_sessions_for_principal(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_revoke_all_sessions_for_principal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _set_sessions_path(tmp_path, monkeypatch)
 
     sid1 = register_session("user-1")
@@ -86,7 +88,9 @@ def test_revoke_all_sessions_for_principal(tmp_path: Path, monkeypatch: pytest.M
     assert is_session_active(sid_other)
 
 
-def test_revoke_all_except_current(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_revoke_all_except_current(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _set_sessions_path(tmp_path, monkeypatch)
 
     sid_keep = register_session("user-1")
@@ -98,7 +102,9 @@ def test_revoke_all_except_current(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert not is_session_active(sid_revoke)
 
 
-def test_prune_expired_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_prune_expired_sessions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _set_sessions_path(tmp_path, monkeypatch)
     monkeypatch.setattr("session_management._SESSION_TTL_SECONDS", 1)
 
@@ -119,7 +125,9 @@ def test_hash_session_id_is_stable() -> None:
     assert len(h1) > 10
 
 
-def test_max_sessions_fifo_eviction(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_max_sessions_fifo_eviction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _set_sessions_path(tmp_path, monkeypatch)
     monkeypatch.setattr("session_management._MAX_SESSIONS_PER_PRINCIPAL", 3)
 

@@ -36,7 +36,11 @@ MAX_PUSH_PAYLOAD_BYTES = 4096
 DEFAULT_DB_PATH = Path(
     os.environ.get(
         "RUNNER_DASHBOARD_PUSH_DB",
-        str(Path(__file__).resolve().parents[1] / "config" / "push_subscriptions.sqlite3"),
+        str(
+            Path(__file__).resolve().parents[1]
+            / "config"
+            / "push_subscriptions.sqlite3"
+        ),
     )
 )
 
@@ -104,12 +108,16 @@ class PushSubscription:
 
 
 class PushTransport(Protocol):
-    async def send(self, subscription: PushSubscription, payload: dict[str, Any]) -> int:
+    async def send(
+        self, subscription: PushSubscription, payload: dict[str, Any]
+    ) -> int:
         """Send one push payload and return the HTTP-like status code."""
 
 
 class UnconfiguredPushTransport:
-    async def send(self, _subscription: PushSubscription, _payload: dict[str, Any]) -> int:
+    async def send(
+        self, _subscription: PushSubscription, _payload: dict[str, Any]
+    ) -> int:
         raise RuntimeError("Web Push transport is not configured")
 
 
@@ -135,8 +143,7 @@ def _connect(path: Path | None = None) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS push_subscriptions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
@@ -148,8 +155,7 @@ def _connect(path: Path | None = None) -> sqlite3.Connection:
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
-        """
-    )
+        """)
     return conn
 
 
@@ -191,9 +197,20 @@ def upsert_subscription(
                 topics_json = excluded.topics_json,
                 updated_at = excluded.updated_at
             """,
-            (user_id, endpoint, keys.p256dh, keys.auth, user_agent[:512], topics_json, now, now),
+            (
+                user_id,
+                endpoint,
+                keys.p256dh,
+                keys.auth,
+                user_agent[:512],
+                topics_json,
+                now,
+                now,
+            ),
         )
-        row = conn.execute("SELECT * FROM push_subscriptions WHERE endpoint = ?", (endpoint,)).fetchone()
+        row = conn.execute(
+            "SELECT * FROM push_subscriptions WHERE endpoint = ?", (endpoint,)
+        ).fetchone()
     if row is None:
         raise RuntimeError("subscription upsert did not return a row")
     return _row_to_subscription(row)
@@ -208,7 +225,9 @@ def delete_subscription(
 ) -> bool:
     with _connect(db_path) as conn:
         if admin:
-            cursor = conn.execute("DELETE FROM push_subscriptions WHERE id = ?", (subscription_id,))
+            cursor = conn.execute(
+                "DELETE FROM push_subscriptions WHERE id = ?", (subscription_id,)
+            )
         else:
             cursor = conn.execute(
                 "DELETE FROM push_subscriptions WHERE id = ? AND user_id = ?",
@@ -230,10 +249,14 @@ def _subscriptions_for_topic(
     with _connect(db_path) as conn:
         rows = conn.execute(query, params).fetchall()
     subscriptions = [_row_to_subscription(row) for row in rows]
-    return [subscription for subscription in subscriptions if topic in subscription.topics]
+    return [
+        subscription for subscription in subscriptions if topic in subscription.topics
+    ]
 
 
-def _delete_stale_subscription(subscription_id: int, db_path: Path | None = None) -> None:
+def _delete_stale_subscription(
+    subscription_id: int, db_path: Path | None = None
+) -> None:
     with _connect(db_path) as conn:
         conn.execute("DELETE FROM push_subscriptions WHERE id = ?", (subscription_id,))
 

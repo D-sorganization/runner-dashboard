@@ -111,7 +111,9 @@ def test_webhook_accepts_unknown_type_with_warning(client: TestClient) -> None:
 # ─── Signature verification tests ─────────────────────────────────────────────
 
 
-def test_webhook_verifies_signature_with_secret(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_webhook_verifies_signature_with_secret(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     secret = "super-secret"
     monkeypatch.setenv("LINEAR_WEBHOOK_SECRET", secret)
 
@@ -122,13 +124,19 @@ def test_webhook_verifies_signature_with_secret(client: TestClient, monkeypatch:
     response = client.post(
         "/api/linear/webhook",
         content=body,
-        headers={"Linear-Signature": sig, "Content-Type": "application/json", **API_AUTH},
+        headers={
+            "Linear-Signature": sig,
+            "Content-Type": "application/json",
+            **API_AUTH,
+        },
     )
     assert response.status_code == 200
     assert response.json()["ok"] is True
 
 
-def test_webhook_rejects_bad_signature(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_webhook_rejects_bad_signature(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     secret = "super-secret"
     monkeypatch.setenv("LINEAR_WEBHOOK_SECRET", secret)
 
@@ -141,7 +149,9 @@ def test_webhook_rejects_bad_signature(client: TestClient, monkeypatch: pytest.M
     assert response.status_code == 401
 
 
-def test_webhook_allows_dev_mode_when_no_secret_or_header(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_webhook_allows_dev_mode_when_no_secret_or_header(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.delenv("LINEAR_WEBHOOK_SECRET", raising=False)
     payload = _make_payload()
     response = client.post("/api/linear/webhook", json=payload, headers=API_AUTH)
@@ -258,7 +268,9 @@ def test_webhook_health_returns_status(client: TestClient) -> None:
     assert data["signature_verification"] == "disabled"
 
 
-def test_webhook_health_shows_enabled_when_secret_set(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_webhook_health_shows_enabled_when_secret_set(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("LINEAR_WEBHOOK_SECRET", "present")
     response = client.get("/api/linear/webhook/health", headers=API_AUTH)
     assert response.status_code == 200

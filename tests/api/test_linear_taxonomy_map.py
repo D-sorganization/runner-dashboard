@@ -107,13 +107,17 @@ def test_estimate_unknown_falls_back_to_closest_lower() -> None:
 
 
 def test_state_triage_maps_to_judgement_design() -> None:
-    result = apply_mapping(linear_issue(state={"name": "Triage", "type": "triage"}), base_mapping())
+    result = apply_mapping(
+        linear_issue(state={"name": "Triage", "type": "triage"}), base_mapping()
+    )
 
     assert result["judgement"] == "design"
 
 
 def test_state_started_no_judgement_label_uses_default_objective() -> None:
-    result = apply_mapping(linear_issue(state={"name": "Started", "type": "started"}), base_mapping())
+    result = apply_mapping(
+        linear_issue(state={"name": "Started", "type": "started"}), base_mapping()
+    )
 
     assert result["judgement"] == "objective"
     assert "judgement:objective" in result["derived_labels"]
@@ -126,14 +130,19 @@ def test_label_alias_bug_maps_to_type_bug() -> None:
 
 
 def test_label_passthrough_type_prefix() -> None:
-    result = apply_mapping(linear_issue(labels=with_labels("type:docs")), base_mapping())
+    result = apply_mapping(
+        linear_issue(labels=with_labels("type:docs")), base_mapping()
+    )
 
     assert result["type"] == "docs"
 
 
 def test_label_alias_takes_precedence_over_passthrough() -> None:
     mapping = base_mapping()
-    mapping["label_passthrough_prefixes"] = ["B", *mapping["label_passthrough_prefixes"]]
+    mapping["label_passthrough_prefixes"] = [
+        "B",
+        *mapping["label_passthrough_prefixes"],
+    ]
 
     labels = derived_labels(linear_issue(labels=with_labels("Bug")), mapping)
 
@@ -150,7 +159,9 @@ def test_unknown_label_ignored() -> None:
 def test_derived_labels_deduplicated_and_stable_order() -> None:
     mapping = base_mapping()
     mapping["priority"]["1"] = ["complexity:trivial", "quick-win", "type:task"]
-    issue = linear_issue(priority=1, labels=with_labels("Feature", "type:task", "domain:backend"))
+    issue = linear_issue(
+        priority=1, labels=with_labels("Feature", "type:task", "domain:backend")
+    )
 
     assert derived_labels(issue, mapping) == [
         "complexity:trivial",
@@ -166,7 +177,9 @@ def test_default_judgement_objective_added_when_state_does_not_set_one() -> None
 
 
 def test_state_triage_keeps_design_judgement_does_not_get_overridden() -> None:
-    result = apply_mapping(linear_issue(state={"name": "Triage", "type": "triage"}), base_mapping())
+    result = apply_mapping(
+        linear_issue(state={"name": "Triage", "type": "triage"}), base_mapping()
+    )
 
     assert result["judgement"] == "design"
     assert "judgement:objective" not in result["derived_labels"]
@@ -174,12 +187,25 @@ def test_state_triage_keeps_design_judgement_does_not_get_overridden() -> None:
 
 def test_apply_mapping_returns_taxonomy_compatible_with_parse_taxonomy() -> None:
     result = apply_mapping(
-        linear_issue(priority=1, estimate=3, labels=with_labels("Bug", "domain:backend", "wave:1")),
+        linear_issue(
+            priority=1,
+            estimate=3,
+            labels=with_labels("Bug", "domain:backend", "wave:1"),
+        ),
         base_mapping(),
     )
 
     taxonomy = parse_taxonomy(result["derived_labels"])
-    for field in ("type", "complexity", "effort", "judgement", "quick_win", "panel_review", "domains", "wave"):
+    for field in (
+        "type",
+        "complexity",
+        "effort",
+        "judgement",
+        "quick_win",
+        "panel_review",
+        "domains",
+        "wave",
+    ):
         assert result[field] == taxonomy[field]
 
 

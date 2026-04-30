@@ -18,7 +18,6 @@ sys.path.insert(0, str(_BACKEND_DIR))
 
 import linear_taxonomy_map as ltm  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -114,7 +113,10 @@ def test_load_mapping_config_wrong_auth_kind(tmp_path: Path) -> None:
     bad_config = {
         **MINIMAL_CONFIG,
         "workspaces": [
-            {**MINIMAL_CONFIG["workspaces"][0], "auth": {"kind": "oauth", "env": "MY_ENV"}}
+            {
+                **MINIMAL_CONFIG["workspaces"][0],
+                "auth": {"kind": "oauth", "env": "MY_ENV"},
+            }
         ],
     }
     path = tmp_path / "cfg.json"
@@ -181,7 +183,11 @@ def test_derived_labels_default_judgement_added_when_none() -> None:
 
 def test_derived_labels_no_duplicate_labels() -> None:
     # Two labels that would map to the same output
-    issue = {"priority": 1, "estimate": 3, "labels": {"nodes": [{"name": "bug"}, {"name": "bug"}]}}
+    issue = {
+        "priority": 1,
+        "estimate": 3,
+        "labels": {"nodes": [{"name": "bug"}, {"name": "bug"}]},
+    }
     labels = ltm.derived_labels(issue, MINIMAL_MAPPING)
     assert len(labels) == len(set(labels))
 
@@ -200,7 +206,18 @@ def test_derived_labels_unknown_labels_ignored() -> None:
 def test_apply_mapping_returns_mapping_result_keys() -> None:
     issue = {"priority": 1, "estimate": 3}
     result = ltm.apply_mapping(issue, MINIMAL_MAPPING)
-    for key in ("type", "complexity", "effort", "judgement", "quick_win", "panel_review", "domains", "wave", "derived_labels", "source_signals"):
+    for key in (
+        "type",
+        "complexity",
+        "effort",
+        "judgement",
+        "quick_win",
+        "panel_review",
+        "domains",
+        "wave",
+        "derived_labels",
+        "source_signals",
+    ):
         assert key in result
 
 

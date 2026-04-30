@@ -4,9 +4,7 @@ import time
 from pathlib import Path  # noqa: E402
 
 import pytest  # noqa: E402
-
 import security  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # sanitize_log_value
@@ -52,27 +50,45 @@ def test_sanitize_log_value_empty() -> None:
 
 
 def test_validate_fleet_node_url_http_localhost() -> None:
-    assert security.validate_fleet_node_url("http://localhost:8080") == "http://localhost:8080"
+    assert (
+        security.validate_fleet_node_url("http://localhost:8080")
+        == "http://localhost:8080"
+    )
 
 
 def test_validate_fleet_node_url_https_localhost() -> None:
-    assert security.validate_fleet_node_url("https://localhost:8080") == "https://localhost:8080"
+    assert (
+        security.validate_fleet_node_url("https://localhost:8080")
+        == "https://localhost:8080"
+    )
 
 
 def test_validate_fleet_node_url_local_domain() -> None:
-    assert security.validate_fleet_node_url("http://node.local:8080") == "http://node.local:8080"
+    assert (
+        security.validate_fleet_node_url("http://node.local:8080")
+        == "http://node.local:8080"
+    )
 
 
 def test_validate_fleet_node_url_internal_domain() -> None:
-    assert security.validate_fleet_node_url("http://node.internal:8080") == "http://node.internal:8080"
+    assert (
+        security.validate_fleet_node_url("http://node.internal:8080")
+        == "http://node.internal:8080"
+    )
 
 
 def test_validate_fleet_node_url_loopback() -> None:
-    assert security.validate_fleet_node_url("http://127.0.0.1:8080") == "http://127.0.0.1:8080"
+    assert (
+        security.validate_fleet_node_url("http://127.0.0.1:8080")
+        == "http://127.0.0.1:8080"
+    )
 
 
 def test_validate_fleet_node_url_private_ip() -> None:
-    assert security.validate_fleet_node_url("http://192.168.1.1:8080") == "http://192.168.1.1:8080"
+    assert (
+        security.validate_fleet_node_url("http://192.168.1.1:8080")
+        == "http://192.168.1.1:8080"
+    )
 
 
 def test_validate_fleet_node_url_public_ip() -> None:
@@ -101,7 +117,9 @@ def test_validate_fleet_node_url_no_scheme() -> None:
 
 
 def test_validate_local_url_valid() -> None:
-    assert security.validate_local_url("http://localhost:3000") == "http://localhost:3000"
+    assert (
+        security.validate_local_url("http://localhost:3000") == "http://localhost:3000"
+    )
 
 
 def test_validate_local_url_invalid_scheme() -> None:
@@ -211,6 +229,7 @@ def test_check_dispatch_rate_exceeds_limit(monkeypatch) -> None:
 
     # FastAPI HTTPException is raised
     from fastapi import HTTPException
+
     assert isinstance(exc_info.value, HTTPException)
     assert exc_info.value.status_code == 429
 

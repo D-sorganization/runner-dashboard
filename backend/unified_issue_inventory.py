@@ -51,8 +51,12 @@ from linear_client import LinearClient
 
 log = logging.getLogger("dashboard")
 
-GITHUB_ISSUE_URL_RE = re.compile(r"https?://github\.com/([^/\s]+/[^/\s]+)/issues/(\d+)", re.IGNORECASE)
-LINEAR_ISSUE_URL_RE = re.compile(r"https?://linear\.app/[^\s)>\]]+/issue/([A-Z]+-\d+)", re.IGNORECASE)
+GITHUB_ISSUE_URL_RE = re.compile(
+    r"https?://github\.com/([^/\s]+/[^/\s]+)/issues/(\d+)", re.IGNORECASE
+)
+LINEAR_ISSUE_URL_RE = re.compile(
+    r"https?://linear\.app/[^\s)>\]]+/issue/([A-Z]+-\d+)", re.IGNORECASE
+)
 
 
 def collapse(
@@ -69,14 +73,20 @@ def collapse(
     collapsed = 0
 
     for linear_item in linear_copies:
-        match_index = _match_github_index(linear_item, github_copies, used_github_indexes)
+        match_index = _match_github_index(
+            linear_item, github_copies, used_github_indexes
+        )
         if match_index is None:
             items.append(_linear_only(linear_item))
             continue
 
         used_github_indexes.add(match_index)
         collapsed += 1
-        items.append(_merge_pair(linear_item, github_copies[match_index], prefer_source=prefer_source))
+        items.append(
+            _merge_pair(
+                linear_item, github_copies[match_index], prefer_source=prefer_source
+            )
+        )
 
     for index, github_item in enumerate(github_copies):
         if index not in used_github_indexes:
@@ -152,7 +162,9 @@ async def fetch_unified_issues(
     result = {
         "items": filtered_items,
         "errors": errors,
-        "stats": _stats(len(github_items), len(linear_items), collapsed, github_only, linear_only),
+        "stats": _stats(
+            len(github_items), len(linear_items), collapsed, github_only, linear_only
+        ),
     }
     log.info(
         "unified_issue_inventory: github=%s linear=%s collapsed=%s unified=%s",
@@ -164,7 +176,9 @@ async def fetch_unified_issues(
     return result
 
 
-def _match_github_index(linear_item: dict, github_items: list[dict], used_indexes: set[int]) -> int | None:
+def _match_github_index(
+    linear_item: dict, github_items: list[dict], used_indexes: set[int]
+) -> int | None:
     attachment_urls = _linear_github_attachment_urls(linear_item)
     if attachment_urls:
         for index, github_item in enumerate(github_items):
@@ -186,7 +200,9 @@ def _match_github_index(linear_item: dict, github_items: list[dict], used_indexe
         if index in used_indexes:
             continue
         body = str(github_item.get("body") or "")
-        if identifier.casefold() in {match.casefold() for match in LINEAR_ISSUE_URL_RE.findall(body)}:
+        if identifier.casefold() in {
+            match.casefold() for match in LINEAR_ISSUE_URL_RE.findall(body)
+        }:
             log.debug(
                 "unified_issue_inventory: matched %s to %s by body url",
                 identifier,
@@ -199,7 +215,12 @@ def _match_github_index(linear_item: dict, github_items: list[dict], used_indexe
 def _merge_pair(linear_item: dict, github_item: dict, *, prefer_source: str) -> dict:
     primary = linear_item if prefer_source == "linear" else github_item
     labels = _dedupe([*github_item.get("labels", []), *linear_item.get("labels", [])])
-    blocked_by = _dedupe([*github_item.get("pickable_blocked_by", []), *linear_item.get("pickable_blocked_by", [])])
+    blocked_by = _dedupe(
+        [
+            *github_item.get("pickable_blocked_by", []),
+            *linear_item.get("pickable_blocked_by", []),
+        ]
+    )
 
     return {
         "repository": github_item.get("repository", ""),
@@ -209,13 +230,18 @@ def _merge_pair(linear_item: dict, github_item: dict, *, prefer_source: str) -> 
         "author": primary.get("author", ""),
         "assignees": list(primary.get("assignees", [])),
         "labels": labels,
-        "state": "closed" if "closed" in {linear_item.get("state"), github_item.get("state")} else "open",
+        "state": (
+            "closed"
+            if "closed" in {linear_item.get("state"), github_item.get("state")}
+            else "open"
+        ),
         "age_hours": min(_age_value(linear_item), _age_value(github_item)),
         "taxonomy": parse_taxonomy(labels),
         "agent_claim": github_item.get("agent_claim"),
         "claim_expires_at": github_item.get("claim_expires_at"),
         "linked_pr": github_item.get("linked_pr"),
-        "pickable": bool(github_item.get("pickable")) and bool(linear_item.get("pickable")),
+        "pickable": bool(github_item.get("pickable"))
+        and bool(linear_item.get("pickable")),
         "pickable_blocked_by": blocked_by,
         "linear": copy.deepcopy(linear_item.get("linear")),
         "github": _github_subdict(github_item),
@@ -242,7 +268,11 @@ def _linear_only(item: dict) -> dict:
 
 
 def _github_subdict(item: dict) -> dict:
-    return {"repository": item.get("repository", ""), "number": item.get("number"), "url": item.get("url", "")}
+    return {
+        "repository": item.get("repository", ""),
+        "number": item.get("number"),
+        "url": item.get("url", ""),
+    }
 
 
 def _linear_identifier(item: dict) -> str:
@@ -263,7 +293,8 @@ def _linear_github_attachment_urls(item: dict) -> set[str]:
     return {
         normalised
         for url in urls
-        if isinstance(url, str) and (normalised := _normalise_github_issue_url(url)) is not None
+        if isinstance(url, str)
+        and (normalised := _normalise_github_issue_url(url)) is not None
     }
 
 
@@ -275,7 +306,9 @@ def _normalise_github_issue_url(value: Any) -> str | None:
         return None
     parsed = urlsplit(match.group(0))
     path = parsed.path.rstrip("/")
-    return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), path.lower(), "", ""))
+    return urlunsplit(
+        (parsed.scheme.lower(), parsed.netloc.lower(), path.lower(), "", "")
+    )
 
 
 def _dedupe(values: list[Any]) -> list[Any]:
@@ -294,7 +327,13 @@ def _age_value(item: dict) -> float:
     return value if isinstance(value, int | float) else 0.0
 
 
-def _stats(github_total: int, linear_total: int, collapsed: int, github_only: int, linear_only: int) -> dict[str, int]:
+def _stats(
+    github_total: int,
+    linear_total: int,
+    collapsed: int,
+    github_only: int,
+    linear_only: int,
+) -> dict[str, int]:
     return {
         "github_total": github_total,
         "linear_total": linear_total,

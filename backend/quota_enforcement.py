@@ -18,7 +18,9 @@ class QuotaEnforcement:
     def __init__(self, config_dir: Path = Path("config")):
         self.config_dir = config_dir
         self.spend_path = self.config_dir / "principal_spend.yml"
-        self.spend_records: dict[str, dict[str, float]] = {}  # principal_id -> {date -> spend}
+        self.spend_records: dict[str, dict[str, float]] = (
+            {}
+        )  # principal_id -> {date -> spend}
         self.load_spend()
 
     def load_spend(self):
@@ -48,10 +50,14 @@ class QuotaEnforcement:
         today = time.strftime("%Y-%m-%d", time.gmtime())
         if principal_id not in self.spend_records:
             self.spend_records[principal_id] = {}
-        self.spend_records[principal_id][today] = self.spend_records[principal_id].get(today, 0.0) + amount_usd
+        self.spend_records[principal_id][today] = (
+            self.spend_records[principal_id].get(today, 0.0) + amount_usd
+        )
         self.save_spend()
 
-    def check_dispatch_quota(self, principal: Principal, estimated_cost: float = 0.0) -> tuple[bool, str | None]:
+    def check_dispatch_quota(
+        self, principal: Principal, estimated_cost: float = 0.0
+    ) -> tuple[bool, str | None]:
         """Check if a dispatch is allowed based on spend and runner quotas."""
         # 1. Check spend quota
         today_spend = self.get_today_spend(principal.id)
@@ -64,7 +70,10 @@ class QuotaEnforcement:
         # 2. Check runner quota
         active_leases = lease_manager.get_active_leases(principal.id)
         if len(active_leases) >= principal.quotas.max_runners:
-            return False, f"Runner quota reached ({len(active_leases)}/{principal.quotas.max_runners})"
+            return (
+                False,
+                f"Runner quota reached ({len(active_leases)}/{principal.quotas.max_runners})",
+            )
 
         return True, None
 
@@ -72,7 +81,11 @@ class QuotaEnforcement:
         """Count local apps owned by the principal."""
         try:
             reports = collect_local_apps()
-            owned = [app for app in reports.get("apps", []) if app.get("owner") == principal_id]
+            owned = [
+                app
+                for app in reports.get("apps", [])
+                if app.get("owner") == principal_id
+            ]
             return len(owned)
         except Exception as exc:
             log.error("Failed to check local app usage: %s", exc)
@@ -81,7 +94,10 @@ class QuotaEnforcement:
     def check_local_app_quota(self, principal: Principal) -> tuple[bool, str | None]:
         usage = self.get_local_app_usage(principal.id)
         if usage >= principal.quotas.local_app_slots:
-            return False, f"Local app slots reached ({usage}/{principal.quotas.local_app_slots})"
+            return (
+                False,
+                f"Local app slots reached ({usage}/{principal.quotas.local_app_slots})",
+            )
         return True, None
 
 

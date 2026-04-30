@@ -179,9 +179,13 @@ class LinearClient:
 
         return collected[:limit]
 
-    async def fetch_issue(self, workspace_id: str, identifier: str) -> dict[str, Any] | None:
+    async def fetch_issue(
+        self, workspace_id: str, identifier: str
+    ) -> dict[str, Any] | None:
         """Fetch one Linear issue by human-readable identifier."""
-        data = await self._post_graphql(workspace_id, _ISSUE_BY_IDENTIFIER_QUERY, {"id": identifier})
+        data = await self._post_graphql(
+            workspace_id, _ISSUE_BY_IDENTIFIER_QUERY, {"id": identifier}
+        )
         issue = data.get("issue")
         return issue if isinstance(issue, dict) else None
 
@@ -192,7 +196,11 @@ class LinearClient:
         if not isinstance(teams, dict):
             return []
         nodes = teams.get("nodes", [])
-        return [node for node in nodes if isinstance(node, dict)] if isinstance(nodes, list) else []
+        return (
+            [node for node in nodes if isinstance(node, dict)]
+            if isinstance(nodes, list)
+            else []
+        )
 
     async def fetch_workspace(self, workspace_id: str) -> dict[str, Any] | None:
         """Return the Linear organization record for the workspace credentials."""
@@ -210,7 +218,10 @@ class LinearClient:
         response = await self._http_client.post(
             self.base_url,
             json={"query": query, "variables": variables},
-            headers={"Authorization": authorization, "Content-Type": "application/json"},
+            headers={
+                "Authorization": authorization,
+                "Content-Type": "application/json",
+            },
         )
         if response.status_code != 200:
             raise LinearAPIError(
@@ -221,7 +232,10 @@ class LinearClient:
 
         payload = response.json()
         if not isinstance(payload, dict):
-            raise LinearAPIError("Linear GraphQL response was not a JSON object", workspace_id=workspace_id)
+            raise LinearAPIError(
+                "Linear GraphQL response was not a JSON object",
+                workspace_id=workspace_id,
+            )
 
         errors = payload.get("errors")
         if isinstance(errors, list) and errors:

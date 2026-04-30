@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Quick inventory of all D-Sorganization repos for assessment."""
 
-import os, subprocess, json
+import json
+import subprocess
 from pathlib import Path
 
 REPOS = [
@@ -39,28 +40,37 @@ def main():
             continue
         try:
             sha = (
-                subprocess.check_output(["git", "-C", r, "log", "-1", "--format=%h"], stderr=subprocess.DEVNULL)
+                subprocess.check_output(
+                    ["git", "-C", r, "log", "-1", "--format=%h"],
+                    stderr=subprocess.DEVNULL,
+                )
                 .decode()
                 .strip()
             )
             sha_long = (
-                subprocess.check_output(["git", "-C", r, "log", "-1", "--format=%H"], stderr=subprocess.DEVNULL)
+                subprocess.check_output(
+                    ["git", "-C", r, "log", "-1", "--format=%H"],
+                    stderr=subprocess.DEVNULL,
+                )
                 .decode()
                 .strip()
             )
             branch = (
                 subprocess.check_output(
-                    ["git", "-C", r, "rev-parse", "--abbrev-ref", "HEAD"], stderr=subprocess.DEVNULL
+                    ["git", "-C", r, "rev-parse", "--abbrev-ref", "HEAD"],
+                    stderr=subprocess.DEVNULL,
                 )
                 .decode()
                 .strip()
             )
             dirty = bool(
-                subprocess.check_output(["git", "-C", r, "status", "--porcelain"], stderr=subprocess.DEVNULL)
+                subprocess.check_output(
+                    ["git", "-C", r, "status", "--porcelain"], stderr=subprocess.DEVNULL
+                )
                 .decode()
                 .strip()
             )
-        except Exception as e:
+        except Exception:
             sha, sha_long, branch, dirty = "ERR", "ERR", "ERR", False
         # quick file count
         nfiles = sum(

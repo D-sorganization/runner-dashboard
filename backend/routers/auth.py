@@ -25,9 +25,7 @@ async def github_login(request: Request):
 
     state = secrets.token_urlsafe(16)
     request.session["oauth_state"] = state
-    redirect_uri = (
-        f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&state={state}&scope=read:user"
-    )
+    redirect_uri = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&state={state}&scope=read:user"
     return RedirectResponse(url=redirect_uri)
 
 
@@ -89,7 +87,9 @@ async def github_callback(request: Request, code: str, state: str):
 async def dev_login(request: Request):
     """Development login when OAuth is not configured."""
     if GITHUB_CLIENT_ID:
-        raise HTTPException(status_code=400, detail="Dev login disabled when OAuth is configured")
+        raise HTTPException(
+            status_code=400, detail="Dev login disabled when OAuth is configured"
+        )
 
     # Just grab the first human principal
     for p in identity_manager.principals.values():
@@ -136,7 +136,9 @@ async def get_me(principal: Principal = Depends(require_principal)):  # noqa: B0
 
 
 @router.get("/sessions")
-async def list_sessions(principal: Principal = Depends(require_principal)):  # noqa: B008
+async def list_sessions(
+    principal: Principal = Depends(require_principal),
+):  # noqa: B008
     """List active sessions for the current user."""
     sessions = sm.list_sessions_for_principal(principal.id)
     return {
@@ -171,7 +173,9 @@ async def revoke_session_by_hash(
 
     revoked = sm.revoke_session(target_session_id)
     if not revoked:
-        raise HTTPException(status_code=404, detail="Session already revoked or not found")
+        raise HTTPException(
+            status_code=404, detail="Session already revoked or not found"
+        )
     return {"status": "revoked", "session_hash": session_id_hash}
 
 
@@ -188,7 +192,9 @@ async def logout_all(
     """Remote logout: revoke all sessions for this principal."""
     current_session_id = request.session.get("session_id")
     exclude = current_session_id if body.exclude_current else None
-    revoked_count = sm.revoke_all_sessions_for_principal(principal.id, exclude_session_id=exclude)
+    revoked_count = sm.revoke_all_sessions_for_principal(
+        principal.id, exclude_session_id=exclude
+    )
     request.session.clear()
     return {"status": "logged_out", "revoked_sessions": revoked_count}
 
@@ -200,22 +206,32 @@ class MintTokenRequest(BaseModel):
 
 
 @router.post("/tokens")
-async def mint_token(req: MintTokenRequest, current_user: Principal = Depends(require_principal)):  # noqa: B008
+async def mint_token(
+    req: MintTokenRequest, current_user: Principal = Depends(require_principal)
+):  # noqa: B008
     """Mint a new service token (requires admin role or similar)."""
     if "admin" not in current_user.roles:
-        raise HTTPException(status_code=403, detail="Admin role required to mint tokens")
+        raise HTTPException(
+            status_code=403, detail="Admin role required to mint tokens"
+        )
 
     try:
-        raw_token = identity_manager.mint_service_token(req.principal_id, req.name, req.expires_in_days)
+        raw_token = identity_manager.mint_service_token(
+            req.principal_id, req.name, req.expires_in_days
+        )
         return {"token": raw_token}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.delete("/tokens/{token_hash}")
-async def revoke_token(token_hash: str, current_user: Principal = Depends(require_principal)):  # noqa: B008
+async def revoke_token(
+    token_hash: str, current_user: Principal = Depends(require_principal)
+):  # noqa: B008
     """Revoke a token."""
     if "admin" not in current_user.roles:
-        raise HTTPException(status_code=403, detail="Admin role required to revoke tokens")
+        raise HTTPException(
+            status_code=403, detail="Admin role required to revoke tokens"
+        )
     identity_manager.revoke_token(token_hash)
     return {"status": "revoked"}

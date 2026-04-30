@@ -79,14 +79,18 @@ POLL_SECONDS = _env_int("AUTOSCALER_POLL_SECONDS", 15)
 MIN_ONLINE = _env_int("AUTOSCALER_MIN_ONLINE", 1)
 MAX_STEP = _env_int("AUTOSCALER_MAX_SCALE_STEP", 1)
 DRY_RUN = bool(_env_int("AUTOSCALER_DRY_RUN", 0))
-RUNNER_SCHEDULER_BIN = os.environ.get("RUNNER_SCHEDULER_BIN", "/usr/local/bin/runner-scheduler")
+RUNNER_SCHEDULER_BIN = os.environ.get(
+    "RUNNER_SCHEDULER_BIN", "/usr/local/bin/runner-scheduler"
+)
 RUNNER_SCHEDULE_CONFIG = os.path.expanduser(
     os.environ.get(
         "RUNNER_SCHEDULE_CONFIG",
         "~/.config/runner-dashboard/runner-schedule.json",
     )
 )
-RUNNER_BASE_DIR = os.path.expanduser(os.environ.get("RUNNER_BASE_DIR", "~/actions-runners"))
+RUNNER_BASE_DIR = os.path.expanduser(
+    os.environ.get("RUNNER_BASE_DIR", "~/actions-runners")
+)
 
 HOSTNAME = platform.node()
 
@@ -128,7 +132,8 @@ def _leased_runners() -> set[str]:
         return {
             str(lease_rec["runner_id"])
             for lease_rec in data["leases"]
-            if lease_rec.get("expires_at") is None or float(lease_rec["expires_at"]) > now
+            if lease_rec.get("expires_at") is None
+            or float(lease_rec["expires_at"]) > now
         }
     except Exception as exc:
         log.warning("Failed to read leases: %s", exc)
@@ -136,7 +141,9 @@ def _leased_runners() -> set[str]:
 
 
 def _unit_is_active(unit: str) -> bool:
-    r = subprocess.run(["systemctl", "is-active", "--quiet", unit], check=False, timeout=5)
+    r = subprocess.run(
+        ["systemctl", "is-active", "--quiet", unit], check=False, timeout=5
+    )
     return r.returncode == 0
 
 
@@ -168,7 +175,9 @@ def _runner_is_busy(unit: str) -> bool:
         proc = psutil.Process(main_pid)
         for child in proc.children(recursive=True):
             try:
-                if "Runner.Worker" in child.name() or "Runner.Worker" in " ".join(child.cmdline()):
+                if "Runner.Worker" in child.name() or "Runner.Worker" in " ".join(
+                    child.cmdline()
+                ):
                     return True
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
@@ -306,10 +315,16 @@ def main() -> None:
             inactive = [u for u in units if u not in active]
             busy = {u for u in active if _runner_is_busy(u)}
             leased = _leased_runners()
-            idle_active = [u for u in active if u not in busy and not any(r in u for r in leased)]
+            idle_active = [
+                u for u in active if u not in busy and not any(r in u for r in leased)
+            ]
 
             if leased:
-                log.info("Detected %d active leases: %s", len(leased), ", ".join(sorted(leased)))
+                log.info(
+                    "Detected %d active leases: %s",
+                    len(leased),
+                    ", ".join(sorted(leased)),
+                )
 
             overloaded = (
                 avg_cpu >= CPU_HIGH

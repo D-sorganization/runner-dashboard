@@ -41,7 +41,11 @@ def safe_subprocess_env() -> dict[str, str]:
         "PASSWORD",
         "TOKEN",
     }
-    return {k: v for k, v in os.environ.items() if not any(exc in k.upper() for exc in excluded)}
+    return {
+        k: v
+        for k, v in os.environ.items()
+        if not any(exc in k.upper() for exc in excluded)
+    }
 
 
 # ─── URL Validation ────────────────────────────────────────────────────────────
@@ -62,7 +66,9 @@ def validate_fleet_node_url(url: str) -> str:
         if "must be" in str(exc):
             raise
         # hostname – allow localhost, .local, .internal
-        if not (host == "localhost" or host.endswith(".local") or host.endswith(".internal")):
+        if not (
+            host == "localhost" or host.endswith(".local") or host.endswith(".internal")
+        ):
             raise ValueError(f"Fleet node hostname not allowed: {host}") from exc
     return url
 
@@ -110,6 +116,8 @@ def check_dispatch_rate(client_ip: str) -> None:
     now = time.monotonic()
     window = [t for t in _dispatch_rate[client_ip] if now - t < 60]
     if len(window) >= DISPATCH_LIMIT_PER_MINUTE:
-        raise HTTPException(status_code=429, detail="Rate limit exceeded for agent dispatch")
+        raise HTTPException(
+            status_code=429, detail="Rate limit exceeded for agent dispatch"
+        )
     window.append(now)
     _dispatch_rate[client_ip] = window

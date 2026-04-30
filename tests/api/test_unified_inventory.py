@@ -106,7 +106,9 @@ def test_collapse_match_via_attachment_url() -> None:
 
 
 def test_collapse_match_via_body_linear_url() -> None:
-    github = github_issue(body="Linked to: https://linear.app/acme/issue/ENG-123/linear-title")
+    github = github_issue(
+        body="Linked to: https://linear.app/acme/issue/ENG-123/linear-title"
+    )
 
     items, collapsed = collapse([github], [linear_issue()])
 
@@ -115,7 +117,9 @@ def test_collapse_match_via_body_linear_url() -> None:
 
 
 def test_collapse_attachment_match_takes_precedence_over_body_match() -> None:
-    attached = github_issue(number=1, url="https://github.com/D-sorganization/runner-dashboard/issues/1")
+    attached = github_issue(
+        number=1, url="https://github.com/D-sorganization/runner-dashboard/issues/1"
+    )
     body_match = github_issue(
         number=2,
         url="https://github.com/D-sorganization/runner-dashboard/issues/2",
@@ -131,7 +135,9 @@ def test_collapse_attachment_match_takes_precedence_over_body_match() -> None:
 
 
 def test_no_collapse_when_titles_match_but_no_url_signal() -> None:
-    items, collapsed = collapse([github_issue(title="Same")], [linear_issue(title="Same")])
+    items, collapsed = collapse(
+        [github_issue(title="Same")], [linear_issue(title="Same")]
+    )
 
     assert collapsed == 0
     assert [item["sources"] for item in items] == [["linear"], ["github"]]
@@ -156,20 +162,29 @@ def test_github_only_item_keeps_canonical_shape_with_linear_null() -> None:
 
 
 def test_merged_repository_comes_from_github() -> None:
-    items, _ = collapse([github_issue(repository="D-sorganization/runner-dashboard")], [_matched_linear()])
+    items, _ = collapse(
+        [github_issue(repository="D-sorganization/runner-dashboard")],
+        [_matched_linear()],
+    )
 
     assert items[0]["repository"] == "D-sorganization/runner-dashboard"
 
 
 def test_merged_title_comes_from_linear_when_prefer_source_linear() -> None:
-    items, _ = collapse([github_issue(title="GitHub")], [_matched_linear(title="Linear")])
+    items, _ = collapse(
+        [github_issue(title="GitHub")], [_matched_linear(title="Linear")]
+    )
 
     assert items[0]["title"] == "Linear"
     assert items[0]["primary_source"] == "linear"
 
 
 def test_merged_title_comes_from_github_when_prefer_source_github() -> None:
-    items, _ = collapse([github_issue(title="GitHub")], [_matched_linear(title="Linear")], prefer_source="github")
+    items, _ = collapse(
+        [github_issue(title="GitHub")],
+        [_matched_linear(title="Linear")],
+        prefer_source="github",
+    )
 
     assert items[0]["title"] == "GitHub"
     assert items[0]["primary_source"] == "github"
@@ -217,17 +232,28 @@ def test_merged_pickable_is_and() -> None:
 
 
 def test_merged_pickable_blocked_by_union() -> None:
-    github = github_issue(pickable=False, pickable_blocked_by=["active claim: codex", "has linked open PR"])
-    linear = _matched_linear(pickable=False, pickable_blocked_by=["has linked open PR", "state != open"])
+    github = github_issue(
+        pickable=False,
+        pickable_blocked_by=["active claim: codex", "has linked open PR"],
+    )
+    linear = _matched_linear(
+        pickable=False, pickable_blocked_by=["has linked open PR", "state != open"]
+    )
 
     items, _ = collapse([github], [linear])
 
-    assert items[0]["pickable_blocked_by"] == ["active claim: codex", "has linked open PR", "state != open"]
+    assert items[0]["pickable_blocked_by"] == [
+        "active claim: codex",
+        "has linked open PR",
+        "state != open",
+    ]
 
 
 def test_taxonomy_re_derived_from_merged_labels() -> None:
     github = github_issue(labels=["type:bug"])
-    linear = _matched_linear(labels=["domain:backend", "effort:m"], taxonomy={"type": "task", "domains": []})
+    linear = _matched_linear(
+        labels=["domain:backend", "effort:m"], taxonomy={"type": "task", "domains": []}
+    )
 
     items, _ = collapse([github], [linear])
 
@@ -238,17 +264,26 @@ def test_taxonomy_re_derived_from_merged_labels() -> None:
 
 @pytest.mark.asyncio
 async def test_stats_counts_correct(monkeypatch: pytest.MonkeyPatch) -> None:
-    github = github_issue(number=1, url="https://github.com/D-sorganization/runner-dashboard/issues/1")
+    github = github_issue(
+        number=1, url="https://github.com/D-sorganization/runner-dashboard/issues/1"
+    )
     linear = linear_issue(linear={"github_attachments": [github["url"]]})
 
     async def fake_github_fetch(*args: Any, **kwargs: Any) -> dict[str, Any]:
         return {"items": [github, github_issue(number=2)], "errors": ["github warning"]}
 
     async def fake_linear_fetch(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        return {"items": [linear, linear_issue(linear={"identifier": "ENG-999"})], "errors": ["linear warning"]}
+        return {
+            "items": [linear, linear_issue(linear={"identifier": "ENG-999"})],
+            "errors": ["linear warning"],
+        }
 
-    monkeypatch.setattr(unified_issue_inventory.issue_inventory, "fetch_all_issues", fake_github_fetch)
-    monkeypatch.setattr(unified_issue_inventory.linear_inventory, "fetch_all_issues", fake_linear_fetch)
+    monkeypatch.setattr(
+        unified_issue_inventory.issue_inventory, "fetch_all_issues", fake_github_fetch
+    )
+    monkeypatch.setattr(
+        unified_issue_inventory.linear_inventory, "fetch_all_issues", fake_linear_fetch
+    )
 
     result = await fetch_unified_issues(github_repos=["org/repo"], linear_config={}, linear_client=object())  # type: ignore[arg-type]
 
@@ -276,9 +311,15 @@ def test_collapse_pure_function_does_not_mutate_inputs() -> None:
 
 
 def test_match_url_normalization_handles_trailing_slash() -> None:
-    github = github_issue(number=42, url="https://github.com/D-sorganization/runner-dashboard/issues/42")
+    github = github_issue(
+        number=42, url="https://github.com/D-sorganization/runner-dashboard/issues/42"
+    )
     linear = linear_issue(
-        linear={"github_attachments": ["https://github.com/D-sorganization/runner-dashboard/issues/42/#comment-X"]}
+        linear={
+            "github_attachments": [
+                "https://github.com/D-sorganization/runner-dashboard/issues/42/#comment-X"
+            ]
+        }
     )
 
     items, collapsed = collapse([github], [linear])
@@ -288,9 +329,15 @@ def test_match_url_normalization_handles_trailing_slash() -> None:
 
 
 def test_match_url_case_insensitive() -> None:
-    github = github_issue(url="https://Github.com/D-sorganization/Runner-Dashboard/issues/42")
+    github = github_issue(
+        url="https://Github.com/D-sorganization/Runner-Dashboard/issues/42"
+    )
     linear = linear_issue(
-        linear={"github_attachments": ["https://github.com/d-sorganization/runner-dashboard/issues/42"]}
+        linear={
+            "github_attachments": [
+                "https://github.com/d-sorganization/runner-dashboard/issues/42"
+            ]
+        }
     )
 
     _items, collapsed = collapse([github], [linear])
@@ -300,8 +347,14 @@ def test_match_url_case_insensitive() -> None:
 
 def test_two_linear_items_pointing_to_same_github_uses_first() -> None:
     github = github_issue()
-    first = linear_issue(title="first", linear={"identifier": "ENG-1", "github_attachments": [github["url"]]})
-    second = linear_issue(title="second", linear={"identifier": "ENG-2", "github_attachments": [github["url"]]})
+    first = linear_issue(
+        title="first",
+        linear={"identifier": "ENG-1", "github_attachments": [github["url"]]},
+    )
+    second = linear_issue(
+        title="second",
+        linear={"identifier": "ENG-2", "github_attachments": [github["url"]]},
+    )
 
     items, collapsed = collapse([github], [first, second])
 
@@ -311,7 +364,9 @@ def test_two_linear_items_pointing_to_same_github_uses_first() -> None:
 
 
 def test_one_linear_attaches_two_github_urls() -> None:
-    issue = github_issue(number=42, url="https://github.com/D-sorganization/runner-dashboard/issues/42")
+    issue = github_issue(
+        number=42, url="https://github.com/D-sorganization/runner-dashboard/issues/42"
+    )
     linear = linear_issue(
         linear={
             "github_attachments": [
@@ -337,9 +392,13 @@ async def test_fetch_unified_issues_returns_github_only_when_linear_client_none(
     async def fake_github_fetch(*args: Any, **kwargs: Any) -> dict[str, Any]:
         return {"items": [github], "errors": []}
 
-    monkeypatch.setattr(unified_issue_inventory.issue_inventory, "fetch_all_issues", fake_github_fetch)
+    monkeypatch.setattr(
+        unified_issue_inventory.issue_inventory, "fetch_all_issues", fake_github_fetch
+    )
 
-    result = await fetch_unified_issues(github_repos=["org/repo"], linear_config={}, linear_client=None)
+    result = await fetch_unified_issues(
+        github_repos=["org/repo"], linear_config={}, linear_client=None
+    )
 
     assert result["items"] == [
         {

@@ -76,7 +76,9 @@ def test_required_function_present(marker: str) -> None:
     assert marker in content, f"Expected '{marker}' in frontend/index.html"
 
 
-@pytest.mark.xfail(reason="RunnerPlanTab not yet implemented in frontend/index.html", strict=True)
+@pytest.mark.xfail(
+    reason="RunnerPlanTab not yet implemented in frontend/index.html", strict=True
+)
 def test_runner_plan_tab_present() -> None:
     content = _read_index()
     assert "function RunnerPlanTab" in content
@@ -89,7 +91,9 @@ def test_runner_plan_tab_present() -> None:
 
 def test_heavy_tests_tab_absent() -> None:
     content = _read_index()
-    assert "HeavyTestsTab" not in content, "HeavyTestsTab was found — use TestsTab instead"
+    assert (
+        "HeavyTestsTab" not in content
+    ), "HeavyTestsTab was found — use TestsTab instead"
 
 
 # ---------------------------------------------------------------------------
@@ -170,8 +174,13 @@ def test_dangerous_set_inner_html_sanitized() -> None:
         window_end = min(len(lines), lineno + 6)
         window = "\n".join(lines[window_start:window_end])
         has_sanitize = "DOMPurify.sanitize" in window
-        has_safe_wrapper = "renderMarkdown" in window  # renderMarkdown internally calls DOMPurify
-        has_safe_comment = re.search(r"//.*safe|//.*sanitize|//.*trusted", window, re.IGNORECASE) is not None
+        has_safe_wrapper = (
+            "renderMarkdown" in window
+        )  # renderMarkdown internally calls DOMPurify
+        has_safe_comment = (
+            re.search(r"//.*safe|//.*sanitize|//.*trusted", window, re.IGNORECASE)
+            is not None
+        )
         if not (has_sanitize or has_safe_wrapper or has_safe_comment):
             violations.append(lineno + 1)
     assert not violations, (
@@ -272,7 +281,9 @@ def test_maxwell_mobile_chat_slice_markers_present() -> None:
     assert "TextDecoder" in content
 
 
-def test_mobile_read_mostly_reports_assessments_feature_requests_markers_present() -> None:
+def test_mobile_read_mostly_reports_assessments_feature_requests_markers_present() -> (
+    None
+):
     content = _read_index()
     assert "reports-shell" in content
     assert "reports-sidebar" in content
@@ -376,7 +387,17 @@ def test_mobile_breakpoint_and_motion_contract_modules_are_static_guarded() -> N
     breakpoints = (_DESIGN_DIR / "breakpoints.ts").read_text(encoding="utf-8")
     motion = (_DESIGN_DIR / "motion.ts").read_text(encoding="utf-8")
 
-    for marker in ["xs", "sm", "md", "lg", "xl", "isMobile", "useBreakpoint", "375", "412"]:
+    for marker in [
+        "xs",
+        "sm",
+        "md",
+        "lg",
+        "xl",
+        "isMobile",
+        "useBreakpoint",
+        "375",
+        "412",
+    ]:
         assert marker in breakpoints
     for marker in [
         "prefers-reduced-motion: reduce",
@@ -413,17 +434,19 @@ def test_touch_primitives_foundation_contract_is_static_guarded() -> None:
     segmented = (_PRIMITIVES_DIR / "SegmentedControl.tsx").read_text(encoding="utf-8")
     exports = (_PRIMITIVES_DIR / "index.ts").read_text(encoding="utf-8")
     css = _read_css()
-    docs = (Path(__file__).parent.parent / "docs" / "mobile-design-system.md").read_text(
+    docs = (
+        Path(__file__).parent.parent / "docs" / "mobile-design-system.md"
+    ).read_text(
         encoding="utf-8",
     )
 
     assert 'data-touch-primitive="TouchButton"' in touch_button
-    assert 'aria-pressed={pressed}' in touch_button
+    assert "aria-pressed={pressed}" in touch_button
     assert 'type = "button"' in touch_button
     assert 'data-touch-primitive="SegmentedControl"' in segmented
     assert 'role="radiogroup"' in segmented
     assert 'role="radio"' in segmented
-    assert 'aria-checked={option.value === value}' in segmented
+    assert "aria-checked={option.value === value}" in segmented
     assert "ArrowRight" in segmented and "ArrowLeft" in segmented
     assert 'export { TouchButton } from "./TouchButton";' in exports
     assert 'export { SegmentedControl } from "./SegmentedControl";' in exports
@@ -493,7 +516,11 @@ def test_jsx_archive_removed() -> None:
 
 def test_index_html_is_only_frontend_source() -> None:
     """No other .jsx or .tsx files should exist in frontend/ at runtime."""
-    unexpected = [p for p in _FRONTEND_DIR.iterdir() if p.suffix in {".jsx", ".tsx"} and p.is_file()]
+    unexpected = [
+        p
+        for p in _FRONTEND_DIR.iterdir()
+        if p.suffix in {".jsx", ".tsx"} and p.is_file()
+    ]
     assert not unexpected, (
         f"Unexpected transpilable source files in frontend/: {[p.name for p in unexpected]}. "
         "frontend/index.html is the only runtime source — no build step exists."

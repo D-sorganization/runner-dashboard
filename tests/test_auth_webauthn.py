@@ -17,20 +17,26 @@ def _client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     import auth_webauthn
     from identity import Principal, require_principal
 
-    monkeypatch.setattr(auth_webauthn, "_CREDENTIALS_PATH", tmp_path / "webauthn_credentials.json")
+    monkeypatch.setattr(
+        auth_webauthn, "_CREDENTIALS_PATH", tmp_path / "webauthn_credentials.json"
+    )
 
     app = FastAPI()
     app.add_middleware(SessionMiddleware, secret_key="test-secret")
 
     def principal() -> Principal:
-        return Principal(id="human:test", type="human", name="Test User", roles=["operator"])
+        return Principal(
+            id="human:test", type="human", name="Test User", roles=["operator"]
+        )
 
     app.dependency_overrides[require_principal] = principal
     app.include_router(auth_webauthn.router)
     return TestClient(app)
 
 
-def test_register_begin_returns_server_challenge(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_register_begin_returns_server_challenge(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     client = _client(monkeypatch, tmp_path)
 
     response = client.post("/api/auth/webauthn/register/begin", json={"label": "phone"})
@@ -43,11 +49,17 @@ def test_register_begin_returns_server_challenge(monkeypatch: pytest.MonkeyPatch
     assert data["timeout_ms"] == 300000
 
 
-def test_complete_endpoints_fail_closed(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_complete_endpoints_fail_closed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     client = _client(monkeypatch, tmp_path)
 
-    register = client.post("/api/auth/webauthn/register/complete", json={"credential": {"id": "cred-1"}})
-    assertion = client.post("/api/auth/webauthn/assert/complete", json={"credential": {"id": "cred-1"}})
+    register = client.post(
+        "/api/auth/webauthn/register/complete", json={"credential": {"id": "cred-1"}}
+    )
+    assertion = client.post(
+        "/api/auth/webauthn/assert/complete", json={"credential": {"id": "cred-1"}}
+    )
 
     assert register.status_code == 501
     assert assertion.status_code == 501
@@ -61,7 +73,10 @@ def test_assert_begin_requires_active_registered_credential(
     response = client.post("/api/auth/webauthn/assert/begin", json={})
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "No active WebAuthn credential registered for this user"
+    assert (
+        response.json()["detail"]
+        == "No active WebAuthn credential registered for this user"
+    )
 
 
 def test_list_and_revoke_only_current_user_credentials(
@@ -95,6 +110,8 @@ def test_list_and_revoke_only_current_user_credentials(
     listed_after = client.get("/api/auth/webauthn/credentials")
 
     assert listed.status_code == 200
-    assert [item["credential_id"] for item in listed.json()["credentials"]] == ["cred-current"]
+    assert [item["credential_id"] for item in listed.json()["credentials"]] == [
+        "cred-current"
+    ]
     assert revoked.status_code == 200
     assert listed_after.json()["credentials"] == []

@@ -245,11 +245,11 @@ async def call_anthropic_with_tools(
         "For state-changing tools, explain what you are about to do before calling the tool."
     )
 
-    context_text = (
-        f"Current tab: {context.get('current_tab', 'unknown')}. Selected run: {context.get('selected_run_id')}. "
-    )
+    context_text = f"Current tab: {context.get('current_tab', 'unknown')}. Selected run: {context.get('selected_run_id')}. "
     if context.get("dashboard_state"):
-        context_text += f"Dashboard state summary: {str(context['dashboard_state'])[:400]}"
+        context_text += (
+            f"Dashboard state summary: {str(context['dashboard_state'])[:400]}"
+        )
 
     messages = [
         {
@@ -353,7 +353,9 @@ async def execute_tool(
 
     if requires_conf:
         if not confirmation:
-            raise PermissionError(f"Tool '{tool_name}' requires explicit user confirmation")
+            raise PermissionError(
+                f"Tool '{tool_name}' requires explicit user confirmation"
+            )
         approved_by = confirmation.get("approved_by", "operator")
         note = confirmation.get("note", "")
 

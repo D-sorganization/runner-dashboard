@@ -15,7 +15,9 @@ from linear_client import ApiKeyAuthProvider, LinearAPIError, LinearClient
 
 router = APIRouter(prefix="/api/linear", tags=["linear"])
 
-LINEAR_NOT_CONFIGURED_DETAIL = "Linear is not configured. Set LINEAR_API_KEY in ~/.config/runner-dashboard/env."
+LINEAR_NOT_CONFIGURED_DETAIL = (
+    "Linear is not configured. Set LINEAR_API_KEY in ~/.config/runner-dashboard/env."
+)
 _LINEAR_CONFIG_PATH = Path(
     os.environ.get(
         "RUNNER_DASHBOARD_LINEAR_CONFIG",
@@ -63,7 +65,9 @@ def build_linear_client(config: dict[str, Any]) -> LinearClient:
     return LinearClient(ApiKeyAuthProvider("LINEAR_API_KEY", env_map))
 
 
-def has_configured_linear_key(config: dict[str, Any], workspace_id: str | None = None) -> bool:
+def has_configured_linear_key(
+    config: dict[str, Any], workspace_id: str | None = None
+) -> bool:
     """Return whether any selected workspace has a non-empty API key env var."""
     for workspace in _select_workspaces(config, workspace_id):
         if os.environ.get(workspace_env_var(workspace), "").strip():
@@ -71,7 +75,9 @@ def has_configured_linear_key(config: dict[str, Any], workspace_id: str | None =
     return False
 
 
-async def list_workspace_summaries(config: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+async def list_workspace_summaries(
+    config: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     """Return configured workspaces with a cached auth-status probe."""
     config = config or load_linear_config()
     workspaces = configured_workspaces(config)
@@ -106,12 +112,16 @@ async def get_linear_workspaces() -> dict[str, list[dict[str, Any]]]:
 
 
 @router.get("/teams")
-async def get_linear_teams(workspace: str | None = None) -> dict[str, list[dict[str, Any]]]:
+async def get_linear_teams(
+    workspace: str | None = None,
+) -> dict[str, list[dict[str, Any]]]:
     """List Linear teams for one workspace or all configured workspaces."""
     config = load_linear_config()
     selected = _select_workspaces(config, workspace)
     if workspace and not selected:
-        raise HTTPException(status_code=404, detail=f"Unknown Linear workspace '{workspace}'")
+        raise HTTPException(
+            status_code=404, detail=f"Unknown Linear workspace '{workspace}'"
+        )
     if not selected:
         return {"teams": []}
     if not has_configured_linear_key(config, workspace):
@@ -149,7 +159,9 @@ async def get_linear_issues(
     """Return Linear-only issues normalized into the canonical issue shape."""
     config = _filter_config(load_linear_config(), workspace, team)
     if workspace and not configured_workspaces(config):
-        raise HTTPException(status_code=404, detail=f"Unknown Linear workspace '{workspace}'")
+        raise HTTPException(
+            status_code=404, detail=f"Unknown Linear workspace '{workspace}'"
+        )
     if not has_configured_linear_key(config, workspace):
         raise HTTPException(status_code=503, detail=LINEAR_NOT_CONFIGURED_DETAIL)
 
@@ -174,19 +186,31 @@ async def get_linear_issues(
 
 def _workspace_auth_kind(workspace: dict[str, Any]) -> str:
     auth = workspace.get("auth")
-    if isinstance(auth, dict) and isinstance(auth.get("kind"), str) and auth.get("kind"):
+    if (
+        isinstance(auth, dict)
+        and isinstance(auth.get("kind"), str)
+        and auth.get("kind")
+    ):
         return str(auth["kind"])
     return "api_key"
 
 
-def _select_workspaces(config: dict[str, Any], workspace_id: str | None) -> list[dict[str, Any]]:
+def _select_workspaces(
+    config: dict[str, Any], workspace_id: str | None
+) -> list[dict[str, Any]]:
     workspaces = configured_workspaces(config)
     if workspace_id is None:
         return workspaces
-    return [workspace for workspace in workspaces if str(workspace.get("id") or "") == workspace_id]
+    return [
+        workspace
+        for workspace in workspaces
+        if str(workspace.get("id") or "") == workspace_id
+    ]
 
 
-def _filter_config(config: dict[str, Any], workspace_id: str | None, team: str | None) -> dict[str, Any]:
+def _filter_config(
+    config: dict[str, Any], workspace_id: str | None, team: str | None
+) -> dict[str, Any]:
     filtered = copy.deepcopy(config)
     filtered["workspaces"] = _select_workspaces(filtered, workspace_id)
     if team:
@@ -195,7 +219,9 @@ def _filter_config(config: dict[str, Any], workspace_id: str | None, team: str |
     return filtered
 
 
-async def _workspace_auth_status(workspace: dict[str, Any], client: LinearClient) -> str:
+async def _workspace_auth_status(
+    workspace: dict[str, Any], client: LinearClient
+) -> str:
     workspace_id = str(workspace.get("id") or "")
     env_var = workspace_env_var(workspace)
     cache_key = f"{workspace_id}:{env_var}"

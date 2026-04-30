@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import sys
 from pathlib import Path
 
@@ -49,7 +48,9 @@ def push_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return path
 
 
-def _request(endpoint: str = "https://updates.push.services.example/sub/1") -> push.PushSubscriptionRequest:
+def _request(
+    endpoint: str = "https://updates.push.services.example/sub/1",
+) -> push.PushSubscriptionRequest:
     return push.PushSubscriptionRequest(
         endpoint=endpoint,
         keys=push.PushKeys(p256dh="client-public-key", auth="client-auth-secret"),
@@ -187,9 +188,11 @@ def test_payload_rejects_oversized_body() -> None:
 def test_principal_import_keeps_auth_dependency_available() -> None:
     assert Principal(id="test", type="bot", name="Test").id == "test"
 
+
 @pytest.mark.asyncio
 async def test_vapid_public_key_returns_key() -> None:
     import os
+
     old = os.environ.pop("VAPID_PUBLIC_KEY", None)
     try:
         resp = await push.get_vapid_public_key()

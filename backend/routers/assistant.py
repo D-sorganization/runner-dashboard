@@ -107,7 +107,9 @@ async def assistant_chat(
             )
         except Exception as exc:  # noqa: BLE001
             log.error("Anthropic tool-use error: %s", exc)
-            raise HTTPException(status_code=502, detail=f"Anthropic error: {exc}") from exc
+            raise HTTPException(
+                status_code=502, detail=f"Anthropic error: {exc}"
+            ) from exc
         return {
             "message": result["message"],
             "stop_reason": result["stop_reason"],
@@ -172,8 +174,12 @@ async def execute_assistant_tool(
             inputs=req.input,
             confirmation=req.confirmation.model_dump() if req.confirmation else None,
             principal=principal.id,
-            on_behalf_of=(req.confirmation.on_behalf_of or "") if req.confirmation else "",
-            correlation_id=(req.confirmation.correlation_id or "") if req.confirmation else "",
+            on_behalf_of=(
+                (req.confirmation.on_behalf_of or "") if req.confirmation else ""
+            ),
+            correlation_id=(
+                (req.confirmation.correlation_id or "") if req.confirmation else ""
+            ),
             gh_api_fn=gh_api,
             run_cmd_fn=run_cmd,
             normalize_repository_fn=_normalize_repository_input,
@@ -201,8 +207,12 @@ async def execute_assistant_tool(
             success=False,
             approved_by=req.confirmation.approved_by if req.confirmation else "n/a",
             principal=principal.id,
-            on_behalf_of=(req.confirmation.on_behalf_of or "") if req.confirmation else "",
-            correlation_id=(req.confirmation.correlation_id or "") if req.confirmation else "",
+            on_behalf_of=(
+                (req.confirmation.on_behalf_of or "") if req.confirmation else ""
+            ),
+            correlation_id=(
+                (req.confirmation.correlation_id or "") if req.confirmation else ""
+            ),
             note=req.confirmation.note if req.confirmation else "",
         )
         return {
@@ -275,11 +285,15 @@ async def propose_action(
             "description": proposal_dict.get("description", ""),
             "risk_level": proposal_dict.get("risk_level", "medium"),
             "rationale": proposal_dict.get("rationale", ""),
-            "estimated_duration_seconds": proposal_dict.get("estimated_duration_seconds"),
+            "estimated_duration_seconds": proposal_dict.get(
+                "estimated_duration_seconds"
+            ),
         }
     except Exception as e:  # noqa: BLE001
         log.error("Action proposal error: %s", e)
-        raise HTTPException(status_code=502, detail=f"AI provider error: {str(e)}") from e
+        raise HTTPException(
+            status_code=502, detail=f"AI provider error: {str(e)}"
+        ) from e
 
 
 @router.post("/api/assistant/execute-action", tags=["assistant"])

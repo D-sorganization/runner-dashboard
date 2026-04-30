@@ -47,7 +47,9 @@ async def _get_recent_org_repos(limit: int = 30) -> list[dict]:
     if cached is not None:
         return cached
     try:
-        data = await gh_api(f"/orgs/{ORG}/repos?sort=updated&per_page={min(limit, 100)}")
+        data = await gh_api(
+            f"/orgs/{ORG}/repos?sort=updated&per_page={min(limit, 100)}"
+        )
         repos = data if isinstance(data, list) else data.get("items", [])
         cache_set(f"org_repos:{limit}", repos)
         return repos
@@ -55,7 +57,9 @@ async def _get_recent_org_repos(limit: int = 30) -> list[dict]:
         return []
 
 
-async def _fetch_repo_runs(repo_name: str, per_page: int = 10, status: str | None = None) -> list[dict]:
+async def _fetch_repo_runs(
+    repo_name: str, per_page: int = 10, status: str | None = None
+) -> list[dict]:
     """Fetch workflow runs for a single repository."""
     url = f"/repos/{ORG}/{repo_name}/actions/runs?per_page={per_page}"
     if status:
@@ -171,7 +175,9 @@ async def get_runs(request: Request, per_page: int = 30) -> dict:
 
     runs_per_repo = max(3, per_page // max(len(repos[:10]), 1))
     sample = repos[:10]
-    all_runs_nested = await asyncio.gather(*[_fetch_repo_runs(r["name"], per_page=runs_per_repo) for r in sample])
+    all_runs_nested = await asyncio.gather(
+        *[_fetch_repo_runs(r["name"], per_page=runs_per_repo) for r in sample]
+    )
     all_runs: list[dict] = [run for sublist in all_runs_nested for run in sublist]
 
     all_runs.sort(key=lambda r: r.get("created_at", ""), reverse=True)
@@ -196,7 +202,11 @@ async def get_enriched_runs(request: Request, per_page: int = 50) -> dict:
     data = await get_runs(request, per_page=per_page)
     runs = data.get("workflow_runs", [])
     enrichable = runs[:RUN_JOB_ENRICHMENT_LIMIT]
-    enriched = list(await asyncio.gather(*[_enrich_run_with_job_placement(run) for run in enrichable]))
+    enriched = list(
+        await asyncio.gather(
+            *[_enrich_run_with_job_placement(run) for run in enrichable]
+        )
+    )
     enriched.extend(dict(run) for run in runs[RUN_JOB_ENRICHMENT_LIMIT:])
     result = {"workflow_runs": enriched, "total_count": len(enriched)}
     cache_set(cache_key, result)
@@ -267,7 +277,9 @@ async def list_workflows() -> dict:
                 if code2 == 0:
                     try:
                         content_data = json.loads(out2)
-                        content = base64.b64decode(content_data.get("content", "")).decode("utf-8", errors="replace")
+                        content = base64.b64decode(
+                            content_data.get("content", "")
+                        ).decode("utf-8", errors="replace")
                         if "workflow_dispatch" in content:
                             triggers.append("manual")
                         if "schedule" in content:
@@ -279,7 +291,11 @@ async def list_workflows() -> dict:
                     except Exception:  # noqa: BLE001
                         pass
             code3, out3, _ = await run_cmd(
-                ["gh", "api", f"/repos/{ORG}/{repo_name}/actions/workflows/{wf_id}/runs?per_page=3"],
+                [
+                    "gh",
+                    "api",
+                    f"/repos/{ORG}/{repo_name}/actions/workflows/{wf_id}/runs?per_page=3",
+                ],
                 timeout=10,
                 cwd=REPO_ROOT,
             )
@@ -352,11 +368,15 @@ async def dispatch_workflow(
     approved_by = principal.id
 
     if not repo or not workflow_id:
-        raise HTTPException(status_code=422, detail="repository and workflow_id required")
+        raise HTTPException(
+            status_code=422, detail="repository and workflow_id required"
+        )
 
     endpoint = f"/repos/{ORG}/{repo}/actions/workflows/{workflow_id}/dispatches"
     payload = {"ref": ref, "inputs": inputs}
-    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".json", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", suffix=".json", delete=False
+    ) as f:
         json.dump(payload, f)
         pf = f.name
     try:

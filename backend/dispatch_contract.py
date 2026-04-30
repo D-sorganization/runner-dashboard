@@ -70,7 +70,9 @@ class TimestampValidationResult(_StrEnum):
     INVALID_FORMAT = "invalid_format"
 
 
-def _validate_timestamp_freshness(timestamp_str: str, ttl_seconds: int = 300) -> TimestampValidationResult:
+def _validate_timestamp_freshness(
+    timestamp_str: str, ttl_seconds: int = 300
+) -> TimestampValidationResult:
     """Validate that timestamp is within ±ttl_seconds of current time."""
     try:
         if timestamp_str.endswith("Z"):
@@ -85,7 +87,11 @@ def _validate_timestamp_freshness(timestamp_str: str, ttl_seconds: int = 300) ->
         delta = abs((now - ts).total_seconds())
 
         if delta > ttl_seconds:
-            return TimestampValidationResult.TOO_OLD if ts < now else TimestampValidationResult.TOO_NEW
+            return (
+                TimestampValidationResult.TOO_OLD
+                if ts < now
+                else TimestampValidationResult.TOO_NEW
+            )
         return TimestampValidationResult.VALID
     except (ValueError, AttributeError):
         return TimestampValidationResult.INVALID_FORMAT
@@ -181,10 +187,14 @@ def _required_string(data: dict[str, Any], key: str) -> str:
     return text
 
 
-def _confirmation_state(validation: DispatchValidationResult, confirmation: DispatchConfirmation | None) -> str:
+def _confirmation_state(
+    validation: DispatchValidationResult, confirmation: DispatchConfirmation | None
+) -> str:
     if confirmation is None:
         return "missing" if validation.confirmation_required else "not-required"
-    if validation.confirmation_required and validation.reason.startswith("confirmation must "):
+    if validation.confirmation_required and validation.reason.startswith(
+        "confirmation must "
+    ):
         return "invalid"
     return "approved"
 
@@ -279,7 +289,11 @@ class CommandEnvelope:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CommandEnvelope:
         confirmation_data = data.get("confirmation")
-        confirmation = DispatchConfirmation.from_dict(confirmation_data) if confirmation_data is not None else None
+        confirmation = (
+            DispatchConfirmation.from_dict(confirmation_data)
+            if confirmation_data is not None
+            else None
+        )
         envelope = cls(
             action=_required_string(data, "action"),
             source=_required_string(data, "source"),
@@ -397,7 +411,9 @@ def validate_envelope_crypto(envelope: CommandEnvelope) -> CryptoValidationResul
     if not envelope.verify_signature():
         return CryptoValidationResult(valid=False, reason="envelope signature invalid")
 
-    issued_at_result = _validate_timestamp_freshness(envelope.issued_at, ttl_seconds=300)
+    issued_at_result = _validate_timestamp_freshness(
+        envelope.issued_at, ttl_seconds=300
+    )
     if issued_at_result != TimestampValidationResult.VALID:
         reason_map = {
             TimestampValidationResult.TOO_OLD: "envelope issued_at timestamp too old",
@@ -410,7 +426,9 @@ def validate_envelope_crypto(envelope: CommandEnvelope) -> CryptoValidationResul
         )
 
     if envelope.confirmation is not None:
-        approved_at_result = _validate_timestamp_freshness(envelope.confirmation.approved_at, ttl_seconds=300)
+        approved_at_result = _validate_timestamp_freshness(
+            envelope.confirmation.approved_at, ttl_seconds=300
+        )
         if approved_at_result != TimestampValidationResult.VALID:
             reason_map = {
                 TimestampValidationResult.TOO_OLD: "confirmation approved_at timestamp too old",
@@ -462,7 +480,9 @@ ALLOWLISTED_ACTIONS: dict[str, DispatchAction] = {
     "runner.stop": DispatchAction(
         name="runner.stop",
         access=DispatchAccess.PRIVILEGED,
-        description=("Stop one or all GitHub Actions runner services. Destructive: in-flight jobs will be abandoned."),
+        description=(
+            "Stop one or all GitHub Actions runner services. Destructive: in-flight jobs will be abandoned."
+        ),
         prototype_command=("sudo", "systemctl", "stop", "actions.runner.*"),
         requires_confirmation=True,
     ),
@@ -479,7 +499,9 @@ ALLOWLISTED_ACTIONS: dict[str, DispatchAction] = {
     "scheduler.modify": DispatchAction(
         name="scheduler.modify",
         access=DispatchAccess.PRIVILEGED,
-        description=("Enable or disable a scheduled maintenance job. Affects recurring fleet maintenance windows."),
+        description=(
+            "Enable or disable a scheduled maintenance job. Affects recurring fleet maintenance windows."
+        ),
         prototype_command=("sudo", "systemctl", "enable|disable", "<unit>"),
         requires_confirmation=True,
     ),
@@ -521,7 +543,10 @@ def _scheduler_modify_command(payload: dict[str, Any]) -> tuple[str, ...]:
         raise ValueError("scheduler.modify payload must request enable or disable")
 
     unit = str(
-        payload.get("unit") or payload.get("timer") or payload.get("service") or "runner-scheduler.timer"
+        payload.get("unit")
+        or payload.get("timer")
+        or payload.get("service")
+        or "runner-scheduler.timer"
     ).strip()
     if not unit:
         raise ValueError("scheduler.modify payload must include a systemd unit")
@@ -626,7 +651,9 @@ def validate_envelope(envelope: CommandEnvelope) -> DispatchValidationResult:
 
     # The guard above returns early only for PRIVILEGED+None; READ_ONLY actions
     # may reach this point with confirmation=None, so gate checks on access level.
-    if action.access is DispatchAccess.PRIVILEGED and (confirmation is None or not confirmation.approved_by.strip()):
+    if action.access is DispatchAccess.PRIVILEGED and (
+        confirmation is None or not confirmation.approved_by.strip()
+    ):
         return DispatchValidationResult(
             accepted=False,
             reason="confirmation must record approved_by",
@@ -634,7 +661,9 @@ def validate_envelope(envelope: CommandEnvelope) -> DispatchValidationResult:
             confirmation_required=True,
         )
 
-    if action.access is DispatchAccess.PRIVILEGED and (confirmation is None or not confirmation.approved_at.strip()):
+    if action.access is DispatchAccess.PRIVILEGED and (
+        confirmation is None or not confirmation.approved_at.strip()
+    ):
         return DispatchValidationResult(
             accepted=False,
             reason="confirmation must record approved_at",
@@ -681,7 +710,9 @@ def build_audit_log_entry(
         principal=envelope.principal,
         on_behalf_of=envelope.on_behalf_of,
         correlation_id=envelope.correlation_id,
-        args_hash=hashlib.sha256(json.dumps(envelope.payload, sort_keys=True).encode()).hexdigest(),
+        args_hash=hashlib.sha256(
+            json.dumps(envelope.payload, sort_keys=True).encode()
+        ).hexdigest(),
         decision="accepted" if validation.accepted else "rejected",
         detail=detail or validation.reason,
         confirmation_state=_confirmation_state(validation, envelope.confirmation),
@@ -690,7 +721,9 @@ def build_audit_log_entry(
     )
 
 
-def command_preview(action_name: str, payload: dict[str, Any] | None = None) -> tuple[str, ...]:
+def command_preview(
+    action_name: str, payload: dict[str, Any] | None = None
+) -> tuple[str, ...]:
     action = get_action(action_name)
     if action is None:
         raise KeyError(action_name)

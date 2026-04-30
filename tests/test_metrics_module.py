@@ -8,8 +8,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 _BACKEND_DIR = Path(__file__).parent.parent / "backend"
 sys.path.insert(0, str(_BACKEND_DIR))
 
@@ -31,8 +29,12 @@ def test_metrics_router_has_expected_routes() -> None:
 def test_metrics_router_not_inline_in_server() -> None:
     """The metrics endpoints must not be defined inline in server.py."""
     server_src = (_BACKEND_DIR / "server.py").read_text(encoding="utf-8")
-    assert '@app.get("/api/system")' not in server_src, "/api/system must be in router, not inline"
-    assert '@app.get("/api/fleet/status")' not in server_src, "/api/fleet/status must be in router, not inline"
+    assert (
+        '@app.get("/api/system")' not in server_src
+    ), "/api/system must be in router, not inline"
+    assert (
+        '@app.get("/api/fleet/status")' not in server_src
+    ), "/api/fleet/status must be in router, not inline"
 
 
 def test_server_registers_metrics_router() -> None:

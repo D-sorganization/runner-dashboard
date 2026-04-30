@@ -4,10 +4,7 @@ import importlib  # noqa: E402
 import os  # noqa: E402
 from pathlib import Path  # noqa: E402
 
-import pytest  # noqa: E402
-
 import dashboard_config  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -15,7 +12,10 @@ import dashboard_config  # noqa: E402
 
 
 def test_backend_dir() -> None:
-    assert dashboard_config.BACKEND_DIR == Path(__file__).parent.parent.resolve() / "backend"
+    assert (
+        dashboard_config.BACKEND_DIR
+        == Path(__file__).parent.parent.resolve() / "backend"
+    )
 
 
 def test_runner_base_dir() -> None:
@@ -52,7 +52,9 @@ def test_num_runners_below_max(monkeypatch) -> None:
 
 
 def test_num_runners_defaults(monkeypatch) -> None:
-    env = {k: v for k, v in os.environ.items() if k not in ("NUM_RUNNERS", "MAX_RUNNERS")}
+    env = {
+        k: v for k, v in os.environ.items() if k not in ("NUM_RUNNERS", "MAX_RUNNERS")
+    }
     monkeypatch.setattr(os, "environ", env)
     importlib.reload(dashboard_config)
     assert dashboard_config.NUM_RUNNERS == dashboard_config.DEFAULT_NUM_RUNNERS

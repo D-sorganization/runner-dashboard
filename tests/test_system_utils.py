@@ -8,17 +8,13 @@ These are all pure (or near-pure) functions with no external I/O.
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
-
-import pytest
 
 _BACKEND_DIR = Path(__file__).parent.parent / "backend"
 sys.path.insert(0, str(_BACKEND_DIR))
 
 import system_utils  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # get_workload_capacity_from_specs
@@ -26,65 +22,115 @@ import system_utils  # noqa: E402
 
 
 def test_workload_capacity_gpu_tag_added() -> None:
-    specs = {"cpu_logical_cores": 8, "memory_gb": 16.0, "gpu_vram_gb": 8.0, "gpu_count": 1}
+    specs = {
+        "cpu_logical_cores": 8,
+        "memory_gb": 16.0,
+        "gpu_vram_gb": 8.0,
+        "gpu_count": 1,
+    }
     result = system_utils.get_workload_capacity_from_specs(specs)
     assert "gpu" in result["tags"]
     assert result["gpu_slots"] == 1
 
 
 def test_workload_capacity_parallel_ci_tag_added() -> None:
-    specs = {"cpu_logical_cores": 16, "memory_gb": 32.0, "gpu_vram_gb": None, "gpu_count": 0}
+    specs = {
+        "cpu_logical_cores": 16,
+        "memory_gb": 32.0,
+        "gpu_vram_gb": None,
+        "gpu_count": 0,
+    }
     result = system_utils.get_workload_capacity_from_specs(specs)
     assert "parallel-ci" in result["tags"]
 
 
 def test_workload_capacity_memory_heavy_tag_added() -> None:
-    specs = {"cpu_logical_cores": 8, "memory_gb": 64.0, "gpu_vram_gb": None, "gpu_count": 0}
+    specs = {
+        "cpu_logical_cores": 8,
+        "memory_gb": 64.0,
+        "gpu_vram_gb": None,
+        "gpu_count": 0,
+    }
     result = system_utils.get_workload_capacity_from_specs(specs)
     assert "memory-heavy" in result["tags"]
 
 
 def test_workload_capacity_small_ci_tag_added() -> None:
-    specs = {"cpu_logical_cores": 2, "memory_gb": 4.0, "gpu_vram_gb": None, "gpu_count": 0}
+    specs = {
+        "cpu_logical_cores": 2,
+        "memory_gb": 4.0,
+        "gpu_vram_gb": None,
+        "gpu_count": 0,
+    }
     result = system_utils.get_workload_capacity_from_specs(specs)
     assert "small-ci" in result["tags"]
 
 
 def test_workload_capacity_cpu_slots_correct() -> None:
-    specs = {"cpu_logical_cores": 8, "memory_gb": 16.0, "gpu_vram_gb": None, "gpu_count": 0}
+    specs = {
+        "cpu_logical_cores": 8,
+        "memory_gb": 16.0,
+        "gpu_vram_gb": None,
+        "gpu_count": 0,
+    }
     result = system_utils.get_workload_capacity_from_specs(specs)
     assert result["cpu_slots"] == 4  # 8 // 2
 
 
 def test_workload_capacity_memory_slots_correct() -> None:
-    specs = {"cpu_logical_cores": 4, "memory_gb": 32.0, "gpu_vram_gb": None, "gpu_count": 0}
+    specs = {
+        "cpu_logical_cores": 4,
+        "memory_gb": 32.0,
+        "gpu_vram_gb": None,
+        "gpu_count": 0,
+    }
     result = system_utils.get_workload_capacity_from_specs(specs)
     assert result["memory_slots"] == 4  # 32 // 8
 
 
 def test_workload_capacity_none_cores_returns_none_slots() -> None:
-    specs = {"cpu_logical_cores": None, "memory_gb": None, "gpu_vram_gb": None, "gpu_count": 0}
+    specs = {
+        "cpu_logical_cores": None,
+        "memory_gb": None,
+        "gpu_vram_gb": None,
+        "gpu_count": 0,
+    }
     result = system_utils.get_workload_capacity_from_specs(specs)
     assert result["cpu_slots"] is None
     assert result["memory_slots"] is None
 
 
 def test_workload_capacity_zero_cores_returns_none_slots() -> None:
-    specs = {"cpu_logical_cores": 0, "memory_gb": 0, "gpu_vram_gb": None, "gpu_count": 0}
+    specs = {
+        "cpu_logical_cores": 0,
+        "memory_gb": 0,
+        "gpu_vram_gb": None,
+        "gpu_count": 0,
+    }
     result = system_utils.get_workload_capacity_from_specs(specs)
     assert result["cpu_slots"] is None
     assert result["memory_slots"] is None
 
 
 def test_workload_capacity_tags_sorted() -> None:
-    specs = {"cpu_logical_cores": 16, "memory_gb": 64.0, "gpu_vram_gb": 8.0, "gpu_count": 1}
+    specs = {
+        "cpu_logical_cores": 16,
+        "memory_gb": 64.0,
+        "gpu_vram_gb": 8.0,
+        "gpu_count": 1,
+    }
     result = system_utils.get_workload_capacity_from_specs(specs)
     assert result["tags"] == sorted(result["tags"])
 
 
 def test_workload_capacity_no_extra_tags_for_mid_range_hardware() -> None:
     # 6 cores, 16 GB RAM, no GPU — no special tags expected
-    specs = {"cpu_logical_cores": 6, "memory_gb": 16.0, "gpu_vram_gb": None, "gpu_count": 0}
+    specs = {
+        "cpu_logical_cores": 6,
+        "memory_gb": 16.0,
+        "gpu_vram_gb": None,
+        "gpu_count": 0,
+    }
     result = system_utils.get_workload_capacity_from_specs(specs)
     assert result["tags"] == []
 

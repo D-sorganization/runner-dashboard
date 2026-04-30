@@ -23,7 +23,11 @@ async def proxy_to_hub(request: Request):
             req = client.build_request(
                 request.method,
                 url,
-                headers={k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")},
+                headers={
+                    k: v
+                    for k, v in request.headers.items()
+                    if k.lower() not in ("host", "content-length")
+                },
                 content=await request.body(),
             )
             resp = await client.send(req)

@@ -180,18 +180,28 @@ async def test_credentials_endpoint_includes_linear_probe(client, monkeypatch) -
     monkeypatch.setattr(
         credentials_router,
         "list_workspace_summaries",
-        AsyncMock(return_value=[{"id": "personal", "auth_status": "ok", "auth_kind": "api_key"}]),
+        AsyncMock(
+            return_value=[
+                {"id": "personal", "auth_status": "ok", "auth_kind": "api_key"}
+            ]
+        ),
     )
 
     resp = await client.get("/api/credentials")
     assert resp.status_code == 200
     data = resp.json()
     probes = data.get("probes", []) if isinstance(data, dict) else []
-    assert any(probe.get("key_provider") == "linear" for probe in probes if isinstance(probe, dict))
+    assert any(
+        probe.get("key_provider") == "linear"
+        for probe in probes
+        if isinstance(probe, dict)
+    )
 
 
 @pytest.mark.asyncio
-async def test_credentials_set_key_accepts_linear_provider(client, monkeypatch, tmp_path) -> None:
+async def test_credentials_set_key_accepts_linear_provider(
+    client, monkeypatch, tmp_path
+) -> None:
     from routers import credentials as credentials_router  # noqa: PLC0415
 
     dashboard_env = tmp_path / "runner-dashboard.env"
@@ -210,11 +220,21 @@ async def test_credentials_set_key_accepts_linear_provider(client, monkeypatch, 
 
 
 @pytest.mark.asyncio
-async def test_issues_route_source_linear_503_when_not_configured(client, monkeypatch) -> None:
+async def test_issues_route_source_linear_503_when_not_configured(
+    client, monkeypatch
+) -> None:
     import server  # noqa: PLC0415
 
-    monkeypatch.setattr(server._linear_router, "load_linear_config", lambda: {"workspaces": [], "mappings": {}})
-    monkeypatch.setattr(server._linear_router, "has_configured_linear_key", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(
+        server._linear_router,
+        "load_linear_config",
+        lambda: {"workspaces": [], "mappings": {}},
+    )
+    monkeypatch.setattr(
+        server._linear_router,
+        "has_configured_linear_key",
+        lambda *_args, **_kwargs: False,
+    )
 
     resp = await client.get("/api/issues?source=linear")
 
@@ -223,11 +243,21 @@ async def test_issues_route_source_linear_503_when_not_configured(client, monkey
 
 
 @pytest.mark.asyncio
-async def test_issues_route_source_unified_503_when_not_configured(client, monkeypatch) -> None:
+async def test_issues_route_source_unified_503_when_not_configured(
+    client, monkeypatch
+) -> None:
     import server  # noqa: PLC0415
 
-    monkeypatch.setattr(server._linear_router, "load_linear_config", lambda: {"workspaces": [], "mappings": {}})
-    monkeypatch.setattr(server._linear_router, "has_configured_linear_key", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(
+        server._linear_router,
+        "load_linear_config",
+        lambda: {"workspaces": [], "mappings": {}},
+    )
+    monkeypatch.setattr(
+        server._linear_router,
+        "has_configured_linear_key",
+        lambda *_args, **_kwargs: False,
+    )
 
     resp = await client.get("/api/issues?source=unified")
 
@@ -236,18 +266,31 @@ async def test_issues_route_source_unified_503_when_not_configured(client, monke
 
 
 @pytest.mark.asyncio
-async def test_issues_route_source_linear_returns_inventory_shape(client, monkeypatch) -> None:
+async def test_issues_route_source_linear_returns_inventory_shape(
+    client, monkeypatch
+) -> None:
     import server  # noqa: PLC0415
 
-    linear_config = {"workspaces": [{"id": "personal", "mapping": "default"}], "mappings": {"default": {}}}
-    monkeypatch.setattr(server._linear_router, "load_linear_config", lambda: linear_config)
-    monkeypatch.setattr(server._linear_router, "has_configured_linear_key", lambda *_args, **_kwargs: True)
+    linear_config = {
+        "workspaces": [{"id": "personal", "mapping": "default"}],
+        "mappings": {"default": {}},
+    }
+    monkeypatch.setattr(
+        server._linear_router, "load_linear_config", lambda: linear_config
+    )
+    monkeypatch.setattr(
+        server._linear_router,
+        "has_configured_linear_key",
+        lambda *_args, **_kwargs: True,
+    )
 
     class FakeClient:
         async def aclose(self) -> None:
             return None
 
-    monkeypatch.setattr(server._linear_router, "build_linear_client", lambda _config: FakeClient())
+    monkeypatch.setattr(
+        server._linear_router, "build_linear_client", lambda _config: FakeClient()
+    )
     monkeypatch.setattr(
         server.linear_inventory,
         "fetch_all_issues",
@@ -262,18 +305,31 @@ async def test_issues_route_source_linear_returns_inventory_shape(client, monkey
 
 
 @pytest.mark.asyncio
-async def test_issues_route_source_unified_returns_inventory_shape(client, monkeypatch) -> None:
+async def test_issues_route_source_unified_returns_inventory_shape(
+    client, monkeypatch
+) -> None:
     import server  # noqa: PLC0415
 
-    linear_config = {"workspaces": [{"id": "personal", "mapping": "default"}], "mappings": {"default": {}}}
-    monkeypatch.setattr(server._linear_router, "load_linear_config", lambda: linear_config)
-    monkeypatch.setattr(server._linear_router, "has_configured_linear_key", lambda *_args, **_kwargs: True)
+    linear_config = {
+        "workspaces": [{"id": "personal", "mapping": "default"}],
+        "mappings": {"default": {}},
+    }
+    monkeypatch.setattr(
+        server._linear_router, "load_linear_config", lambda: linear_config
+    )
+    monkeypatch.setattr(
+        server._linear_router,
+        "has_configured_linear_key",
+        lambda *_args, **_kwargs: True,
+    )
 
     class FakeClient:
         async def aclose(self) -> None:
             return None
 
-    monkeypatch.setattr(server._linear_router, "build_linear_client", lambda _config: FakeClient())
+    monkeypatch.setattr(
+        server._linear_router, "build_linear_client", lambda _config: FakeClient()
+    )
     monkeypatch.setattr(
         server.unified_issue_inventory,
         "fetch_unified_issues",

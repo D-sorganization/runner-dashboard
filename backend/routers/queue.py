@@ -98,11 +98,15 @@ async def _queue_impl() -> dict:
     async def fetch_active_runs(repo_name: str) -> list[dict]:
         results: list[dict] = []
         for status in ("queued", "in_progress"):
-            results.extend(await _fetch_repo_runs(repo_name, per_page=10, status=status))
+            results.extend(
+                await _fetch_repo_runs(repo_name, per_page=10, status=status)
+            )
         return results
 
     sample = repos[:15]
-    all_runs_nested = await asyncio.gather(*[fetch_active_runs(r["name"]) for r in sample])
+    all_runs_nested = await asyncio.gather(
+        *[fetch_active_runs(r["name"]) for r in sample]
+    )
     all_runs: list[dict] = [run for sublist in all_runs_nested for run in sublist]
 
     queued = sorted(
@@ -217,7 +221,10 @@ async def cancel_workflow_runs(
         r
         for r in queue_data["queued"]
         if r.get("name") == workflow_name
-        and (target_repo is None or (r.get("repository") or {}).get("name") == target_repo)  # noqa: E501
+        and (
+            target_repo is None
+            or (r.get("repository") or {}).get("name") == target_repo
+        )  # noqa: E501
     ]
 
     cancelled: list[dict] = []

@@ -1,21 +1,30 @@
 #!/usr/bin/env python3
 """Retry failed repos with --no-verify to skip pre-commit hooks."""
 
-import subprocess
 import shutil
+import subprocess
 from pathlib import Path
 
 DATE = "2026-04-26"
 OWNER = "D-sorganization"
 
-FAILED = ["controls", "Games", "MLProjects", "Playground", "UpstreamDrift", "Worksheet-Workshop"]
+FAILED = [
+    "controls",
+    "Games",
+    "MLProjects",
+    "Playground",
+    "UpstreamDrift",
+    "Worksheet-Workshop",
+]
 
 
 def run(cmd, cwd=None):
     try:
         return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
     except Exception as e:
-        return subprocess.CompletedProcess(args=cmd, returncode=1, stdout="", stderr=str(e))
+        return subprocess.CompletedProcess(
+            args=cmd, returncode=1, stdout="", stderr=str(e)
+        )
 
 
 def main():
@@ -30,7 +39,7 @@ def main():
         # Stash any dirty state
         status = run(["git", "status", "--porcelain"], cwd=str(repo_path))
         if status.stdout.strip():
-            print(f"  Dirty tree, stashing...")
+            print("  Dirty tree, stashing...")
             run(["git", "stash", "-u"], cwd=str(repo_path))
 
         branch_name = f"assessment/{DATE}"
@@ -60,18 +69,25 @@ def main():
         # Stage and commit with --no-verify
         run(["git", "add", "docs/assessments/"], cwd=str(repo_path))
         commit_msg = f"Add A-O assessment artifacts for {repo} ({DATE})"
-        commit = run(["git", "commit", "--no-verify", "-m", commit_msg], cwd=str(repo_path))
+        commit = run(
+            ["git", "commit", "--no-verify", "-m", commit_msg], cwd=str(repo_path)
+        )
         if commit.returncode != 0:
             # If nothing to commit, that's okay
-            if "nothing to commit" in commit.stdout.lower() or "nothing to commit" in commit.stderr.lower():
-                print(f"  Nothing new to commit")
+            if (
+                "nothing to commit" in commit.stdout.lower()
+                or "nothing to commit" in commit.stderr.lower()
+            ):
+                print("  Nothing new to commit")
             else:
                 print(f"  Commit failed: {commit.stderr}")
                 results.append({"repo": repo, "status": "commit_failed"})
                 continue
 
         # Force push to overwrite any previous partial push
-        push = run(["git", "push", "-f", "-u", "origin", branch_name], cwd=str(repo_path))
+        push = run(
+            ["git", "push", "-f", "-u", "origin", branch_name], cwd=str(repo_path)
+        )
         if push.returncode != 0:
             print(f"  Push failed: {push.stderr}")
             results.append({"repo": repo, "status": "push_failed"})
@@ -100,9 +116,14 @@ def main():
         )
         if pr.returncode != 0:
             # Check if PR already exists
-            if "already exists" in pr.stderr.lower() or "already exists" in pr.stdout.lower():
+            if (
+                "already exists" in pr.stderr.lower()
+                or "already exists" in pr.stdout.lower()
+            ):
                 print(f"  PR already exists for {repo}")
-                results.append({"repo": repo, "status": "ok", "pr_url": "already_exists"})
+                results.append(
+                    {"repo": repo, "status": "ok", "pr_url": "already_exists"}
+                )
             else:
                 print(f"  PR creation failed: {pr.stderr}")
                 results.append({"repo": repo, "status": "pr_failed"})

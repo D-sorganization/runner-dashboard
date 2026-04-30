@@ -115,7 +115,9 @@ async def list_all_repos(org: str) -> list[str]:
         default=[],
         timeout=45,
     )
-    return [r["name"] for r in (data or []) if not r.get("isArchived") and r.get("name")]
+    return [
+        r["name"] for r in (data or []) if not r.get("isArchived") and r.get("name")
+    ]
 
 
 # ---------------------------------------------------------------------------

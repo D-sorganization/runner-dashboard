@@ -89,7 +89,9 @@ class IdentityManager:
         with open(self.tokens_path, "w") as f:
             yaml.dump({"tokens": [t.model_dump() for t in self.tokens]}, f)
 
-    def mint_service_token(self, principal_id: str, name: str, expires_in_days: int | None = None) -> str:
+    def mint_service_token(
+        self, principal_id: str, name: str, expires_in_days: int | None = None
+    ) -> str:
         if principal_id not in self.principals:
             raise ValueError(f"Principal {principal_id} not found")
 
@@ -102,7 +104,9 @@ class IdentityManager:
 
         token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 
-        expires_at = time.time() + (expires_in_days * 86400) if expires_in_days else None
+        expires_at = (
+            time.time() + (expires_in_days * 86400) if expires_in_days else None
+        )
 
         record = TokenRecord(
             token_hash=token_hash,
@@ -194,7 +198,9 @@ def require_principal(
                 request.state.on_behalf_of = prin.id
                 return target_prin
             else:
-                raise HTTPException(status_code=400, detail="Impersonation target not found")
+                raise HTTPException(
+                    status_code=400, detail="Impersonation target not found"
+                )
         else:
             raise HTTPException(status_code=403, detail="Only admins can impersonate")
 
@@ -241,7 +247,9 @@ def require_scope(required_scope: str):
             return principal
 
         for s in principal_scopes:
-            if s == required_scope or (s.endswith("*") and required_scope.startswith(s[:-1])):
+            if s == required_scope or (
+                s.endswith("*") and required_scope.startswith(s[:-1])
+            ):
                 return principal
 
         raise HTTPException(

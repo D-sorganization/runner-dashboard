@@ -62,8 +62,12 @@ def test_mobile_smoke_page_contract_targets_existing_frontend_markers() -> None:
     }
     for page in smoke_pages:
         assert page["tabLabel"], f"{page['name']} must name the tab a smoke test opens"
-        assert page["goldenInteraction"], f"{page['name']} must describe one golden mobile action"
-        assert page["requiredMarkers"], f"{page['name']} must include static frontend markers"
+        assert page[
+            "goldenInteraction"
+        ], f"{page['name']} must describe one golden mobile action"
+        assert page[
+            "requiredMarkers"
+        ], f"{page['name']} must include static frontend markers"
         for marker in page["requiredMarkers"]:
             assert marker in html or marker in js, (
                 f"{page['name']} marker {marker!r} is missing from "

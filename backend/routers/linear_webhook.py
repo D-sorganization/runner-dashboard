@@ -38,7 +38,9 @@ log = logging.getLogger("dashboard.linear_webhook")
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 
-LINEAR_WEBHOOK_SECRET_ENV = os.environ.get("LINEAR_WEBHOOK_SECRET_ENV", "LINEAR_WEBHOOK_SECRET")
+LINEAR_WEBHOOK_SECRET_ENV = os.environ.get(
+    "LINEAR_WEBHOOK_SECRET_ENV", "LINEAR_WEBHOOK_SECRET"
+)
 
 # Maximum age of a webhook payload to prevent replay attacks (seconds)
 MAX_WEBHOOK_AGE_SECONDS = 300
@@ -56,7 +58,9 @@ class LinearWebhookPayload(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
     created_at: str | int | None = Field(default=None, alias="createdAt")
     webhook_id: str | None = Field(default=None, alias="webhookId", max_length=100)
-    organization_id: str | None = Field(default=None, alias="organizationId", max_length=100)
+    organization_id: str | None = Field(
+        default=None, alias="organizationId", max_length=100
+    )
 
     @field_validator("action")
     @classmethod
@@ -86,7 +90,9 @@ def _verify_linear_signature(
 ) -> bool:
     """Verify the Linear-Signature header against the shared secret."""
     if not signature_header and not secret:
-        log.warning("linear_webhook: signature verification skipped (no header, no secret)")
+        log.warning(
+            "linear_webhook: signature verification skipped (no header, no secret)"
+        )
         return True
 
     if not signature_header:
@@ -149,7 +155,9 @@ def _payload_too_old(created_at: str | int | None) -> bool:
 # ─── Dispatch Conversion ────────────────────────────────────────────────────────
 
 
-def _build_dispatch_envelope(linear_payload: LinearWebhookPayload) -> dispatch_contract.CommandEnvelope:
+def _build_dispatch_envelope(
+    linear_payload: LinearWebhookPayload,
+) -> dispatch_contract.CommandEnvelope:
     """Convert a validated Linear webhook payload into a dispatch envelope.
 
     The envelope uses ``agents.dispatch.issue`` so the fleet can route an
@@ -160,7 +168,11 @@ def _build_dispatch_envelope(linear_payload: LinearWebhookPayload) -> dispatch_c
     issue_id = str(data.get("id") or data.get("identifier") or "unknown")
     issue_title = str(data.get("title") or "")
     issue_url = str(data.get("url") or "")
-    team_name = str(data.get("team", {}).get("name") or "") if isinstance(data.get("team"), dict) else ""
+    team_name = (
+        str(data.get("team", {}).get("name") or "")
+        if isinstance(data.get("team"), dict)
+        else ""
+    )
 
     # Build a payload compatible with agents.dispatch.issue action
     payload = {
@@ -207,7 +219,9 @@ async def linear_webhook(
         payload = LinearWebhookPayload.model_validate(payload_raw)
     except Exception as exc:
         log.warning("linear_webhook: payload validation failed: %s", exc)
-        raise HTTPException(status_code=422, detail="Payload validation failed") from exc
+        raise HTTPException(
+            status_code=422, detail="Payload validation failed"
+        ) from exc
 
     # Signature verification
     secret = os.environ.get(LINEAR_WEBHOOK_SECRET_ENV, "")
@@ -220,8 +234,15 @@ async def linear_webhook(
 
     # Replay protection
     if _is_replay(payload.webhook_id):
-        log.info("linear_webhook: replay detected for webhook_id=%s", payload.webhook_id)
-        return {"ok": True, "replay": True, "action": payload.action, "type": payload.type}
+        log.info(
+            "linear_webhook: replay detected for webhook_id=%s", payload.webhook_id
+        )
+        return {
+            "ok": True,
+            "replay": True,
+            "action": payload.action,
+            "type": payload.type,
+        }
 
     # Age check
     if _payload_too_old(payload.created_at):
@@ -241,7 +262,11 @@ async def linear_webhook(
         try:
             envelope = _build_dispatch_envelope(payload)
         except Exception as exc:
-            log.error("linear_webhook: failed to build dispatch envelope: %s", exc, exc_info=True)
+            log.error(
+                "linear_webhook: failed to build dispatch envelope: %s",
+                exc,
+                exc_info=True,
+            )
 
     log.info(
         "linear_webhook: accepted action=%s type=%s webhook_id=%s org=%s dispatch=%s",

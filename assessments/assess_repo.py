@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Parameterized A-O assessment for any D-Sorganization repo."""
 
-import sys, subprocess, json, re
+import json
+import re
+import subprocess
+import sys
 from pathlib import Path
 
 DATE = "2026-04-26"
@@ -10,7 +13,9 @@ OWNER = "D-sorganization"
 
 def run(cmd, cwd, check=False):
     try:
-        return subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT, text=True)
+        return subprocess.check_output(
+            cmd, cwd=cwd, stderr=subprocess.STDOUT, text=True
+        )
     except subprocess.CalledProcessError as e:
         return e.stdout if check else ""
     except FileNotFoundError:
@@ -36,8 +41,16 @@ def grep_py(pattern, repo, directory):
 def assess(repo):
     findings = []
     scores = {}
-    backend_py = list((Path(repo) / "backend").rglob("*.py")) if (Path(repo) / "backend").exists() else []
-    src_py = list((Path(repo) / "src").rglob("*.py")) if (Path(repo) / "src").exists() else []
+    backend_py = (
+        list((Path(repo) / "backend").rglob("*.py"))
+        if (Path(repo) / "backend").exists()
+        else []
+    )
+    src_py = (
+        list((Path(repo) / "src").rglob("*.py"))
+        if (Path(repo) / "src").exists()
+        else []
+    )
     all_py = backend_py + src_py
 
     # A. Project Organization & Structure
@@ -56,7 +69,14 @@ def assess(repo):
             )
             score_a = max(score_a - 1, 0)
     else:
-        findings.append({"criterion": "A", "severity": "P1", "principle": "PP8", "text": "No .gitignore present"})
+        findings.append(
+            {
+                "criterion": "A",
+                "severity": "P1",
+                "principle": "PP8",
+                "text": "No .gitignore present",
+            }
+        )
         score_a = 3
     for junk in ["misc", "stuff", "old", "temp", "tmp"]:
         if (Path(repo) / junk).exists():
@@ -65,7 +85,7 @@ def assess(repo):
                     "criterion": "A",
                     "severity": "P2",
                     "principle": "PP8",
-                    "text": "Junk drawer directory '{}' exists".format(junk),
+                    "text": f"Junk drawer directory '{junk}' exists",
                 }
             )
             score_a = max(score_a - 1, 0)
@@ -95,14 +115,24 @@ def assess(repo):
                     "criterion": "B",
                     "severity": "P2",
                     "principle": "PP4",
-                    "text": "README.md only {} lines (<30)".format(lines),
+                    "text": f"README.md only {lines} lines (<30)",
                 }
             )
             score_b = max(score_b - 2, 0)
     else:
-        findings.append({"criterion": "B", "severity": "P0", "principle": "PP4", "text": "README.md missing"})
+        findings.append(
+            {
+                "criterion": "B",
+                "severity": "P0",
+                "principle": "PP4",
+                "text": "README.md missing",
+            }
+        )
         score_b = 0
-    if not (Path(repo) / "CLAUDE.md").exists() and not (Path(repo) / "AGENTS.md").exists():
+    if (
+        not (Path(repo) / "CLAUDE.md").exists()
+        and not (Path(repo) / "AGENTS.md").exists()
+    ):
         findings.append(
             {
                 "criterion": "B",
@@ -120,9 +150,13 @@ def assess(repo):
             txt = f.read_text(encoding="utf-8", errors="ignore")
             lines = txt.splitlines()
             for i, line in enumerate(lines):
-                if line.strip().startswith("def ") and not line.strip().startswith("def _"):
+                if line.strip().startswith("def ") and not line.strip().startswith(
+                    "def _"
+                ):
                     total_funcs += 1
-                    if i + 1 < len(lines) and ('"""' in lines[i + 1] or "'''" in lines[i + 1]):
+                    if i + 1 < len(lines) and (
+                        '"""' in lines[i + 1] or "'''" in lines[i + 1]
+                    ):
                         docstring_funcs += 1
         except Exception:
             pass
@@ -132,13 +166,20 @@ def assess(repo):
                 "criterion": "B",
                 "severity": "P1",
                 "principle": "PP4",
-                "text": "Docstring coverage low: {}/{} public functions in sample".format(docstring_funcs, total_funcs),
+                "text": f"Docstring coverage low: {docstring_funcs}/{total_funcs} public functions in sample",
             }
         )
         score_b = max(score_b - 1, 0)
     adr_dir = Path(repo) / "docs" / "adr"
     if not adr_dir.exists() or not list(adr_dir.glob("*.md")):
-        findings.append({"criterion": "B", "severity": "P2", "principle": "PP4", "text": "No ADRs found in docs/adr/"})
+        findings.append(
+            {
+                "criterion": "B",
+                "severity": "P2",
+                "principle": "PP4",
+                "text": "No ADRs found in docs/adr/",
+            }
+        )
         score_b = max(score_b - 1, 0)
     scores["B"] = score_b
 
@@ -158,19 +199,40 @@ def assess(repo):
             )
             score_c = max(score_c - 2, 0)
     else:
-        findings.append({"criterion": "C", "severity": "P0", "principle": "PP7", "text": "No tests/ directory"})
+        findings.append(
+            {
+                "criterion": "C",
+                "severity": "P0",
+                "principle": "PP7",
+                "text": "No tests/ directory",
+            }
+        )
         score_c = 0
     if not (Path(repo) / ".coverage").exists():
-        findings.append({"criterion": "C", "severity": "P2", "principle": "PP7", "text": "No .coverage file found"})
+        findings.append(
+            {
+                "criterion": "C",
+                "severity": "P2",
+                "principle": "PP7",
+                "text": "No .coverage file found",
+            }
+        )
     scores["C"] = score_c
 
     # D. Robustness & Error Handling
     score_d = 6
-    bare_except = grep_py(r"except\s*:\s*$|except\s+Exception\s*:\s*pass", repo, "backend") + grep_py(
-        r"except\s*:\s*$|except\s+Exception\s*:\s*pass", repo, "src"
-    )
+    bare_except = grep_py(
+        r"except\s*:\s*$|except\s+Exception\s*:\s*pass", repo, "backend"
+    ) + grep_py(r"except\s*:\s*$|except\s+Exception\s*:\s*pass", repo, "src")
     if bare_except:
-        findings.append({"criterion": "D", "severity": "P1", "principle": "PP6", "text": "Bare except blocks found"})
+        findings.append(
+            {
+                "criterion": "D",
+                "severity": "P1",
+                "principle": "PP6",
+                "text": "Bare except blocks found",
+            }
+        )
         score_d = max(score_d - 2, 0)
     for f in all_py[:50]:
         try:
@@ -181,7 +243,7 @@ def assess(repo):
                         "criterion": "D",
                         "severity": "P2",
                         "principle": "PP6",
-                        "text": "try/except returning None without logging in {}".format(f.name),
+                        "text": f"try/except returning None without logging in {f.name}",
                     }
                 )
         except Exception:
@@ -199,13 +261,20 @@ def assess(repo):
                         "criterion": "E",
                         "severity": "P2",
                         "principle": "PP4",
-                        "text": "Possible repeated file I/O inside loop in {}".format(f.name),
+                        "text": f"Possible repeated file I/O inside loop in {f.name}",
                     }
                 )
         except Exception:
             pass
     if not (Path(repo) / "benchmarks").exists():
-        findings.append({"criterion": "E", "severity": "P2", "principle": "PP4", "text": "No benchmarks/ directory"})
+        findings.append(
+            {
+                "criterion": "E",
+                "severity": "P2",
+                "principle": "PP4",
+                "text": "No benchmarks/ directory",
+            }
+        )
     scores["E"] = score_e
 
     # F. Code Craftsmanship
@@ -219,7 +288,7 @@ def assess(repo):
                         "criterion": "F",
                         "severity": "P0",
                         "principle": "PP1",
-                        "text": "God file {} ({} lines) exceeds 500-line soft cap".format(f.name, lines),
+                        "text": f"God file {f.name} ({lines} lines) exceeds 500-line soft cap",
                     }
                 )
                 score_f = max(score_f - 2, 0)
@@ -238,14 +307,19 @@ def assess(repo):
                 "criterion": "F",
                 "severity": "P2",
                 "principle": "PP1",
-                "text": "Many magic float literals ({}) in sample".format(magic),
+                "text": f"Many magic float literals ({magic}) in sample",
             }
         )
     scores["F"] = score_f
 
     # G. Dependencies & Supply Chain
     score_g = 6
-    lockfiles = ["poetry.lock", "package-lock.json", "requirements.lock", "Pipfile.lock"]
+    lockfiles = [
+        "poetry.lock",
+        "package-lock.json",
+        "requirements.lock",
+        "Pipfile.lock",
+    ]
     has_lock = any((Path(repo) / lf).exists() for lf in lockfiles)
     if not has_lock:
         findings.append(
@@ -266,7 +340,11 @@ def assess(repo):
         try:
             txt = f.read_text(encoding="utf-8", errors="ignore")
             for i, line in enumerate(txt.splitlines(), 1):
-                if re.search(r'(password|secret|api[_-]?key|token)\s*=\s*["\']', line, re.IGNORECASE):
+                if re.search(
+                    r'(password|secret|api[_-]?key|token)\s*=\s*["\']',
+                    line,
+                    re.IGNORECASE,
+                ):
                     cred.append((str(f), i))
         except Exception:
             pass
@@ -307,10 +385,17 @@ def assess(repo):
 
     # J. Logging, Observability & Telemetry
     score_j = 5
-    prints = grep_py(r"^\s*print\(", repo, "backend") + grep_py(r"^\s*print\(", repo, "src")
+    prints = grep_py(r"^\s*print\(", repo, "backend") + grep_py(
+        r"^\s*print\(", repo, "src"
+    )
     if prints:
         findings.append(
-            {"criterion": "J", "severity": "P2", "principle": "PP6", "text": "print() statements found (use logging)"}
+            {
+                "criterion": "J",
+                "severity": "P2",
+                "principle": "PP6",
+                "text": "print() statements found (use logging)",
+            }
         )
         score_j = max(score_j - 2, 0)
     scores["J"] = score_j
@@ -335,7 +420,7 @@ def assess(repo):
                 "criterion": "K",
                 "severity": "P0",
                 "principle": "PP8",
-                "text": "{} TODO/FIXME/XXX comments without issue links".format(todo_count),
+                "text": f"{todo_count} TODO/FIXME/XXX comments without issue links",
             }
         )
         score_k = max(score_k - 3, 0)
@@ -345,7 +430,7 @@ def assess(repo):
                 "criterion": "K",
                 "severity": "P1",
                 "principle": "PP8",
-                "text": "{} TODO/FIXME/XXX comments -- link to issues".format(todo_count),
+                "text": f"{todo_count} TODO/FIXME/XXX comments -- link to issues",
             }
         )
         score_k = max(score_k - 1, 0)
@@ -368,18 +453,33 @@ def assess(repo):
             score_l = max(score_l - 3, 0)
     else:
         findings.append(
-            {"criterion": "L", "severity": "P0", "principle": "PP7", "text": "No .github/workflows/ directory"}
+            {
+                "criterion": "L",
+                "severity": "P0",
+                "principle": "PP7",
+                "text": "No .github/workflows/ directory",
+            }
         )
         score_l = 0
     if not (Path(repo) / ".pre-commit-config.yaml").exists():
-        findings.append({"criterion": "L", "severity": "P2", "principle": "PP7", "text": "No .pre-commit-config.yaml"})
+        findings.append(
+            {
+                "criterion": "L",
+                "severity": "P2",
+                "principle": "PP7",
+                "text": "No .pre-commit-config.yaml",
+            }
+        )
     scores["L"] = score_l
 
     # M. Deployment & Operability
     score_m = 6
     deploy_dir = Path(repo) / "deploy"
     if deploy_dir.exists():
-        if not any((deploy_dir / f).exists() for f in ["rollback.sh", "README.md", "runbook.md"]):
+        if not any(
+            (deploy_dir / f).exists()
+            for f in ["rollback.sh", "README.md", "runbook.md"]
+        ):
             findings.append(
                 {
                     "criterion": "M",
@@ -390,28 +490,66 @@ def assess(repo):
             )
             score_m = max(score_m - 1, 0)
     else:
-        findings.append({"criterion": "M", "severity": "P2", "principle": "PP3", "text": "No deploy/ directory"})
+        findings.append(
+            {
+                "criterion": "M",
+                "severity": "P2",
+                "principle": "PP3",
+                "text": "No deploy/ directory",
+            }
+        )
         score_m = max(score_m - 1, 0)
     if not (Path(repo) / "VERSION").exists():
-        findings.append({"criterion": "M", "severity": "P2", "principle": "PP5", "text": "No VERSION file"})
+        findings.append(
+            {
+                "criterion": "M",
+                "severity": "P2",
+                "principle": "PP5",
+                "text": "No VERSION file",
+            }
+        )
     scores["M"] = score_m
 
     # N. Compliance, Licensing & Governance
     score_n = 8
     if not (Path(repo) / "LICENSE").exists():
-        findings.append({"criterion": "N", "severity": "P1", "principle": "PP3", "text": "LICENSE file missing"})
+        findings.append(
+            {
+                "criterion": "N",
+                "severity": "P1",
+                "principle": "PP3",
+                "text": "LICENSE file missing",
+            }
+        )
         score_n = max(score_n - 3, 0)
     if not (Path(repo) / "SECURITY.md").exists():
-        findings.append({"criterion": "N", "severity": "P2", "principle": "PP3", "text": "SECURITY.md missing"})
+        findings.append(
+            {
+                "criterion": "N",
+                "severity": "P2",
+                "principle": "PP3",
+                "text": "SECURITY.md missing",
+            }
+        )
         score_n = max(score_n - 1, 0)
     if not (Path(repo) / "CONTRIBUTING.md").exists():
-        findings.append({"criterion": "N", "severity": "P2", "principle": "PP3", "text": "CONTRIBUTING.md missing"})
+        findings.append(
+            {
+                "criterion": "N",
+                "severity": "P2",
+                "principle": "PP3",
+                "text": "CONTRIBUTING.md missing",
+            }
+        )
         score_n = max(score_n - 1, 0)
     scores["N"] = score_n
 
     # O. Agentic Usability
     score_o = 7
-    if not (Path(repo) / "CLAUDE.md").exists() and not (Path(repo) / "AGENTS.md").exists():
+    if (
+        not (Path(repo) / "CLAUDE.md").exists()
+        and not (Path(repo) / "AGENTS.md").exists()
+    ):
         findings.append(
             {
                 "criterion": "O",
@@ -422,18 +560,27 @@ def assess(repo):
         )
         score_o = max(score_o - 2, 0)
     if not (Path(repo) / "SPEC.md").exists():
-        findings.append({"criterion": "O", "severity": "P2", "principle": "PP4", "text": "SPEC.md missing"})
+        findings.append(
+            {
+                "criterion": "O",
+                "severity": "P2",
+                "principle": "PP4",
+                "text": "SPEC.md missing",
+            }
+        )
         score_o = max(score_o - 1, 0)
     scores["O"] = score_o
 
     overall = round(sum(scores.values()) / len(scores), 1)
     report = {
         "meta": {
-            "repo": "{}/{}".format(OWNER, repo),
+            "repo": f"{OWNER}/{repo}",
             "date": DATE,
             "head_short": run(["git", "log", "-1", "--format=%h"], cwd=repo).strip(),
             "head_long": run(["git", "log", "-1", "--format=%H"], cwd=repo).strip(),
-            "branch": run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo).strip(),
+            "branch": run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo
+            ).strip(),
             "assessor": "pragmatic-ao-assessment-agent",
         },
         "scores": scores,
@@ -443,7 +590,9 @@ def assess(repo):
 
     out_dir = Path("assessments")
     out_dir.mkdir(exist_ok=True)
-    (out_dir / "{}-{}-assessment.json".format(DATE, repo)).write_text(json.dumps(report, indent=2))
+    (out_dir / f"{DATE}-{repo}-assessment.json").write_text(
+        json.dumps(report, indent=2)
+    )
     print(json.dumps(report, indent=2))
 
 

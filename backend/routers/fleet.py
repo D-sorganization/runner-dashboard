@@ -64,7 +64,9 @@ async def _fleet_control_local(action: str) -> dict:
             if i not in online_nums:
                 if runner_svc_path(i).exists():
                     code, _, _ = await run_runner_svc(i, "start")
-                    results.append({"runner": i, "action": "start", "success": code == 0})
+                    results.append(
+                        {"runner": i, "action": "start", "success": code == 0}
+                    )
                     break
 
     elif action == "down":
@@ -78,7 +80,9 @@ async def _fleet_control_local(action: str) -> dict:
             target = max(idle_runners)
             if runner_svc_path(target).exists():
                 code, _, _ = await run_runner_svc(target, "stop")
-                results.append({"runner": target, "action": "stop", "success": code == 0})
+                results.append(
+                    {"runner": target, "action": "stop", "success": code == 0}
+                )
 
     return {"results": results, "hostname": HOSTNAME}
 
@@ -125,7 +129,9 @@ async def get_fleet_status(request: Request):
             }
 
     if FLEET_NODES:
-        results = await asyncio.gather(*[fetch_node(n, u) for n, u in FLEET_NODES.items()])
+        results = await asyncio.gather(
+            *[fetch_node(n, u) for n, u in FLEET_NODES.items()]
+        )
         for name, data in results:
             responses[name] = data
 

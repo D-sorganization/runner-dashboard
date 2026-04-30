@@ -134,6 +134,7 @@ async def get_fleet_audit_log(
 async def get_fleet_orchestration(request: Request) -> dict:
     """Return per-machine job assignment, queue, and capacity for fleet orchestration view."""
     from server import _get_fleet_nodes_impl, load_machine_registry
+
     registry_data = load_machine_registry()
     machines_raw = registry_data.get("machines", [])
 
@@ -278,6 +279,7 @@ async def fleet_orchestration_dispatch(
             json.dump(dispatch_payload, pf_obj)
             pf = pf_obj.name
         from server import REPO_ROOT
+
         try:
             code, _, stderr = await run_cmd(
                 ["gh", "api", endpoint, "--method", "POST", "--input", pf],

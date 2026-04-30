@@ -45,7 +45,12 @@ def base_mapping() -> dict[str, Any]:
             "3": ["complexity:routine"],
             "4": ["complexity:complex"],
         },
-        "estimate": {"1": ["effort:xs"], "2": ["effort:s"], "3": ["effort:m"], "5": ["effort:l"]},
+        "estimate": {
+            "1": ["effort:xs"],
+            "2": ["effort:s"],
+            "3": ["effort:m"],
+            "5": ["effort:l"],
+        },
         "state_type": {
             "triage": ["judgement:design"],
             "backlog": [],
@@ -55,12 +60,21 @@ def base_mapping() -> dict[str, Any]:
             "canceled": [],
         },
         "label_aliases": {"Feature": ["type:task"], "Bug": ["type:bug"]},
-        "label_passthrough_prefixes": ["type:", "domain:", "wave:", "complexity:", "effort:", "judgement:"],
+        "label_passthrough_prefixes": [
+            "type:",
+            "domain:",
+            "wave:",
+            "complexity:",
+            "effort:",
+            "judgement:",
+        ],
         "default_judgement": "objective",
     }
 
 
-def workspace(workspace_id: str = "linear-main", *, teams: list[str] | None = None) -> dict[str, Any]:
+def workspace(
+    workspace_id: str = "linear-main", *, teams: list[str] | None = None
+) -> dict[str, Any]:
     return {"id": workspace_id, "teams": teams or ["ENG"], "mapping": "default"}
 
 
@@ -119,7 +133,13 @@ async def test_fetch_workspace_issues_normalizes_to_canonical_shape() -> None:
         "url": "https://linear.app/acme/issue/ENG-123/build-linear-inventory",
         "author": "Ada Lovelace",
         "assignees": ["Grace Hopper"],
-        "labels": ["complexity:routine", "effort:m", "type:task", "domain:backend", "judgement:objective"],
+        "labels": [
+            "complexity:routine",
+            "effort:m",
+            "type:task",
+            "domain:backend",
+            "judgement:objective",
+        ],
         "state": "open",
         "age_hours": items[0]["age_hours"],
         "taxonomy": {
@@ -163,7 +183,9 @@ async def test_fetch_workspace_issues_extracts_github_attachment_url() -> None:
         attachments={
             "nodes": [
                 {"url": "https://example.test/not-github"},
-                {"url": "https://github.com/D-sorganization/runner-dashboard/issues/239?from=linear"},
+                {
+                    "url": "https://github.com/D-sorganization/runner-dashboard/issues/239?from=linear"
+                },
             ]
         }
     )
@@ -190,7 +212,9 @@ async def test_fetch_workspace_issues_no_github_attachment_repository_empty() ->
 
 @pytest.mark.asyncio
 async def test_state_started_maps_to_open() -> None:
-    client = FakeLinearClient({"linear-main": [linear_issue(state={"name": "Started", "type": "started"})]})
+    client = FakeLinearClient(
+        {"linear-main": [linear_issue(state={"name": "Started", "type": "started"})]}
+    )
 
     items, _ = await fetch_workspace_issues(workspace(), base_mapping(), client)  # type: ignore[arg-type]
 
@@ -199,7 +223,9 @@ async def test_state_started_maps_to_open() -> None:
 
 @pytest.mark.asyncio
 async def test_state_completed_maps_to_closed() -> None:
-    client = FakeLinearClient({"linear-main": [linear_issue(state={"name": "Done", "type": "completed"})]})
+    client = FakeLinearClient(
+        {"linear-main": [linear_issue(state={"name": "Done", "type": "completed"})]}
+    )
 
     items, _ = await fetch_workspace_issues(workspace(), base_mapping(), client)  # type: ignore[arg-type]
 
@@ -208,17 +234,27 @@ async def test_state_completed_maps_to_closed() -> None:
 
 @pytest.mark.asyncio
 async def test_fetch_all_issues_aggregates_across_workspaces() -> None:
-    client = FakeLinearClient({"one": [linear_issue(identifier="ONE-1")], "two": [linear_issue(identifier="TWO-1")]})
+    client = FakeLinearClient(
+        {
+            "one": [linear_issue(identifier="ONE-1")],
+            "two": [linear_issue(identifier="TWO-1")],
+        }
+    )
 
     result = await fetch_all_issues(config(workspace("one"), workspace("two")), client)  # type: ignore[arg-type]
 
-    assert [item["linear"]["identifier"] for item in result["items"]] == ["ONE-1", "TWO-1"]
+    assert [item["linear"]["identifier"] for item in result["items"]] == [
+        "ONE-1",
+        "TWO-1",
+    ]
     assert result["errors"] == []
 
 
 @pytest.mark.asyncio
 async def test_fetch_all_issues_one_workspace_failing_does_not_block_others() -> None:
-    client = FakeLinearClient({"one": [linear_issue(identifier="ONE-1")], "two": RuntimeError("bad key")})
+    client = FakeLinearClient(
+        {"one": [linear_issue(identifier="ONE-1")], "two": RuntimeError("bad key")}
+    )
 
     result = await fetch_all_issues(config(workspace("one"), workspace("two")), client)  # type: ignore[arg-type]
 
@@ -231,8 +267,12 @@ async def test_fetch_all_issues_pickable_only_filter() -> None:
     client = FakeLinearClient(
         {
             "linear-main": [
-                linear_issue(identifier="ENG-1", state={"name": "Started", "type": "started"}),
-                linear_issue(identifier="ENG-2", state={"name": "Triage", "type": "triage"}),
+                linear_issue(
+                    identifier="ENG-1", state={"name": "Started", "type": "started"}
+                ),
+                linear_issue(
+                    identifier="ENG-2", state={"name": "Triage", "type": "triage"}
+                ),
             ]
         }
     )
@@ -258,7 +298,12 @@ async def test_fetch_all_issues_caches_results_for_30_seconds() -> None:
 @pytest.mark.asyncio
 async def test_fetch_all_issues_filters_by_complexity_label() -> None:
     client = FakeLinearClient(
-        {"linear-main": [linear_issue(identifier="ENG-1", priority=2), linear_issue(identifier="ENG-2", priority=4)]}
+        {
+            "linear-main": [
+                linear_issue(identifier="ENG-1", priority=2),
+                linear_issue(identifier="ENG-2", priority=4),
+            ]
+        }
     )
 
     result = await fetch_all_issues(config(workspace()), client, complexity=["complex"])  # type: ignore[arg-type]
@@ -269,7 +314,12 @@ async def test_fetch_all_issues_filters_by_complexity_label() -> None:
 @pytest.mark.asyncio
 async def test_fetch_all_issues_filters_by_effort_label() -> None:
     client = FakeLinearClient(
-        {"linear-main": [linear_issue(identifier="ENG-1", estimate=3), linear_issue(identifier="ENG-2", estimate=5)]}
+        {
+            "linear-main": [
+                linear_issue(identifier="ENG-1", estimate=3),
+                linear_issue(identifier="ENG-2", estimate=5),
+            ]
+        }
     )
 
     result = await fetch_all_issues(config(workspace()), client, effort=["l"])  # type: ignore[arg-type]
@@ -279,12 +329,16 @@ async def test_fetch_all_issues_filters_by_effort_label() -> None:
 
 @pytest.mark.asyncio
 async def test_pickability_blocks_triage_state() -> None:
-    client = FakeLinearClient({"linear-main": [linear_issue(state={"name": "Triage", "type": "triage"})]})
+    client = FakeLinearClient(
+        {"linear-main": [linear_issue(state={"name": "Triage", "type": "triage"})]}
+    )
 
     result = await fetch_all_issues(config(workspace()), client)  # type: ignore[arg-type]
 
     assert result["items"][0]["pickable"] is False
-    assert result["items"][0]["pickable_blocked_by"] == ["judgement:design requires panel review"]
+    assert result["items"][0]["pickable_blocked_by"] == [
+        "judgement:design requires panel review"
+    ]
 
 
 @pytest.mark.asyncio
@@ -299,7 +353,9 @@ async def test_pickability_open_no_judgement_block_pickable_true() -> None:
 
 @pytest.mark.asyncio
 async def test_age_hours_uses_linear_created_at() -> None:
-    client = FakeLinearClient({"linear-main": [linear_issue(createdAt=created_at(6.0))]})
+    client = FakeLinearClient(
+        {"linear-main": [linear_issue(createdAt=created_at(6.0))]}
+    )
 
     items, _ = await fetch_workspace_issues(workspace(), base_mapping(), client)  # type: ignore[arg-type]
 
@@ -326,16 +382,28 @@ async def test_workspace_with_teams_wildcard_passes_no_team_filter() -> None:
 
 @pytest.mark.asyncio
 async def test_pagination_continues_until_limit() -> None:
-    client = FakeLinearClient({"linear-main": [linear_issue(identifier=f"ENG-{index}") for index in range(10)]})
+    client = FakeLinearClient(
+        {
+            "linear-main": [
+                linear_issue(identifier=f"ENG-{index}") for index in range(10)
+            ]
+        }
+    )
 
     items, _ = await fetch_workspace_issues(workspace(), base_mapping(), client, limit=3)  # type: ignore[arg-type]
 
-    assert [item["linear"]["identifier"] for item in items] == ["ENG-0", "ENG-1", "ENG-2"]
+    assert [item["linear"]["identifier"] for item in items] == [
+        "ENG-0",
+        "ENG-1",
+        "ENG-2",
+    ]
     assert client.calls[0]["limit"] == 3
 
 
 @pytest.mark.asyncio
-async def test_returned_taxonomy_dict_does_not_contain_derived_labels_or_source_signals() -> None:
+async def test_returned_taxonomy_dict_does_not_contain_derived_labels_or_source_signals() -> (
+    None
+):
     client = FakeLinearClient({"linear-main": [linear_issue()]})
 
     items, _ = await fetch_workspace_issues(workspace(), base_mapping(), client)  # type: ignore[arg-type]

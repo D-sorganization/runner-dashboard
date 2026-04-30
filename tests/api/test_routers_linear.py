@@ -24,11 +24,17 @@ def client() -> TestClient:
     return TestClient(server.app)
 
 
-def test_get_workspaces_returns_configured_list(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_workspaces_returns_configured_list(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         linear_router,
         "list_workspace_summaries",
-        AsyncMock(return_value=[{"id": "personal", "auth_status": "ok", "auth_kind": "api_key"}]),
+        AsyncMock(
+            return_value=[
+                {"id": "personal", "auth_status": "ok", "auth_kind": "api_key"}
+            ]
+        ),
     )
 
     response = client.get("/api/linear/workspaces")
@@ -65,7 +71,9 @@ def test_get_workspaces_auth_status_auth_failed_on_401(
         async def aclose(self) -> None:
             return None
 
-    monkeypatch.setattr(linear_router, "build_linear_client", lambda _config: FakeClient())
+    monkeypatch.setattr(
+        linear_router, "build_linear_client", lambda _config: FakeClient()
+    )
     linear_router._auth_status_cache.clear()
 
     response = client.get("/api/linear/workspaces")
@@ -74,33 +82,54 @@ def test_get_workspaces_auth_status_auth_failed_on_401(
     assert response.json()["workspaces"][0]["auth_status"] == "auth_failed"
 
 
-def test_get_teams_filters_by_workspace_param(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_teams_filters_by_workspace_param(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     config = {"workspaces": [{"id": "personal"}, {"id": "ops"}], "mappings": {}}
     monkeypatch.setattr(linear_router, "load_linear_config", lambda: config)
-    monkeypatch.setattr(linear_router, "has_configured_linear_key", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        linear_router, "has_configured_linear_key", lambda *_args, **_kwargs: True
+    )
 
     class FakeClient:
         async def fetch_teams(self, workspace_id: str) -> list[dict]:
-            return [{"id": workspace_id + "-team", "key": workspace_id.upper(), "name": workspace_id.title()}]
+            return [
+                {
+                    "id": workspace_id + "-team",
+                    "key": workspace_id.upper(),
+                    "name": workspace_id.title(),
+                }
+            ]
 
         async def aclose(self) -> None:
             return None
 
-    monkeypatch.setattr(linear_router, "build_linear_client", lambda _config: FakeClient())
+    monkeypatch.setattr(
+        linear_router, "build_linear_client", lambda _config: FakeClient()
+    )
 
     response = client.get("/api/linear/teams?workspace=ops")
 
     assert response.status_code == 200
-    assert response.json() == {"teams": [{"id": "ops-team", "key": "OPS", "name": "Ops"}]}
+    assert response.json() == {
+        "teams": [{"id": "ops-team", "key": "OPS", "name": "Ops"}]
+    }
 
 
-def test_get_issues_503_when_linear_api_key_unset(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_issues_503_when_linear_api_key_unset(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         linear_router,
         "load_linear_config",
-        lambda: {"workspaces": [{"id": "personal", "mapping": "default"}], "mappings": {"default": {}}},
+        lambda: {
+            "workspaces": [{"id": "personal", "mapping": "default"}],
+            "mappings": {"default": {}},
+        },
     )
-    monkeypatch.setattr(linear_router, "has_configured_linear_key", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(
+        linear_router, "has_configured_linear_key", lambda *_args, **_kwargs: False
+    )
 
     response = client.get("/api/linear/issues")
 
@@ -108,16 +137,25 @@ def test_get_issues_503_when_linear_api_key_unset(client: TestClient, monkeypatc
     assert response.json()["detail"] == linear_router.LINEAR_NOT_CONFIGURED_DETAIL
 
 
-def test_get_issues_returns_canonical_shape(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    config = {"workspaces": [{"id": "personal", "mapping": "default"}], "mappings": {"default": {}}}
+def test_get_issues_returns_canonical_shape(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = {
+        "workspaces": [{"id": "personal", "mapping": "default"}],
+        "mappings": {"default": {}},
+    }
     monkeypatch.setattr(linear_router, "load_linear_config", lambda: config)
-    monkeypatch.setattr(linear_router, "has_configured_linear_key", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        linear_router, "has_configured_linear_key", lambda *_args, **_kwargs: True
+    )
 
     class FakeClient:
         async def aclose(self) -> None:
             return None
 
-    monkeypatch.setattr(linear_router, "build_linear_client", lambda _config: FakeClient())
+    monkeypatch.setattr(
+        linear_router, "build_linear_client", lambda _config: FakeClient()
+    )
     monkeypatch.setattr(
         linear_router.linear_inventory,
         "fetch_all_issues",

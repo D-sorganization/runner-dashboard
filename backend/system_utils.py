@@ -110,8 +110,12 @@ def get_gpu_info() -> dict:
                         "vram_percent": vram_pct,
                         "gpu_util_percent": float(parts[4]),
                         "temp_c": float(parts[5]),
-                        "power_draw_w": (float(parts[6]) if parts[6] != "[N/A]" else None),
-                        "power_limit_w": (float(parts[7]) if parts[7] != "[N/A]" else None),
+                        "power_draw_w": (
+                            float(parts[6]) if parts[6] != "[N/A]" else None
+                        ),
+                        "power_limit_w": (
+                            float(parts[7]) if parts[7] != "[N/A]" else None
+                        ),
                     }
                 )
         return {"gpus": gpus, "count": len(gpus)}
@@ -137,7 +141,9 @@ def get_local_hardware_specs(gpu: dict | None = None) -> dict:
         "wsl_memory_gb": round(mem.total / (1024**3), 1),
         "gpu_count": len(gpu_devices),
         "gpu_vram_gb": max(gpu_vram_values) if gpu_vram_values else None,
-        "accelerators": [device.get("name") for device in gpu_devices if device.get("name")],
+        "accelerators": [
+            device.get("name") for device in gpu_devices if device.get("name")
+        ],
         "platform": platform.platform(),
     }
 
@@ -181,7 +187,9 @@ def get_disk_pressure_snapshot(
         status = "warning"
         reasons.append(f"disk usage >= {DISK_WARN_PERCENT:g}%")
     if free_gb <= DISK_MIN_FREE_GB:
-        free_space_status = "critical" if free_gb <= max(5.0, DISK_MIN_FREE_GB / 2) else "warning"
+        free_space_status = (
+            "critical" if free_gb <= max(5.0, DISK_MIN_FREE_GB / 2) else "warning"
+        )
         if status != "critical":
             status = free_space_status
         reasons.append(f"free space <= {DISK_MIN_FREE_GB:g} GB")
@@ -235,7 +243,9 @@ def get_per_runner_resources(runner_limit: int) -> list[dict]:
         for proc in psutil.process_iter(proc_fields):
             try:
                 cmdline = " ".join(proc.info.get("cmdline") or [])
-                is_runner = runner_dir in cmdline or ("Runner.Listener" in cmdline and f"runner-{i}" in cmdline)
+                is_runner = runner_dir in cmdline or (
+                    "Runner.Listener" in cmdline and f"runner-{i}" in cmdline
+                )
                 if is_runner:
                     runner_info["cpu_percent"] += proc.info.get("cpu_percent", 0) or 0
                     mem = proc.info.get("memory_info")
@@ -268,7 +278,9 @@ async def get_system_metrics_snapshot(runner_limit: int | None = None) -> dict:
     per_cpu = psutil.cpu_percent(interval=0, percpu=True)
     current_cpu = psutil.cpu_percent(interval=0)
     _cpu_history.append(current_cpu)
-    cpu_avg_1m = round(sum(_cpu_history) / len(_cpu_history), 1) if _cpu_history else current_cpu
+    cpu_avg_1m = (
+        round(sum(_cpu_history) / len(_cpu_history), 1) if _cpu_history else current_cpu
+    )
 
     try:
         uptime_seconds = time.time() - psutil.boot_time()
@@ -328,7 +340,9 @@ async def get_system_metrics_snapshot(runner_limit: int | None = None) -> dict:
         "gpu": gpu_info,
         "hardware_specs": hardware_specs,
         "workload_capacity": get_workload_capacity_from_specs(hardware_specs),
-        "runner_processes": get_per_runner_resources(runner_limit) if runner_limit else [],
+        "runner_processes": (
+            get_per_runner_resources(runner_limit) if runner_limit else []
+        ),
     }
 
     # On WSL, also report the Windows host disk (/mnt/c)
@@ -348,7 +362,9 @@ async def get_system_metrics_snapshot(runner_limit: int | None = None) -> dict:
     return metrics
 
 
-async def run_cmd(cmd: list[str], timeout: int = 30, cwd: Path | None = None) -> tuple[int, str, str]:
+async def run_cmd(
+    cmd: list[str], timeout: int = 30, cwd: Path | None = None
+) -> tuple[int, str, str]:
     """Run a shell command asynchronously."""
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -371,7 +387,9 @@ async def run_cmd(cmd: list[str], timeout: int = 30, cwd: Path | None = None) ->
         return -1, "", "Command timed out"
 
 
-def classify_node_offline(exc: Exception | None = None, *, status_code: int | None = None) -> dict:
+def classify_node_offline(
+    exc: Exception | None = None, *, status_code: int | None = None
+) -> dict:
     """Classify why a fleet node is unreachable."""
     if status_code:
         if status_code == 401:
@@ -385,7 +403,10 @@ def classify_node_offline(exc: Exception | None = None, *, status_code: int | No
     if exc:
         err_str = str(exc).lower()
         if "timeout" in err_str:
-            return {"offline_reason": "timeout", "offline_detail": "Connection timed out"}
+            return {
+                "offline_reason": "timeout",
+                "offline_detail": "Connection timed out",
+            }
         if "refused" in err_str:
             return {"offline_reason": "refused", "offline_detail": "Connection refused"}
         if "no route" in err_str:
@@ -400,10 +421,16 @@ def resource_offline_reason(system: dict) -> dict | None:
     disk = system.get("disk", {})
     pressure = disk.get("pressure", {})
     if pressure.get("status") == "critical":
-        return {"offline_reason": "disk-pressure", "offline_detail": pressure.get("reasons", ["Disk critical"])[0]}
+        return {
+            "offline_reason": "disk-pressure",
+            "offline_detail": pressure.get("reasons", ["Disk critical"])[0],
+        }
 
     mem = system.get("memory", {})
     if mem.get("percent", 0) >= 98:
-        return {"offline_reason": "oom-pressure", "offline_detail": "Memory usage >= 98%"}
+        return {
+            "offline_reason": "oom-pressure",
+            "offline_detail": "Memory usage >= 98%",
+        }
 
     return None

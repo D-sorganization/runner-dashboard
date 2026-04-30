@@ -28,18 +28,24 @@ def _client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     app.add_middleware(SessionMiddleware, secret_key="test-secret")
 
     def principal():
-        return Principal(id="human:test", type="human", name="Test User", roles=["operator"])
+        return Principal(
+            id="human:test", type="human", name="Test User", roles=["operator"]
+        )
 
     app.dependency_overrides[require_principal] = principal
     app.include_router(auth_router.router)
     return TestClient(app)
 
 
-def test_list_sessions_returns_hashed_ids(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_list_sessions_returns_hashed_ids(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     client = _client(monkeypatch, tmp_path)
     import session_management as sm
 
-    sm.register_session("human:test", user_agent="TestAgent/1.0", ip_address="127.0.0.1")
+    sm.register_session(
+        "human:test", user_agent="TestAgent/1.0", ip_address="127.0.0.1"
+    )
 
     response = client.get("/api/auth/sessions")
     assert response.status_code == 200
@@ -53,11 +59,15 @@ def test_list_sessions_returns_hashed_ids(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert session["ip_address"] == "127.0.0.1"
 
 
-def test_revoke_session_by_hash(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_revoke_session_by_hash(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     client = _client(monkeypatch, tmp_path)
     import session_management as sm
 
-    sid = sm.register_session("human:test", user_agent="TestAgent/1.0", ip_address="127.0.0.1")
+    sid = sm.register_session(
+        "human:test", user_agent="TestAgent/1.0", ip_address="127.0.0.1"
+    )
     session_hash = sm.hash_session_id(sid)
 
     response = client.delete(f"/api/auth/sessions/{session_hash}")
@@ -70,7 +80,9 @@ def test_revoke_session_by_hash(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     assert not sm.is_session_active(sid)
 
 
-def test_revoke_session_by_hash_not_found(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_revoke_session_by_hash_not_found(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     client = _client(monkeypatch, tmp_path)
 
     response = client.delete("/api/auth/sessions/nonexistenthash123")
@@ -78,7 +90,9 @@ def test_revoke_session_by_hash_not_found(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert "Session not found" in response.json()["detail"]
 
 
-def test_logout_all_revokes_sessions(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_logout_all_revokes_sessions(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     client = _client(monkeypatch, tmp_path)
     import session_management as sm
 
@@ -96,7 +110,9 @@ def test_logout_all_revokes_sessions(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     assert not sm.is_session_active(sid2)
 
 
-def test_logout_all_including_current(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_logout_all_including_current(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     client = _client(monkeypatch, tmp_path)
     import session_management as sm
 
@@ -112,7 +128,9 @@ def test_logout_all_including_current(monkeypatch: pytest.MonkeyPatch, tmp_path:
     assert not sm.is_session_active(sid2)
 
 
-def test_logout_endpoint_revokes_current_session(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_logout_endpoint_revokes_current_session(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     client = _client(monkeypatch, tmp_path)
     import session_management as sm
 

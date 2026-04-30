@@ -32,11 +32,17 @@ class SessionRecord(BaseModel):
 
 _SESSIONS_PATH = Path(
     os.environ.get("DASHBOARD_SESSIONS_PATH")
-    or (Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "runner-dashboard" / "sessions.json")
+    or (
+        Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+        / "runner-dashboard"
+        / "sessions.json"
+    )
 )
 
 _SESSION_TTL_SECONDS = int(os.environ.get("DASHBOARD_SESSION_TTL_SECONDS", "86400"))
-_MAX_SESSIONS_PER_PRINCIPAL = int(os.environ.get("DASHBOARD_MAX_SESSIONS_PER_PRINCIPAL", "10"))
+_MAX_SESSIONS_PER_PRINCIPAL = int(
+    os.environ.get("DASHBOARD_MAX_SESSIONS_PER_PRINCIPAL", "10")
+)
 
 
 def _load_sessions(path: Path | None = None) -> list[SessionRecord]:
@@ -65,7 +71,9 @@ def _save_sessions(records: list[SessionRecord], path: Path | None = None) -> No
         path = _SESSIONS_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = [record.model_dump() for record in records]
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     try:
         path.chmod(0o600)
     except OSError:
@@ -75,7 +83,11 @@ def _save_sessions(records: list[SessionRecord], path: Path | None = None) -> No
 def _prune_expired_sessions(records: list[SessionRecord]) -> list[SessionRecord]:
     now = time.time()
     cutoff = now - _SESSION_TTL_SECONDS
-    return [record for record in records if record.last_seen_at > cutoff and record.revoked_at is None]
+    return [
+        record
+        for record in records
+        if record.last_seen_at > cutoff and record.revoked_at is None
+    ]
 
 
 def generate_session_id() -> str:
@@ -98,7 +110,9 @@ def register_session(
     if len(principal_sessions) >= _MAX_SESSIONS_PER_PRINCIPAL:
         # Sort by created_at ascending, remove oldest
         principal_sessions.sort(key=lambda r: r.created_at)
-        to_revoke = principal_sessions[: len(principal_sessions) - _MAX_SESSIONS_PER_PRINCIPAL + 1]
+        to_revoke = principal_sessions[
+            : len(principal_sessions) - _MAX_SESSIONS_PER_PRINCIPAL + 1
+        ]
         revoke_ids = {r.session_id for r in to_revoke}
         records = [r for r in records if r.session_id not in revoke_ids]
 
@@ -143,7 +157,9 @@ def revoke_session(session_id: str) -> bool:
     return changed
 
 
-def revoke_all_sessions_for_principal(principal_id: str, exclude_session_id: str | None = None) -> int:
+def revoke_all_sessions_for_principal(
+    principal_id: str, exclude_session_id: str | None = None
+) -> int:
     """Revoke all active sessions for a principal. Returns number revoked."""
     records = _load_sessions()
     changed = 0
@@ -195,4 +211,8 @@ def session_count_for_principal(principal_id: str) -> int:
 
 def hash_session_id(session_id: str) -> str:
     """Return a stable hash of a session id for logging (avoids leaking raw ids)."""
-    return base64.urlsafe_b64encode(hashlib.sha256(session_id.encode("utf-8")).digest()).decode("ascii").rstrip("=")
+    return (
+        base64.urlsafe_b64encode(hashlib.sha256(session_id.encode("utf-8")).digest())
+        .decode("ascii")
+        .rstrip("=")
+    )

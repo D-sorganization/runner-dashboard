@@ -59,7 +59,9 @@ def validate_budget_contract(budget: dict[str, Any]) -> list[str]:
     for (section, key), expected in REQUIRED_TARGETS.items():
         actual = budgets.get(section, {}).get(key)
         if actual != expected:
-            errors.append(f"budgets.{section}.{key} must remain {expected}, got {actual!r}")
+            errors.append(
+                f"budgets.{section}.{key} must remain {expected}, got {actual!r}"
+            )
 
     routes = budgets.get("mobile_lighthouse", {}).get("routes")
     expected_routes = ["Fleet", "Workflows", "Remediation", "Maxwell", "Reports"]
@@ -68,7 +70,9 @@ def validate_budget_contract(budget: dict[str, Any]) -> list[str]:
 
     change_control = budget.get("change_control", {})
     if change_control.get("budget_increases_require_justification") is not True:
-        errors.append("change_control.budget_increases_require_justification must be true")
+        errors.append(
+            "change_control.budget_increases_require_justification must be true"
+        )
 
     return errors
 
@@ -97,7 +101,9 @@ def validate_interim_sizes(budget: dict[str, Any], sizes: dict[str, int]) -> lis
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--json", action="store_true", help="print measured sizes as JSON")
+    parser.add_argument(
+        "--json", action="store_true", help="print measured sizes as JSON"
+    )
     args = parser.parse_args()
 
     budget = load_budget()

@@ -28,7 +28,10 @@ class MaxwellControlBody(BaseModel):
 
 def _maxwell_base_url() -> str:
     """Return the Maxwell-Daemon base URL from env."""
-    return os.environ.get("MAXWELL_URL", "") or f"http://localhost:{int(os.environ.get('MAXWELL_PORT', 8080))}"
+    return (
+        os.environ.get("MAXWELL_URL", "")
+        or f"http://localhost:{int(os.environ.get('MAXWELL_PORT', 8080))}"
+    )
 
 
 def _maxwell_api_token() -> str:
@@ -60,7 +63,9 @@ async def _mx_get(path: str, params: dict | None = None) -> dict:
         return {"error": str(e)[:120], "daemon_available": False}
 
 
-async def _run_cmd(cmd: list[str], timeout: int = 30, cwd: str | Path | None = None) -> tuple[int, str, str]:
+async def _run_cmd(
+    cmd: list[str], timeout: int = 30, cwd: str | Path | None = None
+) -> tuple[int, str, str]:
     """Helper to run a shell command asynchronously."""
     proc = await asyncio.create_subprocess_exec(
         *cmd,
@@ -110,7 +115,9 @@ async def get_maxwell_status() -> dict:
     base_url = _maxwell_base_url()
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(f"{base_url}/api/health", headers=_maxwell_headers())
+            resp = await client.get(
+                f"{base_url}/api/health", headers=_maxwell_headers()
+            )
             http_reachable = resp.status_code == 200
             http_detail = f"HTTP {resp.status_code}"
     except Exception as e:
@@ -147,11 +154,17 @@ async def maxwell_control(
     action = str(body.get("action", "")).strip()
     approved_by = str(body.get("approved_by", "")).strip()
     if action not in ("start", "stop", "restart"):
-        raise HTTPException(status_code=422, detail="action must be start, stop, or restart")
+        raise HTTPException(
+            status_code=422, detail="action must be start, stop, or restart"
+        )
     if not approved_by:
-        raise HTTPException(status_code=422, detail="approved_by required for privileged action")
+        raise HTTPException(
+            status_code=422, detail="approved_by required for privileged action"
+        )
 
-    code, out, stderr = await _run_cmd(["systemctl", action, "maxwell-daemon"], timeout=15)
+    code, out, stderr = await _run_cmd(
+        ["systemctl", action, "maxwell-daemon"], timeout=15
+    )
     log.info(
         "maxwell_control: action=%s approved_by=%s exit_code=%d",
         sanitize_log_value(action),
@@ -234,7 +247,9 @@ async def maxwell_pipeline_control(
 ) -> dict:
     """Proxy POST /api/control/{action} to Maxwell-Daemon."""
     if action not in ("pause", "resume", "abort"):
-        raise HTTPException(status_code=422, detail="action must be pause, resume, or abort")
+        raise HTTPException(
+            status_code=422, detail="action must be pause, resume, or abort"
+        )
     path = f"/api/v1/control/{action}"
     body = await request.json()
     body["confirmation_token"] = _maxwell_api_token()

@@ -123,12 +123,12 @@ def evaluate_drift(
         message = f"Node is up to date at {current}."
     elif severity == "unknown":
         drift = True
-        message = (
-            f"Unable to compare versions (current={current}, expected={expected_version}); manual check recommended."
-        )
+        message = f"Unable to compare versions (current={current}, expected={expected_version}); manual check recommended."
     else:
         drift = True
-        message = f"Update available: {current} → {expected_version} ({severity} drift)."
+        message = (
+            f"Update available: {current} → {expected_version} ({severity} drift)."
+        )
 
     return DriftStatus(
         current=current,

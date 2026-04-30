@@ -23,7 +23,9 @@ def _patch_server_windows_os(monkeypatch) -> None:
     monkeypatch.setattr(server, "os", WindowsOs())
 
 
-def test_windows_wslconfig_path_is_checked_directly(monkeypatch, tmp_path: Path) -> None:
+def test_windows_wslconfig_path_is_checked_directly(
+    monkeypatch, tmp_path: Path
+) -> None:
     _patch_server_windows_os(monkeypatch)
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.delenv("HOMEDRIVE", raising=False)
