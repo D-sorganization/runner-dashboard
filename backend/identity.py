@@ -7,11 +7,11 @@ import time
 from pathlib import Path
 
 import yaml
-
-log = logging.getLogger("dashboard")
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import APIKeyCookie, APIKeyHeader
 from pydantic import BaseModel, Field
+
+log = logging.getLogger("dashboard")
 
 
 class Quota(BaseModel):
