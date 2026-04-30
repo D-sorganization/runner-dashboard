@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './legacy/App'
 import { PushSettings } from './pages/PushSettings'
+import { Toaster } from './primitives/Toaster'
 import './index.css'
 
 // Service Worker Registration
@@ -72,10 +73,12 @@ function initialTabFromPathname(pathname: string): string | undefined {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {isPushSettingsRoute(window.location.pathname) ? (
-      <PushSettings />
-    ) : (
-      <App initialTab={initialTabFromPathname(window.location.pathname)} />
-    )}
+    <Toaster>
+      {isPushSettingsRoute(window.location.pathname) ? (
+        <PushSettings />
+      ) : (
+        <App initialTab={initialTabFromPathname(window.location.pathname)} />
+      )}
+    </Toaster>
   </React.StrictMode>,
 )

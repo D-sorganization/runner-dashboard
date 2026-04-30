@@ -1,7 +1,7 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.13
-**Application Version:** 4.1.0 (see `VERSION`)
+**Spec Version:** 2.5.14
+**Application Version:** 4.1.1 (see `VERSION`)
 **Last Updated:** 2026-04-30T00:00:00Z
 **Status:** Active
 
@@ -200,6 +200,14 @@ mobile hit-target and press/focus affordance, while `SegmentedControl` provides
 an accessible `radiogroup` for compact mobile filters. Gesture-heavy primitives
 (`SwipeRow`, `PullToRefresh`, and `BottomSheet`) remain separate follow-up
 work because they require pointer-event and focus-management tests.
+
+The global `Toaster` primitive (issue #421) is mounted at the React root in
+`frontend/src/main.tsx` and exposes a `useToast()` hook plus a polite
+(`role="status"` / `aria-live="polite"`) and assertive
+(`role="alert"` / `aria-live="assertive"`) live region so toast notifications
+are announced accessibly; up to four toasts are visible at once with
+per-severity auto-dismiss (info 5s, success 4s, warning 8s, error 10s) and
+Escape dismisses the topmost toast.
 
 **Shared helper components** defined near the top of the script block:
 

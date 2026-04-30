@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { TouchButton } from "../primitives/TouchButton";
+import { useToast } from "../primitives/Toaster";
 
 /**
  * Agent Dispatch Page — Mobile Remediation + 3-tap Agent Dispatch flow
@@ -53,6 +54,7 @@ const DEFAULT_PROVIDER_ORDER = [
 ];
 
 export function AgentDispatchPage() {
+  const { showToast } = useToast();
   const [providers, setProviders] = useState<Record<string, AgentProvider>>({});
   const [availability, setAvailability] = useState<Record<string, ProviderAvailability>>({});
   const [failedRuns, setFailedRuns] = useState<FailedRun[]>([]);
@@ -190,17 +192,15 @@ export function AgentDispatchPage() {
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || `Dispatch failed: HTTP ${resp.status}`);
-      setDispatchResult({
-        status: "success",
-        message:
-          data.note ||
-          `Dispatch submitted for ${selectedProviderId} on ${repoName}. Waiting for agent heartbeat.`,
-      });
+      const successMessage =
+        data.note ||
+        `Dispatch submitted for ${selectedProviderId} on ${repoName}. Waiting for agent heartbeat.`;
+      setDispatchResult({ status: "success", message: successMessage });
+      showToast(successMessage, { variant: "success", title: "Dispatch submitted" });
     } catch (e: any) {
-      setDispatchResult({
-        status: "error",
-        message: e.message || "Dispatch failed. Please try again.",
-      });
+      const errorMessage = e.message || "Dispatch failed. Please try again.";
+      setDispatchResult({ status: "error", message: errorMessage });
+      showToast(errorMessage, { variant: "error", title: "Dispatch failed" });
     } finally {
       setDispatching(false);
     }
