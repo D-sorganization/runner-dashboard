@@ -7,7 +7,12 @@ After=network.target
 Wants=network-online.target
 
 [Service]
-Type=simple
+Type=notify
+# Type=notify requires the process to send READY=1 via sd_notify when fully
+# started. server.py does this via _notify_ready() in the FastAPI startup
+# handler. Install sdnotify: pip install sdnotify
+# Without sdnotify installed, the startup event logs a DEBUG message and
+# systemd falls back to the 30 s TimeoutStartSec timeout before marking active.
 # User, WorkingDirectory, ExecStart, and HOME are set by setup.sh at deploy time.
 User=YOUR_USER
 WorkingDirectory=/home/YOUR_USER/actions-runners/dashboard

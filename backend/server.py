@@ -4276,8 +4276,69 @@ _system_router.set_runner_capacity_snapshot_func(get_runner_capacity_snapshot)
 _leader_lock_fd = None
 
 
+def _notify_ready() -> None:
+    """Signal READY=1 to systemd via sd_notify.
+
+    Requires ``sdnotify`` (pip install sdnotify) and NOTIFY_SOCKET set.
+    No-op when either is absent so dev/CI runs are unaffected.
+    Called once from the FastAPI startup event handler (issue #391 AC-3).
+    """
+    notify_socket = os.environ.get("NOTIFY_SOCKET", "")
+    if not notify_socket:
+        return
+    try:
+        import sdnotify  # type: ignore[import-not-found]
+
+        n = sdnotify.SystemdNotifier()
+        n.notify("READY=1")
+        log.info("sd_notify: READY=1 sent to systemd")
+    except ImportError:
+        log.debug("sdnotify not installed; skipping READY=1 notification")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("sd_notify READY=1 failed: %s", exc)
+
+
+async def _systemd_watchdog_loop() -> None:
+    """Send WATCHDOG=1 heartbeats to systemd on half the WatchdogSec interval.
+
+    systemd sends SIGABRT if it doesn't hear a watchdog ping within WatchdogSec.
+    We ping every WatchdogSec/2 seconds to stay safely ahead of the deadline.
+    No-op when NOTIFY_SOCKET or WATCHDOG_USEC is absent (dev/CI/Windows).
+    """
+    notify_socket = os.environ.get("NOTIFY_SOCKET", "")
+    watchdog_usec = os.environ.get("WATCHDOG_USEC", "")
+    if not notify_socket or not watchdog_usec:
+        return
+
+    try:
+        import sdnotify  # type: ignore[import-not-found]
+
+        n = sdnotify.SystemdNotifier()
+        interval_s = int(watchdog_usec) / 1_000_000 / 2  # ping at half the deadline
+        interval_s = max(5.0, min(interval_s, 60.0))  # clamp to [5s, 60s]
+        log.info("sd_notify: watchdog loop started (interval=%.1fs)", interval_s)
+        while True:
+            await asyncio.sleep(interval_s)
+            try:
+                n.notify("WATCHDOG=1")
+                log.debug("sd_notify: WATCHDOG=1 sent")
+            except Exception as exc:  # noqa: BLE001
+                log.warning("sd_notify WATCHDOG=1 failed: %s", exc)
+    except ImportError:
+        log.debug("sdnotify not installed; watchdog loop disabled")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("sd_notify watchdog loop init failed: %s", exc)
+
+
 @app.on_event("startup")
 async def _start_background_tasks() -> None:
+    # ── systemd sd_notify: signal READY=1 so systemd advances from
+    # "activating" to "active" under Type=notify (issue #391 AC-3).
+    # Uses the lightweight sdnotify package if available; is a no-op
+    # otherwise (dev, Windows, CI).
+    _notify_ready()
+    asyncio.create_task(_systemd_watchdog_loop())
+
     if os.environ.get("DASHBOARD_LEADER") == "1":
         asyncio.create_task(_runner_audit_loop())
         return
