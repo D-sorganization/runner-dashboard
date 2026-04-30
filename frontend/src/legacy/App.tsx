@@ -13676,6 +13676,13 @@ function lsSet(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
 }
 
+function clearAssistantTranscriptHistory() {
+  try {
+    localStorage.removeItem(ASST_LS.transcript);
+    localStorage.removeItem(ASST_LS.transcriptTimestamp);
+  } catch (e) {}
+}
+
 function AssistantSidebar(props) {
   var currentTab = props.currentTab || "";
   var open = props.open;
@@ -13727,10 +13734,7 @@ function AssistantSidebar(props) {
   React.useEffect(function () { lsSet(ASST_LS.saveHistory, saveHistory); }, [saveHistory]);
   React.useEffect(function () {
     if (!saveHistory) {
-      try {
-        localStorage.removeItem(ASST_LS.transcript);
-        localStorage.removeItem(ASST_LS.transcriptTimestamp);
-      } catch (e) {}
+      clearAssistantTranscriptHistory();
       return;
     }
     var capped = transcript.length > 200 ? transcript.slice(-200) : transcript;
@@ -13907,10 +13911,7 @@ function AssistantSidebar(props) {
               setSaveHistory(next);
               if (!next) {
                 setTranscript([]);
-                try {
-                  localStorage.removeItem(ASST_LS.transcript);
-                  localStorage.removeItem(ASST_LS.transcriptTimestamp);
-                } catch (ex) {}
+                clearAssistantTranscriptHistory();
               }
             },
             style: { accentColor: "var(--accent-blue)" },
@@ -13920,10 +13921,7 @@ function AssistantSidebar(props) {
         h("button", {
           onClick: function () {
             setTranscript([]);
-            try {
-              localStorage.removeItem(ASST_LS.transcript);
-              localStorage.removeItem(ASST_LS.transcriptTimestamp);
-            } catch (e) {}
+            clearAssistantTranscriptHistory();
             setShowSettings(false);
           },
           style: { background: "var(--accent-red)", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 12, width: "100%", marginTop: 8 },
@@ -14002,6 +14000,26 @@ function AssistantSidebar(props) {
       h("div", { style: headerStyle },
         h("span", { style: { fontWeight: 600, fontSize: 13 } }, "✨ Assistant"),
         h("div", { style: { display: "flex", gap: 6 } },
+          h("label", {
+            title: "Save chat history",
+            style: { display: "flex", alignItems: "center", gap: 4, color: "var(--text-muted)", cursor: "pointer", fontSize: 11 },
+          },
+            h("input", {
+              type: "checkbox",
+              checked: saveHistory,
+              "aria-label": "Save chat history",
+              onChange: function (e) {
+                var next = e.target.checked;
+                setSaveHistory(next);
+                if (!next) {
+                  setTranscript([]);
+                  clearAssistantTranscriptHistory();
+                }
+              },
+              style: { accentColor: "var(--accent-blue)" },
+            }),
+            "History"
+          ),
           h("button", {
             onClick: function () { setShowSettings(function (s) { return !s; }); },
             title: "Settings",
