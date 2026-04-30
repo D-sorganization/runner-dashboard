@@ -1,0 +1,69 @@
+name: Runbook Lint
+
+# Verifies every operator runbook in docs/runbooks/ has the four required
+# H2 sections (Symptoms, Diagnosis, Remediation, Postmortem template).
+# INDEX.md is excluded because it is the cross-link index, not a runbook.
+# dev-environment.md is excluded because it predates this taxonomy and
+# is a quick-reference guide, not a failure-mode runbook (see INDEX.md).
+#
+# This guards against drift: a half-written runbook that omits a section
+# is worse than no runbook, because operators trust the structure.
+
+on:
+  pull_request:
+    paths:
+      - "docs/runbooks/**"
+      - ".github/workflows/runbook-lint.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/runbooks/**"
+      - ".github/workflows/runbook-lint.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runbook-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Verify runbook structure
+    runs-on: d-sorg-fleet
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Check required H2 sections
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=("## Symptoms" "## Diagnosis" "## Remediation" "## Postmortem template")
+          missing_total=0
+          shopt -s nullglob
+          for f in docs/runbooks/*.md; do
+            base="$(basename "$f")"
+            if [ "$base" = "INDEX.md" ] || [ "$base" = "dev-environment.md" ]; then
+              continue
+            fi
+            file_missing=()
+            for section in "${required[@]}"; do
+              if ! grep -Fxq "$section" "$f"; then
+                file_missing+=("$section")
+              fi
+            done
+            if [ "${#file_missing[@]}" -ne 0 ]; then
+              echo "::error file=$f::missing required H2 section(s): ${file_missing[*]}"
+              missing_total=$((missing_total + ${#file_missing[@]}))
+            else
+              echo "ok: $f"
+            fi
+          done
+          if [ "$missing_total" -ne 0 ]; then
+            echo "Runbook lint failed: $missing_total missing section(s)."
+            exit 1
+          fi
+          echo "Runbook lint passed."

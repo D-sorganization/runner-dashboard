@@ -1,6 +1,6 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.13
+**Spec Version:** 2.5.14
 **Application Version:** 4.1.0 (see `VERSION`)
 **Last Updated:** 2026-04-30T00:00:00Z
 **Status:** Active
@@ -923,9 +923,30 @@ All new deploy scripts should source it with:
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 ```
 
+### 6.8 Operator Runbooks
+
+Operator-facing runbooks for the dashboard's documented failure modes
+live in [`docs/runbooks/`](docs/runbooks/) and are cross-linked from
+[`docs/runbooks/INDEX.md`](docs/runbooks/INDEX.md). Each runbook follows
+a fixed `## Symptoms` / `## Diagnosis` / `## Remediation` /
+`## Postmortem template` structure, and the `runbook-lint.yml` workflow
+(running on `d-sorg-fleet`) blocks any new runbook that omits one of
+those sections. The current set covers dashboard-down (systemd
+flapping), GitHub token expiry, Tailscale Funnel outage,
+Maxwell-unreachable, stuck workflow queue, lease-store corruption,
+deployment drift, Linear webhook rotation, and host rebuild from
+backups (per #417).
+
 ---
 
 ## 7. Changelog
+
+### 2.5.14 - 2026-04-30
+- docs: add operator runbooks for nine failure modes
+  (`docs/runbooks/`) and a `runbook-lint.yml` CI guard that enforces
+  the four required H2 sections; document the runbook surface under
+  SPEC §6.8 (issue #397).
+
 
 ### 2.5.11 - 2026-04-29
 - feat: add authenticated session tracking and remote logout endpoints for the
