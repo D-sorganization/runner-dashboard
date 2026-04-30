@@ -1,6 +1,6 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.13
+**Spec Version:** 2.5.14
 **Application Version:** 4.1.0 (see `VERSION`)
 **Last Updated:** 2026-04-30T00:00:00Z
 **Status:** Active
@@ -242,6 +242,16 @@ implementation.
 
 The dashboard runs as a systemd service (`runner-dashboard.service`) on the
 primary fleet machine. See Section 6 for deployment details.
+
+`deploy/setup.sh` performs a `preflight()` check before any mutation (asserts
+disk free >1G at the deploy dir, Python 3.11+, port 8321 availability, and
+`~/.config/runner-dashboard/env` permissions of `600`), supports `--check-only`
+to run preflight without side effects and `--dry-run` to preview intended
+mutations, replaces `/etc/sudoers.d/runner-dashboard` atomically via
+`visudo -c -f` against a temp file (validation failure leaves the existing
+file untouched), and skips `systemctl restart runner-dashboard` when the
+deployed `git_sha` in `deployment.json` matches the current checkout unless
+`--force` is supplied.
 
 ---
 
