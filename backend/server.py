@@ -4238,8 +4238,15 @@ if __name__ == "__main__":
             _uvicorn_cfg["workers"],
         )
 
+    # uvicorn requires an import string (not the in-memory app object) when
+    # running in multi-worker mode — workers spawn via multiprocessing and
+    # each child re-imports the app. Codex P1 review on PR #482 flagged that
+    # passing `app` directly with `workers > 1` either silently runs a single
+    # worker or fails at startup. Use the import string when WORKERS > 1; keep
+    # the in-memory object for single-worker dev runs (faster, no re-import).
+    _uvicorn_target: object = "server:app" if _uvicorn_cfg["workers"] > 1 else app
     uvicorn.run(
-        app,
+        _uvicorn_target,  # type: ignore[arg-type]
         host="0.0.0.0",  # nosec B104 — intentional for local LAN/Tailscale access
         port=PORT,
         log_level="warning",  # FastAPI handles its own logging
