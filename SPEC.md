@@ -1724,9 +1724,16 @@ prefix:
 | `assistant:open` | Whether sidebar is currently open | `false` |
 | `assistant:position` | Dock side (`"left"` or `"right"`) | `"right"` |
 | `assistant:width` | Sidebar width in pixels | `360` |
-| `assistant:transcript` | Conversation history (capped at 200 messages) | `[]` |
+| `assistant:transcript` | Conversation history, written only when history saving is enabled (capped at 200 messages) | `[]` |
+| `assistant:transcript:ts` | Unix-ms timestamp used to expire saved conversation history after 24 hours | unset |
+| `assistant:saveHistory` | Opt-in preference for saving assistant chat history | `false` |
 | `assistant:openByDefault` | Open automatically on load | `false` |
 | `assistant:includeContext` | Send page context with each message | `true` |
+
+Assistant chat history is privacy-preserving by default: transcripts remain
+in memory unless the operator enables the `Save chat history` control in the
+sidebar header or settings panel. Disabling the control or using `Clear chat
+history` removes both transcript storage keys immediately.
 
 ### 16.5 Conversation
 
