@@ -8,8 +8,6 @@ from fastapi import APIRouter
 log = logging.getLogger("dashboard.queue_diagnostics")
 router = APIRouter()
 
-ORG = "D-sorganization"  # TODO: get from config
-
 
 @router.get("/api/queue/diagnose")
 async def diagnose_queue() -> dict:
