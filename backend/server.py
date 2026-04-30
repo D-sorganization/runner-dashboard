@@ -86,6 +86,7 @@ from routers import feature_requests as _feature_requests_router  # noqa: E402
 from routers import fleet as _fleet_router  # noqa: E402
 from routers import linear as _linear_router  # noqa: E402
 from routers import linear_webhook as _linear_webhook_router  # noqa: E402
+from routers import runners as _runners_router  # noqa: E402
 from routers import runs_workflows as _runs_workflows_router  # noqa: E402
 from routers import system as _system_router  # noqa: E402
 from system_utils import get_system_metrics_snapshot  # noqa: E402
@@ -464,6 +465,7 @@ app.include_router(_agent_launcher_router.router)
 # Batch-2 extracted routers (epic #159)
 app.include_router(_system_router.router)
 app.include_router(_fleet_router.router)
+app.include_router(_runners_router.router)
 app.include_router(_runs_workflows_router.router)
 app.include_router(_assistant_router.router)
 app.include_router(_feature_requests_router.router)
