@@ -1630,7 +1630,7 @@ async def _inspect_windows_keepalive() -> dict:
         "@(Get-ChildItem -Path $startup -Filter 'wsl-keepalive.vbs'"
         " -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)"
     )
-    _ps_get_actions = "@($task.Actions | ForEach-Object { [pscustomobject]@{ Execute = $_.Execute; Arguments = $_.Arguments } })"
+    _ps_get_actions = "@($task.Actions | ForEach-Object { [pscustomobject]@{ Execute = $_.Execute; Arguments = $_.Arguments } })"  # noqa: E501
     script = f"""
 $ErrorActionPreference = 'Stop'
 $startup = [Environment]::GetFolderPath('Startup')
