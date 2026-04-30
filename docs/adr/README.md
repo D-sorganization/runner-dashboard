@@ -32,4 +32,8 @@ What becomes easier or more difficult to do because of this change?
 
 ## Index
 
-*None yet — this is a placeholder for future ADRs.*
+- [0001. Single-file SPA to Vite + React + TypeScript migration](./0001-vite-spa-migration.md)
+- [0002. Dispatch contract uses HMAC-signed envelope, not JWT](./0002-dispatch-contract-hmac-envelope.md)
+- [0003. Runner lease store is a YAML file, not a SQLite database](./0003-lease-store-yaml-not-sqlite.md)
+- [0004. WebAuthn ships fail-closed scaffold first, real verifier in Phase 2](./0004-webauthn-fail-closed-scaffold.md)
+- [0005. Agent priority order: user > maxwell-daemon > claude > codex > jules > local > gaai](./0005-agent-priority-order.md)
