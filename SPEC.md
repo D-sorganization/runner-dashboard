@@ -134,6 +134,24 @@ The project pytest configuration declares `backend` on `pythonpath`, and
 `tests/conftest.py` also inserts the resolved backend directory before importing
 the FastAPI app and router dependencies.
 
+**Uvicorn runtime tuning (env-var driven, issue #393):**
+
+When `backend/server.py` is invoked as `__main__`, the uvicorn instance is
+configured from environment variables so operators can adjust ASGI
+behaviour without code changes:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `WORKERS` | `1` | Worker process count. Stays at `1` until leader-election (#367) lands; setting it higher logs a runtime warning because background tasks would otherwise duplicate across workers. |
+| `LIMIT_CONCURRENCY` | `200` | Max concurrent in-flight requests before uvicorn returns 503. |
+| `TIMEOUT_KEEP_ALIVE` | `5` | Seconds an idle keep-alive HTTP connection is held before closure. |
+
+Invalid values fall back to the default and emit a log warning.
+
+**Bounded in-process buffers:** the CPU sample buffer `_cpu_history` is a
+`collections.deque` capped at `_CPU_HISTORY_MAXLEN` (1000 samples). The
+fixed cap guarantees flat memory regardless of process uptime (#393).
+
 ### 2.2 Frontend
 
 **Type:** Single-Page Application (SPA)
@@ -937,6 +955,18 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 ---
 
 ## 7. Changelog
+
+### 2.5.14 - 2026-04-30
+- feat(scalability): drive uvicorn `workers`, `limit_concurrency`, and
+  `timeout_keep_alive` from `WORKERS` / `LIMIT_CONCURRENCY` /
+  `TIMEOUT_KEEP_ALIVE` env vars, with defaults `1` / `200` / `5`. `WORKERS`
+  stays at 1 until leader-election (#367) lands; setting it higher emits a
+  runtime warning. Documented under §2.1 Backend (#393).
+- chore(reliability): cap `_cpu_history` to a `collections.deque` with
+  `maxlen=1000` so the in-process CPU sample buffer cannot grow without
+  bound (#393).
+- chore(reliability): cap `queue_cleanup.find_stale_runs` fan-out to 8
+  concurrent repo queries via `asyncio.Semaphore` (#393).
 
 ### 2.5.11 - 2026-04-29
 - feat: add authenticated session tracking and remote logout endpoints for the
