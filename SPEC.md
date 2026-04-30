@@ -1,7 +1,7 @@
 ﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.13
-**Application Version:** 4.1.0 (see `VERSION`)
+**Spec Version:** 2.5.14
+**Application Version:** 4.1.1 (see `VERSION`)
 **Last Updated:** 2026-04-30T00:00:00Z
 **Status:** Active
 
@@ -200,6 +200,18 @@ mobile hit-target and press/focus affordance, while `SegmentedControl` provides
 an accessible `radiogroup` for compact mobile filters. Gesture-heavy primitives
 (`SwipeRow`, `PullToRefresh`, and `BottomSheet`) remain separate follow-up
 work because they require pointer-event and focus-management tests.
+
+The `Skeleton` primitive (issue #427) lives at
+`frontend/src/primitives/Skeleton.tsx` and exports four variants: `Skeleton`
+(generic rectangle), `SkeletonLine` (single horizontal line), `SkeletonCard`
+(card-shaped header plus configurable body lines), and `SkeletonTable`
+(rows × columns grid). Each variant accepts `width`, `height`, and
+`className` props, renders a subtle shimmer animation by default, falls back
+to a static neutral block under `prefers-reduced-motion: reduce`, and uses
+the design tokens from `frontend/src/design/tokens.ts` for colour. Pages
+must prefer the Skeleton primitive over bare "Loading…" text so layouts
+keep their final shape during data fetches and Cumulative Layout Shift
+stays low.
 
 **Shared helper components** defined near the top of the script block:
 
