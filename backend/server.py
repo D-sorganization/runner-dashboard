@@ -215,6 +215,9 @@ class HelpChatBody(BaseModel):
 MAX_CACHE_SIZE = 500
 _CACHE_EVICT_BATCH = 50
 
+# CPU history ring-buffer depth (one sample per /api/system poll; 60 ≈ 1 min at 1 Hz)
+CPU_HISTORY_MAXLEN = int(os.environ.get("DASHBOARD_CPU_HISTORY_MAXLEN", "60"))
+
 # ─── Shared State Locks ───────────────────────────────────────────────────────
 _remediation_history_lock: asyncio.Lock = asyncio.Lock()
 _orchestration_audit_lock: asyncio.Lock = asyncio.Lock()
@@ -266,11 +269,7 @@ EXPECTED_VERSION_FILE = Path(
 
 # ─── Setup moving averages and host memory cache ────────────
 
-# Bounded CPU history sample buffer.  Size is intentionally capped to prevent
-# unbounded memory growth in long-lived processes (#393).  The deque retains
-# the most recent samples and discards older entries automatically.
-_CPU_HISTORY_MAXLEN: int = 1000
-_cpu_history: deque[float] = deque(maxlen=_CPU_HISTORY_MAXLEN)
+_cpu_history: deque[float] = deque(maxlen=CPU_HISTORY_MAXLEN)
 
 
 def _runner_scheduler_apply_command() -> list[str]:
