@@ -160,6 +160,17 @@ jobs:
             grep -rE "TODO|FIXME" backend/ --include="*.py"
             exit 1
           fi
+      - name: Verify Documentation Freshness (issue #394)
+        run: |
+          # The frontend is now Vite + React + TypeScript. Block any
+          # regression in CLAUDE.md / CONTRIBUTING.md to the old
+          # "no build step / no JSX / no TypeScript" claims.
+          if grep -iE 'no (build step|jsx|typescript)' CLAUDE.md CONTRIBUTING.md; then
+            echo "::error::Forbidden legacy frontend phrasing reintroduced."
+            echo "The frontend is Vite + React + TypeScript. Update the docs."
+            exit 1
+          fi
+          echo "Documentation freshness check passed."
       - name: Security Audit (pip-audit)
         env:
           PYTHONNOUSERSITE: "1"
