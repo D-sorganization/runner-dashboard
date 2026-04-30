@@ -307,64 +307,23 @@ header "Step 4/5: Systemd Service (Auto-Start)"
 
 SERVICE_FILE="/etc/systemd/system/runner-dashboard.service"
 
-sudo tee "${SERVICE_FILE}" > /dev/null <<SVCEOF
-[Unit]
-Description=D-sorganization Runner Dashboard (${MACHINE_NAME})
-After=network.target
-Wants=network-online.target
+TEMPLATE_FILE="${SCRIPT_DIR}/deploy/runner-dashboard.service"
 
-[Service]
-Type=simple
-User=${USER}
-WorkingDirectory=${DEPLOY_DIR}
-ExecStartPre=${DEPLOY_DIR}/refresh-token.sh
-ExecStart=${PYTHON_BIN} ${DEPLOY_DIR}/backend/server.py
-Restart=always
-RestartSec=5
-Environment=GITHUB_ORG=D-sorganization
-Environment=NUM_RUNNERS=${NUM_RUNNERS}
-Environment=DASHBOARD_PORT=${PORT}
-Environment=DISPLAY_NAME=${DISPLAY_NAME_VAL}
-Environment=RUNNER_ALIASES=${RUNNER_ALIASES_VAL}
-Environment=RUNNER_SCHEDULE_CONFIG=${SCHEDULE_CONFIG_VAL}
-Environment=RUNNER_SCHEDULER_BIN=/usr/local/bin/runner-scheduler
-Environment=MACHINE_ROLE=${MACHINE_ROLE}
-Environment=HOME=${HOME}
-Environment=PATH=/usr/lib/wsl/lib:${HOME}/.local/bin:${HOME}/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-# Secrets (GH_TOKEN, FLEET_NODES) are loaded from a file readable only by
-# this user — not stored in this world-readable unit file.
-EnvironmentFile=-${HOME}/.config/runner-dashboard/env
+if [[ ! -f "${TEMPLATE_FILE}" ]]; then
+    fail "Template not found at ${TEMPLATE_FILE}"
+fi
 
-# Hardening (issue #391)
-NoNewPrivileges=true
-ProtectSystem=full
-ProtectHome=read-only
-PrivateTmp=true
-PrivateDevices=true
-ProtectKernelTunables=true
-ProtectKernelModules=true
-ProtectControlGroups=true
-RestrictSUIDSGID=true
-RemoveIPC=true
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
-RestrictNamespaces=true
-CapabilityBoundingSet=
-SystemCallFilter=@system-service
-LockPersonality=true
-MemoryDenyWriteExecute=true
-ProtectHostname=true
-ProtectClock=true
-ProtectProc=invisible
-MemoryMax=2G
-CPUQuota=200%
-TasksMax=512
-WatchdogSec=120
-# Allow the dashboard to read/write runner secrets and config from HOME.
-ReadWritePaths=${HOME}/.config/runner-dashboard
-
-[Install]
-WantedBy=multi-user.target
-SVCEOF
+sed -e "s|Description=D-sorganization Runner Dashboard|Description=D-sorganization Runner Dashboard (${MACHINE_NAME})|g" \
+    -e "s|YOUR_USER|${USER}|g" \
+    -e "s|/home/YOUR_USER|${HOME}|g" \
+    -e "s|/usr/bin/python3.11|${PYTHON_BIN}|g" \
+    -e "s|NUM_RUNNERS=12|NUM_RUNNERS=${NUM_RUNNERS}|g" \
+    -e "s|DASHBOARD_PORT=8321|DASHBOARD_PORT=${PORT}|g" \
+    -e "s|DISPLAY_NAME=ControlTower|DISPLAY_NAME=${DISPLAY_NAME_VAL}|g" \
+    -e "s|RUNNER_ALIASES=controltower,control-tower-runner-monitoring|RUNNER_ALIASES=${RUNNER_ALIASES_VAL}|g" \
+    -e "s|RUNNER_SCHEDULE_CONFIG=.*|RUNNER_SCHEDULE_CONFIG=${SCHEDULE_CONFIG_VAL}|g" \
+    -e "s|MACHINE_ROLE=hub|MACHINE_ROLE=${MACHINE_ROLE}|g" \
+    "${TEMPLATE_FILE}" | sudo tee "${SERVICE_FILE}" > /dev/null
 
 sudo systemctl daemon-reload
 sudo systemctl enable runner-dashboard.service
