@@ -1,8 +1,8 @@
 # SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.20
+**Spec Version:** 2.5.21
 **Application Version:** 4.1.0 (see `VERSION`)
-**Last Updated:** 2026-04-30T23:15:00Z
+**Last Updated:** 2026-04-30T23:45:00Z
 **Status:** Active
 
 ---
@@ -183,6 +183,12 @@ Reports, Assessments, and Feature Requests expose read-mostly mobile card and
 reader layouts over their existing APIs so operators can inspect report files,
 assessment score history, and feature request history without relying on wide
 desktop tables.
+
+Frontend browser storage goes through `frontend/src/lib/storage.ts` for new
+storage work. The helper exposes a typed key registry, Zod-validated
+`getItem<T>` / `setItem<T>` helpers, per-key migrations, and quota-exceeded
+fallback to in-memory storage with an operator warning toast. Existing legacy
+keys remain supported while call sites are migrated incrementally.
 
 The mobile foundation is documented in `docs/mobile-native-shell.md` and
 `docs/mobile-design-system.md`. Reusable mobile
@@ -429,8 +435,9 @@ date, and prompt excerpt over the existing `/api/feature-requests` response.
 ### 3.17 Maxwell Tab
 Control interface for the Maxwell daemon (fleet orchestration AI). Shows
 daemon status, configuration, start/stop/configure controls, and a mobile
-operator chat surface with preserved history, quick actions, streamed replies,
-and a daemon-unreachable retry state.
+operator chat surface with typed session history persistence, a "Do not save
+chat history" privacy toggle that clears persisted chat, quick actions,
+streamed replies, and a daemon-unreachable retry state.
 
 ### 3.18 Fleet Orchestration Tab
 Cross-node deployment orchestration. Shows orchestration run history,
@@ -960,6 +967,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 ---
 
 ## 7. Changelog
+
+### 2.5.21 - 2026-04-30
+- fix(state): add a typed Zod-backed frontend storage layer with key registry,
+  migrations, quota fallback, and static contract tests (#423).
+- fix(privacy): route Maxwell mobile chat history through the typed storage
+  helper and add a per-user "Do not save chat history" toggle.
 
 ### 2.5.16 - 2026-04-30
 - ci: keep the standard test lane aligned with the checked-in `uv.lock`, Bandit

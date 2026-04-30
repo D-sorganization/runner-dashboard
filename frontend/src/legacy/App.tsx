@@ -5,6 +5,14 @@ import { Badge } from "../primitives/Badge"
 import { Pill } from "../primitives/Pill"
 import { marked } from "marked"
 import DOMPurify from "dompurify"
+import {
+  STORAGE_KEYS,
+  booleanSchema,
+  getItem as getStorageItem,
+  maxwellChatMessagesSchema,
+  removeItem as removeStorageItem,
+  setItem as setStorageItem,
+} from "../lib/storage"
 
 // @ts-nocheck
 /* eslint-disable */
@@ -9889,13 +9897,23 @@ function MaxwellTab(p) {
   var dv = React.useState("");
   var daemonVersion = dv[0],
     setDaemonVersion = dv[1];
-  var chatStoreKey = "maxwellMobileChatHistory";
+  var chatPrivacy = React.useState(function () {
+    return getStorageItem(
+      STORAGE_KEYS.maxwellMobileChatHistoryDisabled,
+      booleanSchema,
+      false,
+    );
+  });
+  var chatHistoryDisabled = chatPrivacy[0],
+    setChatHistoryDisabled = chatPrivacy[1];
   var cm = React.useState(function () {
-    try {
-      return JSON.parse(sessionStorage.getItem(chatStoreKey) || "[]");
-    } catch (e) {
-      return [];
-    }
+    if (chatHistoryDisabled) return [];
+    return getStorageItem(
+      STORAGE_KEYS.maxwellMobileChatHistory,
+      maxwellChatMessagesSchema,
+      [],
+      { area: "session" },
+    );
   });
   var chatMessages = cm[0],
     setChatMessages = cm[1];
@@ -9933,10 +9951,33 @@ function MaxwellTab(p) {
   }, []);
 
   React.useEffect(function () {
-    try {
-      sessionStorage.setItem(chatStoreKey, JSON.stringify(chatMessages.slice(-40)));
-    } catch (e) {}
-  }, [chatMessages]);
+    setStorageItem(
+      STORAGE_KEYS.maxwellMobileChatHistoryDisabled,
+      chatHistoryDisabled,
+      booleanSchema,
+    );
+    if (chatHistoryDisabled) {
+      removeStorageItem(STORAGE_KEYS.maxwellMobileChatHistory, { area: "session" });
+      return;
+    }
+    setStorageItem(
+      STORAGE_KEYS.maxwellMobileChatHistory,
+      chatMessages.slice(-40),
+      maxwellChatMessagesSchema,
+      { area: "session" },
+    );
+  }, [chatMessages, chatHistoryDisabled]);
+
+  function toggleChatHistoryPrivacy() {
+    setChatHistoryDisabled(function (disabled) {
+      var next = !disabled;
+      if (next) {
+        removeStorageItem(STORAGE_KEYS.maxwellMobileChatHistory, { area: "session" });
+        setChatMessages([]);
+      }
+      return next;
+    });
+  }
 
   React.useEffect(function () {
     if (!chatListRef.current || showScrollButton) return;
@@ -10069,7 +10110,15 @@ function MaxwellTab(p) {
     ),
     h("div", { className: "section maxwell-chat-section" },
       h("div", { className: "section-header" },
-        h("span", { className: "section-title" }, I.messageSquare ? I.messageSquare(14) : null, "Maxwell Chat")
+        h("span", { className: "section-title" }, I.messageSquare ? I.messageSquare(14) : null, "Maxwell Chat"),
+        h("label", { style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)" } },
+          h("input", {
+            type: "checkbox",
+            checked: chatHistoryDisabled,
+            onChange: toggleChatHistoryPrivacy,
+          }),
+          "Do not save chat history"
+        )
       ),
       h("div", { className: "section-body maxwell-chat" },
         h("div", {
