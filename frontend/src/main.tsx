@@ -4,6 +4,7 @@ import App from './legacy/App'
 import { PushSettings } from './pages/PushSettings'
 import { Toaster } from './primitives/Toaster'
 import { useToast } from './primitives/Toaster'
+import { RootErrorBoundary } from './primitives/RootErrorBoundary'
 import { BreakpointProvider } from './hooks/useBreakpoint'
 import './index.css'
 
@@ -111,15 +112,17 @@ function initialTabFromPathname(pathname: string): string | undefined {
 // isPushSettingsRoute(window.location.pathname) ? <PushSettings /> : <App />
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BreakpointProvider>
-      <Toaster>
-        <SwUpdateToast />
-        {isPushSettingsRoute(window.location.pathname) ? (
-          <PushSettings />
-        ) : (
-          <App initialTab={initialTabFromPathname(window.location.pathname)} />
-        )}
-      </Toaster>
-    </BreakpointProvider>
+    <RootErrorBoundary>
+      <BreakpointProvider>
+        <Toaster>
+          <SwUpdateToast />
+          {isPushSettingsRoute(window.location.pathname) ? (
+            <PushSettings />
+          ) : (
+            <App initialTab={initialTabFromPathname(window.location.pathname)} />
+          )}
+        </Toaster>
+      </BreakpointProvider>
+    </RootErrorBoundary>
   </React.StrictMode>,
 )
