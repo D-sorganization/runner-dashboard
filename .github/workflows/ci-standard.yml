@@ -327,15 +327,26 @@ jobs:
             pip install -r requirements.txt
             echo "$RUNNER_TEMP/ci-venv/bin" >> "$GITHUB_PATH"
           fi
-      - name: Run Python tests
+      - name: Run Python tests with coverage (issue #342)
         env:
           PYTHONPATH: backend
         # -n auto: pytest-xdist parallel workers (issue #401).
         # -m exclusion: integration / playwright tests run nightly only.
         run: |
           if [ -d tests/ ]; then
-            pytest tests/ --tb=short -n auto -m "not integration and not playwright"
+            pip install pytest-cov==6.1.1 --quiet
+            pytest tests/ --tb=short -n auto -m "not integration and not playwright" \
+              --cov=backend --cov-report=xml --cov-report=term-missing
           else
             echo "No tests directory found â€” skipping"
             exit 0
           fi
+      - name: Upload coverage artifact
+        if: always() && hashFiles('coverage.xml') != ''
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.0
+        with:
+          name: coverage
+          path: |
+            coverage.xml
+          retention-days: 14
+          if-no-files-found: ignore
