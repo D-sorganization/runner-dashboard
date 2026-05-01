@@ -50,7 +50,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
-    JSONResponse,
 )
 from fastapi.staticfiles import StaticFiles
 from identity import Principal, require_scope  # noqa: B008
@@ -110,6 +109,7 @@ from routers import feature_requests as _feature_requests_router  # noqa: E402
 from routers import fleet as _fleet_router  # noqa: E402
 from routers import heavy_tests as _heavy_tests_router  # noqa: E402
 from routers import linear as _linear_router  # noqa: E402
+from routers import linear_sync as _linear_sync_router  # noqa: E402  # issue #236
 from routers import linear_webhook as _linear_webhook_router  # noqa: E402
 from routers import maxwell as _maxwell_router  # noqa: E402
 from routers import orchestration as _orchestration_router  # noqa: E402
@@ -117,6 +117,7 @@ from routers import queue as _queue_router  # noqa: E402
 from routers import queue_diagnostics as _queue_diagnostics_router  # noqa: E402
 from routers import remediation as _remediation_router  # noqa: E402
 from routers import reports as _reports_router  # noqa: E402
+from routers import runner_audit as _runner_audit_router  # noqa: E402  # issue #298
 from routers import runner_diagnostics as _runner_diagnostics_router  # noqa: E402
 from routers import runner_groups as _runner_groups_router  # noqa: E402
 from routers import runners as _runners_router  # noqa: E402
@@ -439,6 +440,8 @@ app.include_router(_reports_router.router)
 app.include_router(_heavy_tests_router.router)
 app.include_router(_assessments_router.router)
 app.include_router(_orchestration_router.router)
+app.include_router(_runner_audit_router.router)  # batch 3 extraction (issue #298)
+app.include_router(_linear_sync_router.router)  # Linear read sync (issue #236)
 
 app.add_middleware(
     SessionMiddleware,
@@ -2853,117 +2856,9 @@ async def generate_launchers(
 
 
 # ─── Hosted-Runner Billing Audit ─────────────────────────────────────────────
-
-HOSTED_RUNNER_PATTERNS = re.compile(
-    r"^(ubuntu-|windows-|macos-|GitHub Actions \d|Hosted Agent)",
-    re.IGNORECASE,
-)
-_runner_audit_cache: dict[str, Any] = {
-    "violations": [],
-    "last_checked": None,
-    "error": None,
-}
-_runner_audit_lock = asyncio.Lock()
-
-
-@app.get("/api/runner-routing-audit")
-async def get_runner_routing_audit() -> JSONResponse:
-    """Return recent workflow runs that executed on GitHub-hosted runners."""
-    return JSONResponse(_runner_audit_cache)
-
-
-@app.post("/api/runner-routing-audit/refresh")
-async def refresh_runner_routing_audit() -> JSONResponse:
-    """Trigger an immediate audit refresh."""
-    asyncio.create_task(_run_runner_audit())
-    return JSONResponse({"status": "refresh triggered"})
-
-
-async def _run_runner_audit() -> None:
-    async with _runner_audit_lock:
-        try:
-            violations = await _fetch_hosted_runner_violations()
-            _runner_audit_cache["violations"] = violations
-            _runner_audit_cache["last_checked"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-            _runner_audit_cache["error"] = None
-            if violations:
-                log.warning(
-                    "BILLING ALERT: %d workflow run(s) detected on GitHub-hosted runners",
-                    len(violations),
-                )
-        except Exception as exc:  # noqa: BLE001
-            _runner_audit_cache["error"] = str(exc)
-            log.error("Runner routing audit failed: %s", exc)
-
-
-async def _fetch_hosted_runner_violations() -> list[dict[str, Any]]:
-    """Query GitHub API for recent runs on hosted runners across org repos."""
-    token = os.environ.get("GH_TOKEN", "").strip()
-    if not token:
-        return []
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-    }
-    org = ORG
-    violations: list[dict[str, Any]] = []
-
-    async with httpx.AsyncClient(timeout=30) as client:
-        repos_resp = await client.get(
-            f"https://api.github.com/orgs/{org}/repos",
-            headers=headers,
-            params={"per_page": 50, "sort": "pushed"},
-        )
-        if repos_resp.status_code != 200:
-            return []
-        repos = [r["name"] for r in repos_resp.json()]
-
-        for repo_name in repos[:20]:  # limit to 20 most recently pushed
-            try:
-                runs_resp = await client.get(
-                    f"https://api.github.com/repos/{org}/{repo_name}/actions/runs",
-                    headers=headers,
-                    params={"per_page": 10, "status": "completed"},
-                )
-                if runs_resp.status_code != 200:
-                    continue
-                for run in runs_resp.json().get("workflow_runs", []):
-                    jobs_resp = await client.get(
-                        f"https://api.github.com/repos/{org}/{repo_name}/actions/runs/{run['id']}/jobs",
-                        headers=headers,
-                        params={"per_page": 30},
-                    )
-                    if jobs_resp.status_code != 200:
-                        continue
-                    for job in jobs_resp.json().get("jobs", []):
-                        runner_name = job.get("runner_name") or ""
-                        runner_group = job.get("runner_group_name") or ""
-                        if HOSTED_RUNNER_PATTERNS.match(runner_name) or runner_group == "GitHub Actions":
-                            violations.append(
-                                {
-                                    "repo": repo_name,
-                                    "workflow": run.get("name", ""),
-                                    "run_id": run["id"],
-                                    "job_name": job.get("name", ""),
-                                    "runner_name": runner_name,
-                                    "runner_group": runner_group,
-                                    "run_url": run.get("html_url", ""),
-                                    "started_at": job.get("started_at", ""),
-                                    "conclusion": job.get("conclusion", ""),
-                                }
-                            )
-            except Exception:  # noqa: BLE001
-                continue
-
-    return violations
-
-
-async def _runner_audit_loop() -> None:
-    await asyncio.sleep(30)  # initial delay
-    while True:
-        await _run_runner_audit()
-        await asyncio.sleep(900)  # 15 minutes
+# Routes and logic extracted to routers/runner_audit.py (issue #298 batch 3).
+# The audit background loop is started in _startup() via
+# _runner_audit_router.start_audit_loop() below.
 
 
 # Inject dependencies into system router
@@ -3026,8 +2921,12 @@ async def _startup() -> None:
     # Replay-store purge runs on every node regardless of leader status.
     asyncio.create_task(_periodic_replay_purge())
 
+    # Inject org into the audit router so it can query GitHub (issue #298)
+    _runner_audit_router.set_org(ORG)
+
     if os.environ.get("DASHBOARD_LEADER") == "1":
-        asyncio.create_task(_runner_audit_loop())
+        _runner_audit_router.start_audit_loop()
+        _linear_sync_router.start_sync_loop()  # issue #236
         return
 
     try:
@@ -3040,10 +2939,12 @@ async def _startup() -> None:
         _leader_lock_fd = open(lock_path, "w")
         fcntl.flock(_leader_lock_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)  # type: ignore[attr-defined]  # type: ignore[attr-defined]
         log.info("Acquired leader lock, starting background tasks")
-        asyncio.create_task(_runner_audit_loop())
+        _runner_audit_router.start_audit_loop()
+        _linear_sync_router.start_sync_loop()  # issue #236
     except ImportError:
         log.warning("fcntl not available on this platform, running without file lock")
-        asyncio.create_task(_runner_audit_loop())
+        _runner_audit_router.start_audit_loop()
+        _linear_sync_router.start_sync_loop()  # issue #236
     except OSError as e:
         log.info("Could not acquire leader lock, running as follower: %s", e)
 

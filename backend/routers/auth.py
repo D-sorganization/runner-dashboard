@@ -8,6 +8,7 @@ import session_management as sm
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from identity import Principal, identity_manager, require_principal
+from middleware import check_auth_rate_limit
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -34,6 +35,7 @@ async def github_login(request: Request):
 @router.get("/callback")
 async def github_callback(request: Request, code: str, state: str):
     """Handle GitHub OAuth callback."""
+    check_auth_rate_limit(request)  # issue #320: 5 attempts / 5 min per IP
     saved_state = request.session.get("oauth_state")
     if not saved_state or state != saved_state:
         raise HTTPException(status_code=400, detail="Invalid state")
@@ -88,6 +90,7 @@ async def github_callback(request: Request, code: str, state: str):
 @router.get("/dev-login")
 async def dev_login(request: Request):
     """Development login when OAuth is not configured."""
+    check_auth_rate_limit(request)  # issue #320: 5 attempts / 5 min per IP
     if GITHUB_CLIENT_ID:
         raise HTTPException(status_code=400, detail="Dev login disabled when OAuth is configured")
 
