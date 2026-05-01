@@ -394,7 +394,7 @@ async def fleet_control(
     request: Request,
     *,
     principal: Principal = Depends(require_scope("fleet.control")),  # noqa: B008
-):
+) -> dict:
     """Scale runners from any dashboard.
 
     Nodes proxy fleet-wide requests to the hub. The hub applies the action
