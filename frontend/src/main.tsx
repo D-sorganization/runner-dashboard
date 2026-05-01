@@ -1,7 +1,5 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './legacy/App'
-import { PushSettings } from './pages/PushSettings'
 import { Toaster } from './primitives/Toaster'
 import { RootErrorBoundary } from './primitives/RootErrorBoundary'
 import { BreakpointProvider } from './hooks/useBreakpoint'
@@ -9,6 +7,9 @@ import './i18n'
 import './index.css'
 // Web Vitals — send metrics to backend (issue #385)
 import { onCLS, onINP, onFCP, onLCP } from 'web-vitals'
+
+const App = React.lazy(() => import('./legacy/App'))
+const PushSettings = React.lazy(() => import('./pages/PushSettings'))
 
 function sendWebVitals(metric: any) {
   const payload = {
@@ -107,11 +108,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <RootErrorBoundary>
       <BreakpointProvider>
         <Toaster>
-          {isPushSettingsRoute(window.location.pathname) ? (
-            <PushSettings />
-          ) : (
-            <App initialTab={initialTabFromPathname(window.location.pathname)} />
-          )}
+          <Suspense fallback={<div className="spinner" style={{ margin: '40vh auto' }} />}>
+            {isPushSettingsRoute(window.location.pathname) ? (
+              <PushSettings />
+            ) : (
+              <App initialTab={initialTabFromPathname(window.location.pathname)} />
+            )}
+          </Suspense>
         </Toaster>
       </BreakpointProvider>
     </RootErrorBoundary>
