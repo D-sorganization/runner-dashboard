@@ -464,7 +464,7 @@ All endpoints are served under `http://localhost:8321/api/`.
 | GET | `/api/system` | Host system metrics (CPU, RAM, disk, GPU) |
 | GET | `/api/health` | Simple health check — returns `{“status”: “ok”}` |
 | GET | `/api/watchdog` | Watchdog status and last heartbeat |
-| GET | `/readyz` | Readiness probe — returns `{“status”:”ready”,”session_secret_source”:”env\|persisted\|generated”}` |
+| GET | `/readyz` | Readiness probe — runs dependency checks (GH_TOKEN, gh CLI, SQLite stores); returns 200 or 503 with `{status, checks}` |
 | GET | `/livez` | Liveness probe — returns `{“status”:”ok”}` with no I/O; always 200 if process is up |
 
 **Request ID correlation (`X-Request-ID`):**
