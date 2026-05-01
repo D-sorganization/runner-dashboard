@@ -121,6 +121,7 @@ coupling and makes each domain independently testable.
 
 | Router | Prefix | Responsibility |
 |---|---|---|
+| `routers/deployment.py` | `/api/deployment` | Deployment metadata, expected-version, drift, git-drift (issue #357) |
 | `routers/dispatch.py` | `/api/fleet/dispatch` | Fleet agent dispatcher â€” allowlisted hub-to-node commands |
 | `routers/credentials.py` | `/api` | Credential probe â€” tool/key presence without exposing values |
 | `routers/linear.py` | `/api/linear` | Optional Linear read API for workspaces, teams, and issue inventory |
