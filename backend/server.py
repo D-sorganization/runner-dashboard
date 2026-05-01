@@ -102,6 +102,7 @@ from middleware import add_security_headers, csrf_check  # noqa: E402
 from report_files import parse_report_metrics, sanitize_report_date  # noqa: E402
 from routers import assistant as _assistant_router  # noqa: E402
 from routers import credentials as _credentials_router  # noqa: E402
+from routers import deployment as _deployment_router  # noqa: E402
 from routers import dispatch as _dispatch_router  # noqa: E402
 from routers import feature_requests as _feature_requests_router  # noqa: E402
 from routers import fleet as _fleet_router  # noqa: E402
@@ -355,49 +356,38 @@ app.add_middleware(
     default_limit=1 * 1024 * 1024,  # 1 MB
 )
 
+# ── Replay-protection store (issue #344) ─────────────────────────────────────
+# Replaces the unbounded JSON file with a bounded SQLite-backed store.
+from replay_store import ReplayStore, migrate_json_to_sqlite  # noqa: E402
+
 _PROCESSED_ENVELOPES_PATH = Path.home() / "actions-runners" / "dashboard" / "processed_envelopes.json"
-_processed_envelopes_lock: asyncio.Lock = asyncio.Lock()
+_REPLAY_STORE_PATH = Path.home() / "actions-runners" / "dashboard" / "replay.db"
+_replay_store: ReplayStore = ReplayStore(_REPLAY_STORE_PATH)
 
-
-def _load_processed_envelopes() -> dict[str, float]:
-    """Load processed envelope IDs and expiration times from disk."""
-    if not _PROCESSED_ENVELOPES_PATH.exists():
-        return {}
-    try:
-        data = json.loads(_PROCESSED_ENVELOPES_PATH.read_text())
-        return {k: float(v) for k, v in data.items() if isinstance(v, (int, float))}
-    except (OSError, json.JSONDecodeError, ValueError):
-        return {}
+# One-shot migration: import any live entries from the legacy JSON file.
+migrate_json_to_sqlite(_PROCESSED_ENVELOPES_PATH, _replay_store)
 
 
 async def _is_envelope_replay(envelope_id: str) -> bool:
     """Check if envelope_id has already been processed (replay detection)."""
-    async with _processed_envelopes_lock:
-        processed = _load_processed_envelopes()
-        now = datetime.now(UTC).timestamp()
-
-        if envelope_id in processed:
-            expires_at = processed[envelope_id]
-            return expires_at > now
-
-        return False
+    return _replay_store.is_replay(envelope_id)
 
 
 async def _record_processed_envelope(envelope_id: str, ttl_seconds: int = 86400) -> None:
     """Record that envelope_id has been processed (for replay detection)."""
-    async with _processed_envelopes_lock:
-        processed = _load_processed_envelopes()
-        now = datetime.now(UTC).timestamp()
-        expires_at = now + ttl_seconds
+    _replay_store.record(envelope_id)
 
-        processed[envelope_id] = expires_at
 
-        cleaned = {k: v for k, v in processed.items() if v > now}
+async def _periodic_replay_purge() -> None:
+    """Background task: purge expired replay-store entries every hour."""
+    while True:
+        await asyncio.sleep(3600)
         try:
-            _PROCESSED_ENVELOPES_PATH.parent.mkdir(parents=True, exist_ok=True)
-            config_schema.atomic_write_json(_PROCESSED_ENVELOPES_PATH, cleaned)
-        except OSError as exc:
-            log.warning("failed to record processed envelope: %s", exc)
+            deleted = _replay_store.purge_expired()
+            if deleted:
+                log.info("replay_store: periodic purge removed %d entries", deleted)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("replay_store: periodic purge failed: %s", exc)
 
 
 # ── Bounded domain routers ────────────────────────────────────────────────────
@@ -433,6 +423,7 @@ app.include_router(_runs_workflows_router.router)
 app.include_router(_assistant_router.router)
 app.include_router(_feature_requests_router.router)
 app.include_router(_maxwell_router.router)
+app.include_router(_deployment_router.router)
 
 app.add_middleware(
     SessionMiddleware,
@@ -1867,88 +1858,7 @@ async def _collect_live_fleet_nodes() -> list[dict]:
     return nodes
 
 
-@app.get("/api/deployment")
-async def get_deployment() -> dict:
-    """Return the dashboard code revision deployed on this machine."""
-    return _deployment_info()
-
-
-@app.get("/api/deployment/expected-version")
-async def get_expected_deployment_version() -> dict:
-    """Return the local expected dashboard version for hub-spoke nodes."""
-    return {
-        "expected": deployment_drift.read_expected_version(EXPECTED_VERSION_FILE),
-        "source": "local-version-file",
-        "path": str(EXPECTED_VERSION_FILE),
-    }
-
-
-@app.get("/api/deployment/drift")
-async def get_deployment_drift() -> dict:
-    """Compare the deployed version against the hub's expected VERSION.
-
-    Used by the Machines tab to surface "Update available" badges on stale
-    nodes. Remote update orchestration is intentionally out of scope here —
-    see ``POST /api/deployment/update-signal`` for the notify-only affordance.
-    """
-    expected = await _read_expected_dashboard_version()
-    status = deployment_drift.evaluate_drift(_deployment_info(), expected)
-    return status.to_dict()
-
-
-@app.get("/api/deployment/state")
-async def get_deployment_state(request: Request) -> dict:
-    """Return dashboard deployment state for the fleet overview and deployment tab."""
-    if _should_proxy_fleet_to_hub(request):
-        return await proxy_to_hub(request)
-    fleet = await _get_fleet_nodes_impl()
-    expected = await _read_expected_dashboard_version()
-    return _build_deployment_state(fleet.get("nodes", []), expected)
-
-
-@app.post("/api/deployment/update-signal")
-async def post_deployment_update_signal(
-    request: Request,
-    *,
-    principal: Principal = Depends(require_scope("system.control")),  # noqa: B008
-) -> dict:
-    """Emit a structured "update requested" event for a node.
-
-    The dashboard UI calls this when an operator clicks the "Update node"
-    affordance on a drifting machine card. We intentionally do *not* SSH
-    or run ansible from here: this just logs a well-shaped event that
-    ``scheduled-dashboard-maintenance.sh`` (or a future webhook consumer)
-    can pick up. Callers should treat this as fire-and-notify only.
-    """
-    try:
-        payload = await request.json()
-    except (json.JSONDecodeError, ValueError):
-        payload = {}
-    node = str(payload.get("node") or HOSTNAME)
-    reason = str(payload.get("reason") or "user-requested")
-    dry_run = bool(payload.get("dry_run", False))
-
-    expected = await _read_expected_dashboard_version()
-    status = deployment_drift.evaluate_drift(_deployment_info(), expected)
-    if dry_run:
-        preview = {
-            "event": "dashboard.node.update_requested",
-            "node": node,
-            "current": status.current,
-            "expected": status.expected,
-            "severity": status.severity,
-            "reason": reason,
-            "dirty": status.dirty,
-            "dry_run": True,
-        }
-        return {
-            "accepted": True,
-            "dry_run": True,
-            "preview": preview,
-            "drift": status.to_dict(),
-        }
-    event = deployment_drift.emit_update_signal(node, status, reason=reason)
-    return {"accepted": True, "event": event, "drift": status.to_dict()}
+# Deployment routes extracted to routers/deployment.py and registered via app.include_router (issue #357).
 
 
 @app.get("/api/local-apps")
@@ -3718,50 +3628,7 @@ async def fleet_orchestration_deploy(
 # ─── Diagnostics & Launchers ──────────────────────────────────────────────────
 
 
-@app.get("/api/deployment/git-drift")
-async def get_git_drift() -> dict:
-    """Return git-commit-based drift: compares HEAD against origin/main."""
-    repo_root = Path(__file__).parent.parent
-    result: dict[str, object] = {}
-
-    source = "unknown"
-    try:
-        out = await asyncio.to_thread(
-            subprocess.run,
-            ["git", "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            cwd=repo_root,
-        )
-        source = out.stdout.strip()
-        result["source_commit"] = source[:12]
-    except Exception:  # noqa: BLE001
-        result["source_commit"] = "unknown"
-
-    try:
-        out = await asyncio.to_thread(
-            subprocess.run,
-            ["git", "rev-parse", "origin/main"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            cwd=repo_root,
-        )
-        remote = out.stdout.strip()
-        result["remote_commit"] = remote[:12]
-        result["is_drifted"] = bool(source and remote and source != remote)
-        if result["is_drifted"]:
-            result["drift_details"] = "deployed version differs from origin/main"
-        else:
-            result["drift_details"] = "up to date"
-    except Exception:  # noqa: BLE001
-        result["is_drifted"] = False
-        result["remote_commit"] = "unknown"
-        result["drift_details"] = "could not reach origin/main"
-
-    result["process_pid"] = os.getpid()
-    return result
+# GET /api/deployment/git-drift extracted to routers/deployment.py (issue #357).
 
 
 @app.get("/api/diagnostics/summary")
@@ -3818,7 +3685,7 @@ async def get_diagnostics_summary() -> dict:
 
     # Drift info
     try:
-        drift = await get_git_drift()
+        drift = await _deployment_router.get_git_drift()
         summary["is_drifted"] = drift.get("is_drifted", False)
         summary["source_commit"] = drift.get("source_commit", "unknown")
         summary["remote_commit"] = drift.get("remote_commit", "unknown")
@@ -4018,6 +3885,16 @@ _system_router.set_boot_time(BOOT_TIME)
 _system_router.set_host_memory_gb(HOST_MEMORY_GB)
 _system_router.set_runner_capacity_snapshot_func(get_runner_capacity_snapshot)
 
+# Inject dependencies into deployment router
+_deployment_router.set_dependencies(
+    get_fleet_nodes_impl=_get_fleet_nodes_impl,
+    proxy_to_hub=proxy_to_hub,
+    should_proxy_fleet_to_hub=_should_proxy_fleet_to_hub,
+    deployment_info=_deployment_info,
+    read_expected_dashboard_version=_read_expected_dashboard_version,
+    build_deployment_state=_build_deployment_state,
+)
+
 
 _leader_lock_fd = None
 
@@ -4035,6 +3912,9 @@ async def _startup() -> None:
         log.info("Sent systemd READY=1 notification")
     else:
         log.debug("systemd.daemon not available; omitting sd_notify")
+
+    # Replay-store purge runs on every node regardless of leader status.
+    asyncio.create_task(_periodic_replay_purge())
 
     if os.environ.get("DASHBOARD_LEADER") == "1":
         asyncio.create_task(_runner_audit_loop())
