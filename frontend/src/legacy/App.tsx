@@ -16358,6 +16358,8 @@ function App({ initialTab }: { initialTab?: string } = {}) {
                         })
                       : tab === "stats"
                         ? h(StatsTab, null)
+                        : tab === "performance"
+                          ? h(PerformanceTab, null)
                         : tab === "reports"
                           ? h(ReportsTab, {
                               reports: reports,
