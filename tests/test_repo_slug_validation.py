@@ -43,7 +43,7 @@ def test_repository_normalizers_reuse_slug_validation(normalizer) -> None:
 
 
 @pytest.mark.parametrize("repo", ["abc&def", "../etc", "", "a" * 200])
-def test_workflow_dispatch_rejects_invalid_repository_before_gh_api(repo: str, monkeypatch) -> None:
+def test_workflow_dispatch_rejects_invalid_repository_before_gh_api(repo: str, monkeypatch, mock_auth) -> None:
     async def fail_run_cmd(*_args, **_kwargs):  # pragma: no cover - must not run
         raise AssertionError("invalid repository reached gh api")
 
@@ -58,7 +58,7 @@ def test_workflow_dispatch_rejects_invalid_repository_before_gh_api(repo: str, m
     assert response.status_code == 422
 
 
-def test_cancel_run_rejects_invalid_path_repository_before_gh_api(monkeypatch) -> None:
+def test_cancel_run_rejects_invalid_path_repository_before_gh_api(monkeypatch, mock_auth) -> None:
     async def fail_run_cmd(*_args, **_kwargs):  # pragma: no cover - must not run
         raise AssertionError("invalid repository reached gh api")
 

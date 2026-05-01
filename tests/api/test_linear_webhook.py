@@ -26,7 +26,7 @@ API_AUTH = {"Authorization": "Bearer test-key"}
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(mock_auth) -> TestClient:
     return TestClient(server.app)
 
 

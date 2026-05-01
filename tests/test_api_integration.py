@@ -32,10 +32,20 @@ os.environ.setdefault("DASHBOARD_API_KEY", "test-key")
 
 @pytest.fixture(scope="module")
 def app():
-    """Import and return the FastAPI app (module-scoped to pay import cost once)."""
-    import server  # noqa: PLC0415
+    """Import and return the FastAPI app (module-scoped to pay import cost once).
 
-    return server.app
+    Also sets up the auth dependency override so all authenticated endpoints
+    are reachable during integration tests.
+    """
+    import server  # noqa: PLC0415
+    from identity import Principal, require_principal  # noqa: PLC0415
+
+    principal = Principal(id="test-admin", type="bot", name="Test Admin", roles=["admin"])
+    server.app.dependency_overrides[require_principal] = lambda: principal
+
+    yield server.app
+
+    server.app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
