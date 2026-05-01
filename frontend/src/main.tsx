@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './legacy/App'
 import { PushSettings } from './pages/PushSettings'
 import { Toaster } from './primitives/Toaster'
+import { RootErrorBoundary } from './primitives/RootErrorBoundary'
 import { BreakpointProvider } from './hooks/useBreakpoint'
 import { t } from './i18n'
 import './index.css'
@@ -119,15 +120,17 @@ function registerServiceWorker(): void {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BreakpointProvider>
-      <Toaster>
-        {isPushSettingsRoute(window.location.pathname) ? (
-          <PushSettings />
-        ) : (
-          <App initialTab={initialTabFromPathname(window.location.pathname)} />
-        )}
-      </Toaster>
-    </BreakpointProvider>
+    <RootErrorBoundary>
+      <BreakpointProvider>
+        <Toaster>
+          {isPushSettingsRoute(window.location.pathname) ? (
+            <PushSettings />
+          ) : (
+            <App initialTab={initialTabFromPathname(window.location.pathname)} />
+          )}
+        </Toaster>
+      </BreakpointProvider>
+    </RootErrorBoundary>
   </React.StrictMode>,
 )
 

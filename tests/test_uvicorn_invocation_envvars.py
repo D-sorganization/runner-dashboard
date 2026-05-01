@@ -18,13 +18,13 @@ SERVER_SRC = Path(server.__file__).read_text(encoding="utf-8")
 
 
 def test_helper_returns_documented_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Default values are 2 / 200 / 5 when env vars are unset."""
+    """Default values are 1 / 200 / 5 when env vars are unset."""
     for name in ("WORKERS", "LIMIT_CONCURRENCY", "TIMEOUT_KEEP_ALIVE"):
         monkeypatch.delenv(name, raising=False)
 
     cfg = server._read_uvicorn_env_config()
 
-    assert cfg["workers"] == 2
+    assert cfg["workers"] == 1
     assert cfg["limit_concurrency"] == 200
     assert cfg["timeout_keep_alive"] == 5
 
@@ -48,7 +48,7 @@ def test_helper_falls_back_on_invalid_env(monkeypatch: pytest.MonkeyPatch) -> No
 
     cfg = server._read_uvicorn_env_config()
 
-    assert cfg == {"workers": 2, "limit_concurrency": 200, "timeout_keep_alive": 5}
+    assert cfg == {"workers": 1, "limit_concurrency": 200, "timeout_keep_alive": 5}
 
 
 def test_server_source_references_each_env_var() -> None:
