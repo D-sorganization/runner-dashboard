@@ -1,5 +1,7 @@
-import React, { Suspense } from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom/client'
+import App from './legacy/App'
+import { PushSettings } from './pages/PushSettings'
 import { Toaster } from './primitives/Toaster'
 import { RootErrorBoundary } from './primitives/RootErrorBoundary'
 import { BreakpointProvider } from './hooks/useBreakpoint'
@@ -7,9 +9,6 @@ import './i18n'
 import './index.css'
 // Web Vitals — send metrics to backend (issue #385)
 import { onCLS, onINP, onFCP, onLCP } from 'web-vitals'
-
-const App = React.lazy(() => import('./legacy/App'))
-const PushSettings = React.lazy(() => import('./pages/PushSettings'))
 
 function sendWebVitals(metric: any) {
   const payload = {
@@ -47,20 +46,6 @@ if ('serviceWorker' in navigator) {
       .catch((err) => {
         console.warn('[SW] Registration failed:', err)
       })
-
-    // Detect when a waiting service worker takes control (update available)
-    // and surface a reload prompt via the global toast API (#433).
-    let updateToastId: number | null = null
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      const toaster = (window as any).__toaster
-      if (toaster && typeof toaster.showToast === 'function' && updateToastId == null) {
-        updateToastId = toaster.showToast('Dashboard update installed. Reload to apply.', {
-          variant: 'info',
-          title: 'Update',
-          durationMs: 0,
-        })
-      }
-    })
   })
 }
 
@@ -122,13 +107,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <RootErrorBoundary>
       <BreakpointProvider>
         <Toaster>
-          <Suspense fallback={<div className="spinner" style={{ margin: '40vh auto' }} />}>
-            {isPushSettingsRoute(window.location.pathname) ? (
-              <PushSettings />
-            ) : (
-              <App initialTab={initialTabFromPathname(window.location.pathname)} />
-            )}
-          </Suspense>
+          {isPushSettingsRoute(window.location.pathname) ? (
+            <PushSettings />
+          ) : (
+            <App initialTab={initialTabFromPathname(window.location.pathname)} />
+          )}
         </Toaster>
       </BreakpointProvider>
     </RootErrorBoundary>
