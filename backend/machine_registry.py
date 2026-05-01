@@ -19,7 +19,7 @@ try:
 except ImportError:  # pragma: no cover - deployment installs PyYAML
     yaml = None  # type: ignore[assignment]
 
-from security import validate_config_path, safe_yaml_load
+from security import safe_yaml_load, validate_config_path
 
 DEFAULT_REGISTRY_PATH = Path(__file__).with_name("machine_registry.yml")
 
@@ -133,12 +133,12 @@ def _merge_known_specs(live_specs: dict[str, Any], registry_specs: dict[str, Any
 
 def _load_raw_registry(path: Path) -> dict[str, Any]:
     """Load registry data with security validation.
-    
+
     Validates path is within allowed roots, checks for symlinks escaping
     allowed directories, and verifies file is not world-writable.
     """
     suffix = path.suffix.lower()
-    
+
     if suffix == ".json":
         # For JSON files, still validate path security
         validated_path = validate_config_path(path)
@@ -151,7 +151,7 @@ def _load_raw_registry(path: Path) -> dict[str, Any]:
         validated_path = validate_config_path(path)
         text = validated_path.read_text(encoding="utf-8")
         data = json.loads(text)
-    
+
     if data is None:
         return {}
     if not isinstance(data, dict):
@@ -219,7 +219,7 @@ def load_machine_registry(path: str | Path | None = None) -> dict[str, Any]:
 
     Missing files are treated as an empty registry so the dashboard remains
     usable while the foundation is being adopted incrementally.
-    
+
     Security: Validates that config paths are within allowed roots, rejects
     symlinks pointing outside allowed directories, and refuses world-writable
     config files (issue #355).

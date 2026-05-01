@@ -10,8 +10,7 @@ import yaml
 from identity import Principal
 from local_app_monitoring import collect_local_apps
 from runner_lease import lease_manager
-
-from security import validate_config_path, safe_yaml_load
+from security import safe_yaml_load, validate_config_path
 
 log = logging.getLogger("dashboard.quota_enforcement")
 
@@ -29,7 +28,7 @@ class QuotaEnforcement:
         try:
             # Security validation for issue #355: validate path before loading
             validate_config_path(self.spend_path)
-            
+
             # Use safe_yaml_load which validates path security
             data = safe_yaml_load(self.spend_path)
             if data and "spend" in data:
@@ -41,10 +40,10 @@ class QuotaEnforcement:
         """Save spend data with security validation (issue #355)."""
         try:
             self.config_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Security validation: ensure config dir is within allowed roots
             validate_config_path(self.spend_path.parent)
-            
+
             with open(self.spend_path, "w") as f:
                 yaml.dump({"spend": self.spend_records}, f)
         except Exception as exc:

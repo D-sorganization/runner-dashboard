@@ -16,6 +16,7 @@ import shlex
 import time
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 from fastapi import HTTPException
@@ -153,20 +154,20 @@ def _get_repo_root() -> Path | None:
 
 def _check_symlink(path: Path, allowed_roots: list[Path]) -> bool:
     """Check if a symlink target is within allowed roots.
-    
+
     Returns True if the path is safe (not a symlink escaping allowed roots).
     Returns False if the path is a symlink pointing outside allowed roots.
     """
     if not path.is_symlink():
         return True
-    
+
     # Resolve the symlink target
     try:
         resolved = path.resolve(strict=True)
     except (OSError, RuntimeError):
         # Cannot resolve - treat as unsafe
         return False
-    
+
     # Check if resolved path is within any allowed root
     for root in allowed_roots:
         try:
@@ -174,14 +175,14 @@ def _check_symlink(path: Path, allowed_roots: list[Path]) -> bool:
             return True
         except ValueError:
             continue
-    
+
     # Symlink target escapes allowed roots
     return False
 
 
 def _check_file_mode(path: Path) -> bool:
     """Check if file has safe permissions (not world-writable).
-    
+
     Returns True if file mode is safe.
     Returns False if file is world-writable.
     """
@@ -202,22 +203,22 @@ def validate_config_path(
     check_mode: bool = True,
 ) -> Path:
     """Validate a config file path for secure YAML loading.
-    
+
     Args:
         path: The path to validate
         allowed_roots: List of allowed root directories. If None, uses defaults.
         check_symlink: Whether to check for symlink escape (default True)
         check_mode: Whether to check file mode (default True)
-    
+
     Returns:
         The validated and resolved path
-    
+
     Raises:
         ValueError: If path validation fails for any reason
     """
     if allowed_roots is None:
         allowed_roots = list(DEFAULT_ALLOWED_ROOTS)
-    
+
     # Add repo root if available
     repo_root = _get_repo_root()
     if repo_root:
@@ -227,14 +228,14 @@ def validate_config_path(
         # Also allow the repo root itself for config/ subdirectory
         if repo_root not in allowed_roots:
             allowed_roots.append(repo_root)
-    
+
     # Resolve the path
     resolved = path.expanduser().resolve()
-    
+
     # Check if path exists
     if not resolved.exists():
         raise ValueError(f"Config path does not exist: {path}")
-    
+
     # Check if path is within allowed roots
     path_allowed = False
     for root in allowed_roots:
@@ -244,48 +245,48 @@ def validate_config_path(
             break
         except ValueError:
             continue
-    
+
     if not path_allowed:
         raise ValueError(
             f"Config path escapes allowed roots: {resolved}. "
             f"Allowed roots: {[str(r.expanduser().resolve()) for r in allowed_roots]}"
         )
-    
+
     # Check symlink safety
     if check_symlink and not _check_symlink(path, allowed_roots):
         raise ValueError(
             f"Config path is a symlink pointing outside allowed roots: {path} -> {resolved}"
         )
-    
+
     # Check file mode safety
     if check_mode and not _check_file_mode(resolved):
         raise ValueError(
             f"Config file is world-writable (insecure): {resolved}"
         )
-    
+
     return resolved
 
 
 def safe_yaml_load(path: Path, allowed_roots: list[Path] | None = None) -> Any:
     """Safely load a YAML file with path validation.
-    
+
     Args:
         path: Path to the YAML file
         allowed_roots: List of allowed root directories
-    
+
     Returns:
         The parsed YAML content
-    
+
     Raises:
         ValueError: If path validation fails or YAML parsing fails
     """
     import yaml
-    
+
     # Validate the path first
     validated_path = validate_config_path(path, allowed_roots)
-    
+
     # Read and parse YAML
     content = validated_path.read_text(encoding="utf-8")
     data = yaml.safe_load(content)
-    
+
     return data

@@ -16,36 +16,36 @@ from dashboard_config.timeouts import HttpTimeout
 
 class HttpClients:
     """Container for pooled HTTP clients.
-    
+
     Clients are constructed with connection pooling limits:
     - max_keepalive_connections=20: Keep up to 20 idle connections per host
     - max_connections=100: Allow up to 100 total connections
-    
+
     Timeouts are sourced from dashboard_config.timeouts.HttpTimeout.
     """
-    
+
     def __init__(self) -> None:
         # GitHub API client - uses proxy timeout for hub calls
         self.gh_client = httpx.AsyncClient(
             timeout=HttpTimeout.PROXY_TO_HUB_S,
             limits=httpx.Limits(max_keepalive_connections=20, max_connections=100),
         )
-        
+
         # Maxwell daemon client - short timeout for local daemon health checks
         self.maxwell_client = httpx.AsyncClient(
             timeout=HttpTimeout.MAXWELL_PROXY_S,
             limits=httpx.Limits(max_keepalive_connections=20, max_connections=100),
         )
-        
+
         # Fleet client - for cross-node system probes
         self.fleet_client = httpx.AsyncClient(
             timeout=HttpTimeout.PROXY_NODE_SYSTEM_S,
             limits=httpx.Limits(max_keepalive_connections=20, max_connections=100),
         )
-    
+
     async def close(self) -> None:
         """Close all HTTP clients.
-        
+
         Should be called during application shutdown to release resources.
         """
         await self.gh_client.aclose()
@@ -59,10 +59,10 @@ _http_clients: HttpClients | None = None
 
 def get_http_clients() -> HttpClients:
     """Get the global HTTP clients instance.
-    
+
     Returns:
         HttpClients instance with pooled clients
-        
+
     Raises:
         RuntimeError: If clients haven't been initialized yet
     """
@@ -76,7 +76,7 @@ def get_http_clients() -> HttpClients:
 
 def initialize_http_clients() -> HttpClients:
     """Initialize the global HTTP clients instance.
-    
+
     Returns:
         HttpClients instance with pooled clients
     """
@@ -87,7 +87,7 @@ def initialize_http_clients() -> HttpClients:
 
 async def shutdown_http_clients() -> None:
     """Shutdown and close all HTTP clients.
-    
+
     Should be called during application shutdown.
     """
     global _http_clients
