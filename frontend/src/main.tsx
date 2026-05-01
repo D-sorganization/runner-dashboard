@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './legacy/App'
-import { PushSettings } from './pages/PushSettings'
+import PushSettings from './pages/PushSettings'
 import { Toaster } from './primitives/Toaster'
 import { RootErrorBoundary } from './primitives/RootErrorBoundary'
 import { BreakpointProvider } from './hooks/useBreakpoint'
@@ -37,9 +37,24 @@ onLCP(sendWebVitals)
 // Service Worker Registration
 // Provides offline support, caching, and PWA installability.
 if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const toaster = (window as any).__toaster
+    if (toaster && typeof toaster.showToast === 'function') {
+      toaster.showToast('A dashboard update is ready.', {
+        title: 'New version',
+        durationMs: 0,
+        actionLabel: 'Reload',
+        onAction: () => window.location.reload(),
+      })
+    } else {
+      window.location.reload()
+    }
+  })
+
   window.addEventListener('load', () => {
+    const buildId = (import.meta as any).env?.VITE_BUILD_ID || 'dev'
     navigator.serviceWorker
-      .register('/sw.js')
+      .register(`/sw.js?build=${encodeURIComponent(buildId)}`)
       .then((registration) => {
         console.log('[SW] Registered:', registration.scope)
       })

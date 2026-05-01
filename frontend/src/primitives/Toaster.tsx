@@ -38,13 +38,17 @@ export interface ToastOptions {
   title?: string;
   durationMs?: number;
   assertive?: boolean;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
-export interface ToastRecord extends Required<Omit<ToastOptions, "title">> {
+export interface ToastRecord extends Required<Omit<ToastOptions, "title" | "actionLabel" | "onAction">> {
   id: number;
   message: string;
   title: string;
   createdAt: number;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
 export interface ToastApi {
@@ -140,6 +144,8 @@ export function Toaster({ children }: ToasterProps = {}) {
         durationMs: duration,
         assertive,
         createdAt: Date.now(),
+        actionLabel: options.actionLabel,
+        onAction: options.onAction,
       };
       setToasts((current) => {
         const next = [...current, record];
@@ -281,6 +287,16 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       >
         ×
       </button>
+      {toast.actionLabel && toast.onAction ? (
+        <button
+          className="toaster-toast-action"
+          onClick={toast.onAction}
+          style={actionButtonStyle}
+          type="button"
+        >
+          {toast.actionLabel}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -332,4 +348,17 @@ const dismissButtonStyle: CSSProperties = {
   padding: 4,
   minWidth: 32,
   minHeight: 32,
+};
+
+const actionButtonStyle: CSSProperties = {
+  background: "var(--accent-blue)",
+  border: "1px solid var(--accent-blue)",
+  borderRadius: 6,
+  color: "var(--bg-primary)",
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 600,
+  lineHeight: 1,
+  minHeight: 32,
+  padding: "0 12px",
 };

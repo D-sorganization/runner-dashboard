@@ -2,27 +2,20 @@
  * Runner Dashboard Service Worker
  * Provides offline shell, caching, and install support.
  *
- * Cache strategy: stale-while-revalidate for static assets,
- * network-first for API calls, cache-first for offline shell.
+ * Cache strategy: cache-first for static assets, network-only for API calls,
+ * cache-first for offline shell on navigation misses.
  */
 
-const CACHE_NAME = 'runner-dashboard-v2';
+const BUILD_ID = new URL(self.location.href).searchParams.get('build') || 'dev';
+const CACHE_NAME = `runner-dashboard-${BUILD_ID}`;
 const OFFLINE_URL = '/offline.html';
+const STATIC_EXTS = /\.(?:js|css|svg|html|woff2|png|webp|ico)$/;
 
 // Assets to cache on install
 const STATIC_ASSETS = [
-  '/',
   '/index.html',
-  '/src/main.tsx',
-  '/src/index.css',
-  '/manifest.webmanifest',
+  OFFLINE_URL,
   '/icon.svg',
-];
-
-// API paths that should not be cached
-const API_DENYLIST = [
-  /^\/api\/credentials(?:\/|$)/,
-  /^\/api\/auth/,
 ];
 
 // Install — cache static shell
@@ -49,15 +42,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Notify clients when this SW becomes active
-self.addEventListener('controllerchange', () => {
-  self.clients.matchAll().then((clients) => {
-    clients.forEach((client) => {
-      client.postMessage({ type: 'SW_UPDATE_AVAILABLE' });
-    });
-  });
-});
-
 // Message handler for client communication
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
@@ -68,7 +52,31 @@ self.addEventListener('message', (event) => {
 // Helper: check if URL is an API request
 function isApiRequest(url) {
   const pathname = new URL(url).pathname;
-  return API_DENYLIST.some((pattern) => pattern.test(pathname));
+  return pathname.startsWith('/api/');
+}
+
+function isStaticAsset(pathname) {
+  return STATIC_EXTS.test(pathname);
+}
+
+function networkOnly(request) {
+  return fetch(new Request(request, { cache: 'no-store' }));
+}
+
+function cacheFirst(request) {
+  return caches.match(request).then((cached) => {
+    if (cached) {
+      return cached;
+    }
+
+    return fetch(request).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200) {
+        const clone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+      }
+      return networkResponse;
+    });
+  });
 }
 
 // Fetch — routing strategies
@@ -76,31 +84,26 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests and cross-origin requests
-  if (request.method !== 'GET' || url.origin !== self.location.origin) {
+  if (url.origin !== self.location.origin) {
     return;
   }
 
-  // API requests: network-first with short timeout
+  // API requests must never use or populate the service worker cache.
   if (isApiRequest(request.url)) {
-    event.respondWith(fetch(request).catch(() => caches.match(request)));
+    event.respondWith(networkOnly(request));
     return;
   }
 
-  // Static assets: stale-while-revalidate
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return networkResponse;
-        })
-        .catch(() => cached);
+  if (request.method !== 'GET') {
+    return;
+  }
 
-      return cached || fetchPromise;
-    })
-  );
+  if (request.mode === 'navigate') {
+    event.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL)));
+    return;
+  }
+
+  if (isStaticAsset(url.pathname)) {
+    event.respondWith(cacheFirst(request));
+  }
 });
