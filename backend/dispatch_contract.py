@@ -556,6 +556,15 @@ def build_envelope(
     on_behalf_of: str = "",
     correlation_id: str = "",
 ) -> CommandEnvelope:
+    # Issue #331 — default correlation_id from the active request context so
+    # envelopes built during an HTTP request are automatically correlated.
+    if not correlation_id:
+        try:
+            from request_context import current_request_id  # noqa: PLC0415
+
+            correlation_id = current_request_id()
+        except ImportError:
+            pass
     return CommandEnvelope(
         action=action,
         source=source,

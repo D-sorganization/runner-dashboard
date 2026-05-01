@@ -43,13 +43,18 @@ sync_dir() {
     rm -rf "$dest"; mkdir -p "$dest"; cp -a "$src/." "$dest/"
 }
 
-# Backup helper: creates a timestamped copy, prints backup path to stdout.
+# Backup helper: creates a timestamped copy, writes a SHA256 manifest, and
+# prints the backup path to stdout.
 backup_dir() {
     local src="$1"
     local ts; ts=$(date +%Y%m%d_%H%M%S)
     local backup="${src}.bak.${ts}"
+    local manifest="${backup}.manifest.sha256"
     if [[ -d "$src" ]]; then
         cp -a "$src" "$backup"
+        # Write SHA256 manifest so rollback.sh can verify integrity later.
+        (cd "$backup" && find . -type f -print0 | sort -z | xargs -0 sha256sum > "$manifest") \
+            || warn "Could not write integrity manifest for $backup (non-fatal)"
         echo "$backup"
     fi
 }

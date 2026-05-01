@@ -465,6 +465,14 @@ All endpoints are served under `http://localhost:8321/api/`.
 | GET | `/api/health` | Simple health check — returns `{“status”: “ok”}` |
 | GET | `/api/watchdog` | Watchdog status and last heartbeat |
 | GET | `/readyz` | Readiness probe — returns `{“status”:”ready”,”session_secret_source”:”env\|persisted\|generated”}` |
+| GET | `/livez` | Liveness probe — returns `{“status”:”ok”}` with no I/O; always 200 if process is up |
+
+**Request ID correlation (`X-Request-ID`):**
+Every HTTP response carries an `X-Request-ID` header (issue #331). The value
+is the inbound `X-Request-ID` request header if present (echo-back), or a
+freshly generated 12-hex-char ID. The request ID flows into every log record
+via `contextvars`. Set `LOG_FORMAT=json` for newline-delimited JSON logs with
+keys: `ts`, `level`, `module`, `msg`, `request_id`, `principal_id`, `path`.
 
 **Session secret persistence (`SESSION_SECRET_SOURCE`):**
 When the `SESSION_SECRET` environment variable is not set, the server resolves
