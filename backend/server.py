@@ -3576,9 +3576,6 @@ _assessments_router.set_run_cmd(run_cmd)
 _leader_lock_fd = None
 
 
-from http_clients import initialize_http_clients, shutdown_http_clients
-
-
 @app.on_event("startup")
 async def _startup() -> None:
     """Initialize HTTP clients and notify systemd on startup (issue #364)."""
