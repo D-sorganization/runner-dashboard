@@ -186,8 +186,12 @@ def _check_file_mode(path: Path) -> bool:
     Returns True if file mode is safe.
     Returns False if file is world-writable.
     """
+    if os.name == "nt":
+        return True
+
     try:
         import stat
+
         mode = path.stat().st_mode
         # Check if world-writable bit is set
         return not bool(mode & stat.S_IWOTH)

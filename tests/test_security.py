@@ -1,6 +1,7 @@
 from __future__ import annotations  # noqa: E402
 
 import time
+import os
 from pathlib import Path  # noqa: E402
 
 import pytest  # noqa: E402
@@ -318,6 +319,9 @@ def test_validate_config_path_symlink_safe(tmp_path: Path) -> None:
 def test_validate_config_path_world_writable(tmp_path: Path) -> None:
     """Test that world-writable files are rejected."""
     import stat
+
+    if os.name == "nt":
+        pytest.skip("POSIX world-writable mode bits are not reliable on Windows")
     
     config_file = tmp_path / "config.yml"
     config_file.write_text("key: value")
