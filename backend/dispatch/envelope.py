@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 from uuid import uuid4
 
-from dispatch.signing import _load_signing_secret, _sign_envelope_payload, _verify_envelope_signature
+from dispatch.signing import _hash_payload, _load_signing_secret, _sign_envelope_payload, _verify_envelope_signature
 from time_utils import utc_now_iso
 
 UTC = getattr(_dt_mod, "UTC", _dt_mod.timezone.utc)  # noqa: UP017
@@ -103,6 +103,9 @@ class CommandEnvelope:
                 self.principal,
                 self.on_behalf_of,
                 self.correlation_id,
+                # Issue #317: include payload hash so captured envelopes
+                # cannot be replayed with a substituted payload.
+                _hash_payload(self.payload),
             )
             object.__setattr__(self, "signature", sig)
 
@@ -136,7 +139,7 @@ class CommandEnvelope:
         return envelope
 
     def verify_signature(self) -> bool:
-        """Verify that envelope signature is valid."""
+        """Verify that envelope signature is valid (covers payload hash, issue #317)."""
         if not self.signature:
             return False
         try:
@@ -153,6 +156,7 @@ class CommandEnvelope:
                 self.principal,
                 self.on_behalf_of,
                 self.correlation_id,
+                _hash_payload(self.payload),
             )
         except Exception:  # justified: broad guard; verify returns False on any signing failure
             return False

@@ -1,4 +1,4 @@
-# SPEC.md â€” D-sorganization Runner Dashboard
+﻿# SPEC.md â€” D-sorganization Runner Dashboard
 
 **Spec Version:** 2.5.22
 **Application Version:** 4.1.0 (see `VERSION`)
@@ -1154,6 +1154,8 @@ A **principal** is either a human or a bot/agent. Both have the same shape:
 
 Principals are stored in `config/principals.yml`. The system fails closed: requests without a valid principal are rejected (HTTP 401).
 
+**Loopback bypass (issue #315):** The loopback admin shortcut (granting automatic admin access to 127.0.0.1) is disabled by default. It is only active when `DASHBOARD_LOOPBACK_AUTH=1` is explicitly set in the environment. This must never be set in production deployments — it is intended solely for local single-user development where the dashboard is not reachable beyond 127.0.0.1.
+
 **Authorization:**
 All mutating `/api/*` endpoints require a principal.
 - Humans authenticate via session cookies (from GitHub OAuth).
@@ -2297,3 +2299,26 @@ Log aggregation sidecar configuration for the runner-dashboard fleet.
 | error/critical logs | Loki | 30 days |
 | Journald on-host | systemd-journald | 1 GB max / 30 days |
 | Docker json-file | local | 7 × 100 MB |
+## Security Fixes (issues #315, #317, #318)
+
+### Auth loopback bypass (issue #315)
+The loopback bypass that granted automatic admin access to requests from
+127.0.0.1 or ::1 is now gated on the environment variable
+DASHBOARD_LOOPBACK_AUTH=1. This variable must never be set in production;
+it is intended solely for local single-user development where the dashboard
+is not reachable beyond the loopback interface.
+
+### HMAC payload signing (issue #317)
+The dispatch envelope HMAC signature now includes a SHA-256 hash of the
+payload field (payload_hash). This prevents capture-and-replay attacks
+where an attacker captures a valid signed envelope and replays it with a
+different payload. All new envelopes are signed with payload_hash in the
+canonical JSON; the signing secret is DISPATCH_SIGNING_SECRET.
+
+### approval_hmac binding (issue #318)
+DispatchConfirmation.approval_hmac must be bound to the specific
+envelope_id and action of the request it approves. The canonical
+HMAC message is approve:<envelope_id>:<action>. If approval_hmac is
+present and invalid, validate_envelope_crypto fails closed with
+valid=False. An absent approval_hmac is accepted with a deprecation
+warning for backwards-compatibility; clients should supply it.

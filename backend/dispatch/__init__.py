@@ -31,8 +31,11 @@ from dispatch.registry import (
 )
 from dispatch.signing import (
     TimestampValidationResult,
+    _compute_approval_hmac,
+    _hash_payload,
     sign_payload,
     validate_timestamp_freshness,
+    verify_approval_hmac,
     verify_payload,
 )
 from dispatch.validate import (
@@ -62,6 +65,9 @@ __all__ = [
     "sign_payload",
     "verify_payload",
     "validate_timestamp_freshness",
+    "_hash_payload",
+    "_compute_approval_hmac",
+    "verify_approval_hmac",
     # validate
     "DispatchValidationResult",
     "CryptoValidationResult",

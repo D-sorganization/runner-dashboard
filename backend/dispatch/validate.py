@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from dispatch.registry import DispatchAccess, DispatchAction, _scheduler_modify_command, get_action
-from dispatch.signing import TimestampValidationResult, validate_timestamp_freshness
+from dispatch.signing import TimestampValidationResult, validate_timestamp_freshness, verify_approval_hmac
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +69,13 @@ def validate_envelope_crypto(envelope: object) -> CryptoValidationResult:
             }
             reason = reason_map.get(approved_at_result, "unknown timestamp error")
             return CryptoValidationResult(valid=False, reason=reason)
+
+        # Issue #318: verify approval_hmac is bound to this envelope + action
+        if not verify_approval_hmac(envelope.confirmation, envelope.envelope_id, envelope.action):  # type: ignore[attr-defined]
+            return CryptoValidationResult(
+                valid=False,
+                reason="confirmation approval_hmac invalid or does not match envelope",
+            )
 
     return CryptoValidationResult(valid=True, reason="signature and timestamps valid")
 
