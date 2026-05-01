@@ -531,12 +531,12 @@ async def _append_remediation_history(entry: dict) -> None:
             if _REMEDIATION_HISTORY_PATH.exists():
                 try:
                     history = json.loads(_REMEDIATION_HISTORY_PATH.read_text(encoding="utf-8"))
-                except Exception:  # noqa: BLE001
+                except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                     history = []
             history.append(entry)
             history = history[-200:]  # keep last 200 entries
             config_schema.atomic_write_json(_REMEDIATION_HISTORY_PATH, history)
-        except Exception:  # noqa: BLE001
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             pass  # history is best-effort
 
 
@@ -591,7 +591,7 @@ async def get_remediation_history() -> dict:
             history = json.loads(_REMEDIATION_HISTORY_PATH.read_text(encoding="utf-8"))
         else:
             history = []
-    except Exception:  # noqa: BLE001
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         history = []
     return {"history": list(reversed(history[-100:]))}  # newest first
 

@@ -210,9 +210,9 @@ DEFAULT_ALLOWED_ROOTS = [
 
 def _get_repo_root() -> Path | None:
     """Find the repository root directory by searching for .git."""
-    try:
-        import subprocess
+    import subprocess
 
+    try:
         result = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
             capture_output=True,
@@ -221,7 +221,7 @@ def _get_repo_root() -> Path | None:
             timeout=5,
         )
         return Path(result.stdout.strip())
-    except Exception:
+    except (OSError, subprocess.SubprocessError, TimeoutError):
         return None
 
 

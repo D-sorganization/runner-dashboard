@@ -322,7 +322,7 @@ try:
         )
         if result.returncode == 0:
             HOST_MEMORY_GB = round(int(result.stdout.strip()) / (1024**3), 1)
-except Exception:  # noqa: BLE001
+except (OSError, subprocess.SubprocessError, TimeoutError, ValueError):
     pass
 
 

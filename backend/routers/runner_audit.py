@@ -115,7 +115,9 @@ async def _fetch_hosted_runner_violations() -> list[dict[str, Any]]:
                                     "conclusion": job.get("conclusion", ""),
                                 }
                             )
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
+                if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                    raise
                 continue
 
     return violations

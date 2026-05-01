@@ -356,7 +356,9 @@ async def get_tests_ci_results() -> dict:
                 })
             else:
                 results.append({"repo": repo_name, "run_id": None, "conclusion": None})
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
+            if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                raise
             results.append({"repo": repo_name, "run_id": None, "conclusion": "error"})
 
     out: dict = {"results": results}
@@ -392,7 +394,9 @@ async def rerun_ci_test(
         return {"status": "triggered", "repo": repo_name, "run_id": run_id}
     except HTTPException:
         raise
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
         log.exception("Failed to rerun run %s in %s", run_id, repo_name)
         raise HTTPException(status_code=500, detail="Internal server error") from None
 
