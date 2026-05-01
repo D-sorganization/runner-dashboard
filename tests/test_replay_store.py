@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -48,6 +49,27 @@ def test_record_idempotent(store: ReplayStore) -> None:
     store.record("env-001")
     store.record("env-001")  # second insert should not raise
     assert store.is_replay("env-001") is True
+
+
+def test_concurrent_store_instances_share_file(tmp_path: Path) -> None:
+    db_path = tmp_path / "replay.db"
+
+    def write_envelope(index: int) -> None:
+        s = ReplayStore(db_path, ttl_s=60, max_entries=100)
+        try:
+            s.record(f"env-{index:03d}")
+        finally:
+            s.close()
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(write_envelope, range(24)))
+
+    s = ReplayStore(db_path, ttl_s=60, max_entries=100)
+    try:
+        for index in range(24):
+            assert s.is_replay(f"env-{index:03d}") is True
+    finally:
+        s.close()
 
 
 # ─── Purge ────────────────────────────────────────────────────────────────────
