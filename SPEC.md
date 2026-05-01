@@ -1,8 +1,8 @@
 # SPEC.md â€” D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.21
+**Spec Version:** 2.5.22
 **Application Version:** 4.1.0 (see `VERSION`)
-**Last Updated:** 2026-05-01T07:22:00Z
+**Last Updated:** 2026-05-01T16:30:00Z
 **Status:** Active
 
 ---
@@ -488,7 +488,7 @@ env var.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/runners` | All org runners with systemd service state |
+| GET | `/api/runners` | All org runners with systemd service state; GitHub rate limits return HTTP 429 with `Retry-After` and `retry_after_seconds` |
 | GET | `/api/runners/matlab` | MATLAB-capable runner subset |
 | POST | `/api/runners/{runner_id}/stop` | Stop a runner's systemd service |
 | POST | `/api/runners/{runner_id}/start` | Start a runner's systemd service |
@@ -960,6 +960,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 ---
 
 ## 7. Changelog
+
+### 2.5.22 - 2026-05-01
+- fix: `gh_api` exposes GitHub rate limits as `RateLimitedError` with
+  `retry_after_seconds`, records a per-token/resource in-memory breaker, and
+  `/api/runners` translates the condition to HTTP 429 with `Retry-After`.
 
 ### 2.5.16 - 2026-04-30
 - ci: keep the standard test lane aligned with the checked-in `uv.lock`, Bandit
