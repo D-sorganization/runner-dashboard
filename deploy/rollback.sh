@@ -71,15 +71,15 @@ if [[ "$LIST_ONLY" == "true" ]]; then
         ts="${b##*.bak.}"
         status=$(_integrity_status "$b")
         case "$status" in
-            ok)      icon="✓" ;;
+            ok)      icon="ok" ;;
             missing) icon="?" ;;
-            fail)    icon="✗" ;;
+            fail)    icon="FAIL" ;;
         esac
         version="unknown"
         if [[ -f "$b/VERSION" ]]; then
             version=$(cat "$b/VERSION")
         fi
-        printf "  %s  %s  version=%s  integrity=%s\n" "$icon" "$ts" "$version" "$status"
+        printf "  [%s]  %s  version=%s  integrity=%s\n" "$icon" "$ts" "$version" "$status"
     done <<< "$backups"
     exit 0
 fi
@@ -101,7 +101,7 @@ MANIFEST="${BACKUP_PATH}.manifest.sha256"
 if [[ ! -f "$MANIFEST" ]]; then
     warn "Backup is missing checksum manifest: $MANIFEST"
     warn "This backup was created before integrity tracking was added."
-    warn "Proceeding without verification — add --skip-db to skip DB downgrade."
+    warn "Proceeding without verification — use --skip-db to skip DB downgrade."
 else
     info "Verifying backup integrity..."
     if ! dry_run "sha256sum -c $MANIFEST"; then
@@ -143,7 +143,6 @@ fi
 # ─── DB migration rollback ────────────────────────────────────────────────────
 
 if [[ "$SKIP_DB_MIGRATION" != "true" ]]; then
-    VENV_PYTHON="$DEPLOY_DIR/backend/.venv/bin/python"
     ALEMBIC_BIN="$DEPLOY_DIR/backend/.venv/bin/alembic"
     ALEMBIC_INI="$DEPLOY_DIR/backend/alembic.ini"
 
@@ -182,7 +181,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
     exit 0
 fi
 
-info "Waiting for service to become healthy (up to ${HEALTH_RETRIES} attempts × ${HEALTH_RETRY_SLEEP}s)..."
+info "Waiting for service to become healthy (up to ${HEALTH_RETRIES} attempts x ${HEALTH_RETRY_SLEEP}s)..."
 _attempt=0
 _healthy=false
 while [[ $_attempt -lt $HEALTH_RETRIES ]]; do
