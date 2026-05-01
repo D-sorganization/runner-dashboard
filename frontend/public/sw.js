@@ -6,7 +6,7 @@
  * network-first for API calls, cache-first for offline shell.
  */
 
-const CACHE_NAME = 'runner-dashboard-v1';
+const CACHE_NAME = 'runner-dashboard-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache on install
@@ -36,7 +36,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate — clean old caches
+// Activate — clean old caches and notify clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -47,6 +47,22 @@ self.addEventListener('activate', (event) => {
       );
     }).then(() => self.clients.claim())
   );
+});
+
+// Notify clients when this SW becomes active
+self.addEventListener('controllerchange', () => {
+  self.clients.matchAll().then((clients) => {
+    clients.forEach((client) => {
+      client.postMessage({ type: 'SW_UPDATE_AVAILABLE' });
+    });
+  });
+});
+
+// Message handler for client communication
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Helper: check if URL is an API request
