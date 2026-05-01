@@ -62,6 +62,8 @@ from routers import admin as admin_router
 from routers import auth as auth_router
 from starlette.middleware.sessions import SessionMiddleware
 
+from middleware import MaxBodySizeMiddleware
+
 BACKEND_DIR = Path(__file__).resolve().parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
@@ -354,6 +356,12 @@ app = FastAPI(
     title="D-sorganization Runner Dashboard",
     version="4.0.0",
     description="Monitor and control self-hosted GitHub Actions runners",
+)
+
+# Issue #350 — early body-size guard (ASGI middleware, runs before routing)
+app.add_middleware(
+    MaxBodySizeMiddleware,
+    default_limit=1 * 1024 * 1024,  # 1 MB
 )
 
 _PROCESSED_ENVELOPES_PATH = Path.home() / "actions-runners" / "dashboard" / "processed_envelopes.json"
@@ -2063,7 +2071,6 @@ async def _remote_fleet_control(name: str, url: str, action: str) -> dict:
     except Exception as exc:  # noqa: BLE001 - remote nodes may be offline
         return {"machine": name, "url": url, "success": False, "error": str(exc)}
 
-        return {"machine": name, "url": url, "success": False, "error": str(exc)}
 
 
 @app.post("/api/fleet/control/{action}")
@@ -3244,8 +3251,6 @@ async def get_maxwell_version() -> dict:
         log.info("maxwell_proxy: path=%s status=%s", path, "error")
         return {"error": str(e)[:120], "daemon_available": False}
 
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
 
 
 @app.get("/api/maxwell/daemon-status")
@@ -3262,8 +3267,6 @@ async def get_maxwell_daemon_status_detail() -> dict:
         log.info("maxwell_proxy: path=%s status=%s", path, "error")
         return {"error": str(e)[:120], "daemon_available": False}
 
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
 
 
 @app.get("/api/maxwell/tasks")
@@ -3283,8 +3286,6 @@ async def get_maxwell_tasks(limit: int = 20, cursor: str | None = None) -> dict:
         log.info("maxwell_proxy: path=%s status=%s", path, "error")
         return {"error": str(e)[:120], "daemon_available": False}
 
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
 
 
 @app.get("/api/maxwell/tasks/{task_id}")
@@ -3301,8 +3302,6 @@ async def get_maxwell_task_detail(task_id: str) -> dict:
         log.info("maxwell_proxy: path=%s status=%s", path, "error")
         return {"error": str(e)[:120], "daemon_available": False}
 
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
 
 
 @app.post("/api/maxwell/dispatch")
@@ -3328,8 +3327,6 @@ async def maxwell_dispatch_task(
         log.info("maxwell_proxy: path=%s status=%s", path, "error")
         return {"error": str(e)[:120], "daemon_available": False}
 
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
 
 
 @app.post("/api/maxwell/chat", response_model=None)
@@ -3390,8 +3387,6 @@ async def maxwell_pipeline_control(
         log.info("maxwell_proxy: path=%s status=%s", path, "error")
         return {"error": str(e)[:120], "daemon_available": False}
 
-        log.info("maxwell_proxy: path=%s status=%s", path, "error")
-        return {"error": str(e)[:120], "daemon_available": False}
 
 
 @app.post("/api/help/chat")
@@ -4123,8 +4118,6 @@ async def restart_dashboard_service(
         log.exception("Failed to restart runner-dashboard service")
         raise HTTPException(status_code=500, detail="Restart failed") from exc
 
-        log.exception("Failed to restart runner-dashboard service")
-        raise HTTPException(status_code=500, detail="Restart failed") from exc
 
 
 @app.post("/api/launchers/generate")
