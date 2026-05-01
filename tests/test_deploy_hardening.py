@@ -60,7 +60,8 @@ def test_refresh_token_requires_more_than_prefix() -> None:
 def test_setup_prefers_python_311_for_runtime_service() -> None:
     content = _read(_DEPLOY / "setup.sh")
     assert "command -v python3.11 || command -v python3" in content
-    assert "ExecStart=${PYTHON_BIN} ${DEPLOY_DIR}/backend/server.py" in content
+    # setup.sh uses sed to substitute the Python path in the template file
+    assert "s|/usr/bin/python3.11|${PYTHON_BIN}|g" in content
 
 
 # ---------------------------------------------------------------------------
@@ -263,11 +264,15 @@ def test_autoscaler_service_has_watchdog_sec() -> None:
 
 
 def test_setup_sh_has_new_hardening_directives() -> None:
-    """All new #391 directives must be present in setup.sh's heredoc so that
-    the installed unit file matches the template."""
-    content = _read(_DEPLOY / "setup.sh")
-    missing = [d for d in _NEW_HARDENING_DIRECTIVES_391 if d not in content]
-    assert not missing, f"setup.sh missing hardening directives from issue #391: {missing}"
+    """setup.sh must reference the service template that contains all #391 directives."""
+    setup_content = _read(_DEPLOY / "setup.sh")
+    # setup.sh copies from the template file rather than using a heredoc
+    assert "runner-dashboard.service" in setup_content
+    assert "sed" in setup_content
+    # The template file itself contains all hardening directives
+    template_content = _read(_DEPLOY / "runner-dashboard.service")
+    missing = [d for d in _NEW_HARDENING_DIRECTIVES_391 if d not in template_content]
+    assert not missing, f"runner-dashboard.service template missing hardening directives from issue #391: {missing}"
 
 
 # ── Issue #391: sudoers drop-in ───────────────────────────────────────────────

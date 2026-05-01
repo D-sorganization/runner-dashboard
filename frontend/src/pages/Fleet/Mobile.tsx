@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PullToRefresh } from "../../primitives/PullToRefresh";
 import { SkeletonCard, SkeletonLine } from "../../primitives/Skeleton";
+import { PullToRefresh } from "../../primitives/PullToRefresh";
+import { useHaptic } from "../../hooks/useHaptic";
 import { KpiHeader } from "./KpiHeader";
 import { RunnerCard } from "./RunnerCard";
 import { StatusPill } from "./StatusPill";
@@ -23,51 +24,25 @@ export function FleetMobile() {
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchFleet = useCallback(
-    async (signal?: AbortSignal) => {
-      try {
-        const resp = await fetch("/api/fleet/status", { signal });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const json = await resp.json();
-        setData(json);
-        setError(null);
-      } catch (e: any) {
-        if (e.name === "AbortError") return;
-        setError(e.message || "Failed to load fleet data");
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    },
-    []
-  );
+  const fetchFleet = useCallback(async () => {
+    try {
+      const resp = await fetch("/api/fleet/status");
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      setData(json);
+      setError(null);
+    } catch (e: any) {
+      setError(e.message || "Failed to load fleet data");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchFleet(controller.signal);
-
-    let interval: ReturnType<typeof setInterval> | null = null;
-    const startPolling = () => {
-      interval = setInterval(() => fetchFleet(), 30000);
-    };
-    startPolling();
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        if (interval) clearInterval(interval);
-        interval = null;
-      } else {
-        fetchFleet();
-        startPolling();
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
-    return () => {
-      controller.abort();
-      if (interval) clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
+    fetchFleet();
+    const interval = setInterval(fetchFleet, 30000);
+    return () => clearInterval(interval);
   }, [fetchFleet]);
 
   const nodes = useMemo(() => Object.entries(data), [data]);
@@ -92,6 +67,14 @@ export function FleetMobile() {
     });
   }, [nodes, filter]);
 
+  const haptic = useHaptic();
+
+  const handleRefresh = useCallback(async () => {
+    haptic.medium();
+    setRefreshing(true);
+    await fetchFleet();
+    haptic.success();
+  }, [fetchFleet, haptic]);
 
   if (loading) {
     return (
@@ -137,29 +120,34 @@ export function FleetMobile() {
           Refreshing…
         </div>
       )}
-      <PullToRefresh onRefresh={() => { setRefreshing(true); return fetchFleet(); }}>
-        {filtered.length === 0 ? (
-          <div className="fleet-empty" style={{ color: "var(--text-muted)", padding: "32px", textAlign: "center" }}>
-            No runners match the selected filter.
-          </div>
-        ) : (
-          filtered.map(([name, node]) => {
-            const s = node.status?.toLowerCase() || "offline";
-            const status = s === "online" ? "online" : s === "busy" || s === "running" ? "busy" : "offline";
-            return (
-              <RunnerCard
-                key={name}
-                cpuPercent={node.cpu_percent ?? 0}
-                currentJob={node.current_job}
-                machine={node.hostname || name}
-                name={name}
-                ramPercent={node.memory_percent ?? 0}
-                status={status}
-                uptimeSeconds={node.uptime_seconds ?? 0}
-              />
-            );
-          })
-        )}
+      <PullToRefresh onRefresh={handleRefresh} disabled={refreshing}>
+        <div
+          className="fleet-list"
+          style={{ touchAction: "pan-y", WebkitOverflowScrolling: "touch" }}
+        >
+          {filtered.length === 0 ? (
+            <div className="fleet-empty" style={{ color: "var(--text-muted)", padding: "32px", textAlign: "center" }}>
+              No runners match the selected filter.
+            </div>
+          ) : (
+            filtered.map(([name, node]) => {
+              const s = node.status?.toLowerCase() || "offline";
+              const status = s === "online" ? "online" : s === "busy" || s === "running" ? "busy" : "offline";
+              return (
+                <RunnerCard
+                  key={name}
+                  cpuPercent={node.cpu_percent ?? 0}
+                  currentJob={node.current_job}
+                  machine={node.hostname || name}
+                  name={name}
+                  ramPercent={node.memory_percent ?? 0}
+                  status={status}
+                  uptimeSeconds={node.uptime_seconds ?? 0}
+                />
+              );
+            })
+          )}
+        </div>
       </PullToRefresh>
     </section>
   );
