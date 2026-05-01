@@ -21,6 +21,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: ESLint
+        run: npm run lint
+
+      - name: ts-nocheck ratchet
+        run: bash scripts/check_ts_nocheck.sh
+
       - name: Run frontend tests with coverage
         run: npm run test:ci
 
