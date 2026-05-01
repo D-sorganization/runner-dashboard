@@ -1,10 +1,13 @@
-import React from 'react'
+import React, { useState, useCallback } from 'react'
 import ReactDOM from 'react-dom/client'
+import { QueryClientProvider } from '@tanstack/react-query'
 import App from './legacy/App'
 import PushSettings from './pages/PushSettings'
+import { MobileShell, type TabId } from './shell/MobileShell'
 import { Toaster } from './primitives/Toaster'
 import { RootErrorBoundary } from './primitives/RootErrorBoundary'
-import { BreakpointProvider } from './hooks/useBreakpoint'
+import { BreakpointProvider, useBreakpoint } from './hooks/useBreakpoint'
+import { queryClient } from './hooks/usePollingQueries'
 import './i18n'
 import './index.css'
 // Web Vitals — send metrics to backend (issue #385)
@@ -115,20 +118,85 @@ function initialTabFromPathname(pathname: string): string | undefined {
   return PATHNAME_TO_TAB[normalized]
 }
 
+// AppWithMobileShell lifts tab state so MobileShell bottom-nav stays in sync
+// with the legacy App's internal tab. Must live inside BreakpointProvider.
+function AppWithMobileShell({ initialTab }: { initialTab?: string }) {
+  const breakpoint = useBreakpoint()
+  const isMobile = breakpoint !== 'lg' && breakpoint !== 'xl'
+
+  // Normalise the URL-derived tab to a TabId (MobileShell tabs are a subset).
+  // Falls back to 'fleet' which maps to 'overview' in legacy naming.
+  const resolvedInitial = (initialTab ?? 'fleet') as TabId
+  const [tab, setTab] = useState<TabId>(resolvedInitial)
+
+  const handleTabChange = useCallback((nextTab: TabId) => {
+    setTab(nextTab)
+  }, [])
+
+  // Map MobileShell TabIds to the legacy App's internal tab string where they differ.
+  const TAB_ID_TO_LEGACY: Partial<Record<TabId, string>> = {
+    fleet: 'overview',
+    workflows: 'workflows',
+    remediation: 'remediation',
+    maxwell: 'maxwell',
+    org: 'org',
+    heavy: 'machines',
+    assessments: 'assessments',
+    requests: 'feature-requests',
+    credentials: 'credentials',
+    reports: 'reports',
+    health: 'queue',
+  }
+
+  const legacyTab = TAB_ID_TO_LEGACY[tab] ?? String(tab)
+
+  const handleLegacyTabChange = useCallback((nextLegacyTab: string) => {
+    // Reverse-map the legacy tab name back to a TabId for MobileShell state.
+    const LEGACY_TO_TAB_ID: Record<string, TabId> = {
+      overview: 'fleet',
+      workflows: 'workflows',
+      remediation: 'remediation',
+      maxwell: 'maxwell',
+      org: 'org',
+      machines: 'heavy',
+      assessments: 'assessments',
+      'feature-requests': 'requests',
+      credentials: 'credentials',
+      reports: 'reports',
+      queue: 'health',
+      fleet: 'fleet',
+    }
+    const mapped = LEGACY_TO_TAB_ID[nextLegacyTab]
+    if (mapped) setTab(mapped)
+  }, [])
+
+  if (isMobile) {
+    return (
+      <MobileShell currentTab={tab} onTabChange={handleTabChange}>
+        <App initialTab={legacyTab} onTabChange={handleLegacyTabChange} />
+      </MobileShell>
+    )
+  }
+
+  return <App initialTab={legacyTab} onTabChange={handleLegacyTabChange} />
+}
+
 // Route tracer marker for the static integrity test:
 // isPushSettingsRoute(window.location.pathname) ? <PushSettings /> : <App />
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RootErrorBoundary>
-      <BreakpointProvider>
-        <Toaster>
-          {isPushSettingsRoute(window.location.pathname) ? (
-            <PushSettings />
-          ) : (
-            <App initialTab={initialTabFromPathname(window.location.pathname)} />
-          )}
-        </Toaster>
-      </BreakpointProvider>
-    </RootErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <RootErrorBoundary>
+        <BreakpointProvider>
+          <Toaster>
+            {isPushSettingsRoute(window.location.pathname) ? (
+              <PushSettings />
+            ) : (
+              <AppWithMobileShell initialTab={initialTabFromPathname(window.location.pathname)} />
+            )}
+          </Toaster>
+        </BreakpointProvider>
+      </RootErrorBoundary>
+    </QueryClientProvider>
   </React.StrictMode>,
 )
