@@ -11,6 +11,8 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import APIKeyCookie, APIKeyHeader
 from pydantic import BaseModel, Field
 
+from security import validate_config_path, safe_yaml_load
+
 log = logging.getLogger("dashboard")
 
 
@@ -58,8 +60,11 @@ class IdentityManager:
                 yaml.dump({"principals": []}, f)
             return
 
-        with open(self.principals_path) as f:
-            data = yaml.safe_load(f)
+        # Security validation for issue #355: validate path before loading
+        validate_config_path(self.principals_path)
+        
+        # Use safe_yaml_load which validates path security
+        data = safe_yaml_load(self.principals_path)
 
         if not data or "principals" not in data:
             return
@@ -73,8 +78,15 @@ class IdentityManager:
         """Atomically persist the in-memory principals dict to ``principals.yml``.
 
         Uses a temp-file + os.replace pattern so readers never see a partial write.
+        
+        Security (issue #355): Validates that the config directory is within allowed
+        roots before writing.
         """
         self.principals_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Security validation: ensure config dir is within allowed roots
+        validate_config_path(self.principals_path.parent)
+        
         payload = {"principals": [p.model_dump() for p in self.principals.values()]}
         fd, tmp_path = tempfile.mkstemp(
             dir=self.principals_path.parent,
@@ -102,8 +114,11 @@ class IdentityManager:
                 yaml.dump({"tokens": []}, f)
             return
 
-        with open(self.tokens_path) as f:
-            data = yaml.safe_load(f)
+        # Security validation for issue #355: validate path before loading
+        validate_config_path(self.tokens_path)
+        
+        # Use safe_yaml_load which validates path security
+        data = safe_yaml_load(self.tokens_path)
 
         if not data or "tokens" not in data:
             return
@@ -113,7 +128,12 @@ class IdentityManager:
             self.tokens.append(TokenRecord(**t))
 
     def save_tokens(self):
+        """Save tokens with security validation (issue #355)."""
         self.tokens_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Security validation: ensure config dir is within allowed roots
+        validate_config_path(self.tokens_path.parent)
+        
         with open(self.tokens_path, "w") as f:
             yaml.dump({"tokens": [t.model_dump() for t in self.tokens]}, f)
 
