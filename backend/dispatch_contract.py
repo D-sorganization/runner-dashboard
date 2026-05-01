@@ -17,10 +17,13 @@ from dispatch import (
 from dispatch.envelope import _ensure_dict, _required_string, _utc_now  # noqa: F401
 from dispatch.registry import _scheduler_modify_command
 from dispatch.signing import (  # noqa: F401
+    _compute_approval_hmac,
+    _hash_payload,
     _load_signing_secret,
     _sign_envelope_payload,
     _validate_timestamp_freshness,
     _verify_envelope_signature,
+    verify_approval_hmac,
 )
 
 
