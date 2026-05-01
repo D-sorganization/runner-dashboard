@@ -158,5 +158,7 @@ class CommandEnvelope:
                 self.correlation_id,
                 _hash_payload(self.payload),
             )
-        except Exception:  # justified: broad guard; verify returns False on any signing failure
+        except Exception as e:  # justified: broad guard; verify returns False on any signing failure
+            if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                raise
             return False

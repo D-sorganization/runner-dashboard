@@ -230,5 +230,7 @@ def _refresh_lease_gauge() -> None:
         now = __import__("time").time()
         active = [lz for lz in mgr.leases if lz.expires_at is None or lz.expires_at > now]
         RUNNER_LEASES_ACTIVE.set(len(active))
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
         pass  # Non-fatal: gauge just won't update this scrape

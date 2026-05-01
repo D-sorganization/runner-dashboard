@@ -87,7 +87,7 @@ async def get_diagnostics_summary() -> dict:
         )
         summary["wsl_status"] = wsl_result.stdout.strip()
         summary["wsl_available"] = wsl_result.returncode == 0
-    except Exception:  # noqa: BLE001
+    except (OSError, subprocess.SubprocessError, TimeoutError, UnicodeDecodeError):  # noqa: BLE001
         try:
             wsl_result_raw = await asyncio.to_thread(
                 subprocess.run,
@@ -97,7 +97,7 @@ async def get_diagnostics_summary() -> dict:
             )
             summary["wsl_status"] = wsl_result_raw.stdout.decode("utf-16-le", errors="replace").strip()
             summary["wsl_available"] = wsl_result_raw.returncode == 0
-        except Exception:  # noqa: BLE001
+        except (OSError, subprocess.SubprocessError, TimeoutError, UnicodeDecodeError):  # noqa: BLE001
             summary["wsl_status"] = "WSL not available"
             summary["wsl_available"] = False
 
@@ -118,7 +118,7 @@ async def get_diagnostics_summary() -> dict:
             cwd=Path(__file__).parent.parent.parent,
         )
         summary["git_commit"] = out.stdout.strip() or "unknown"
-    except Exception:  # noqa: BLE001
+    except (OSError, subprocess.SubprocessError, TimeoutError):  # noqa: BLE001
         summary["git_commit"] = "unknown"
 
     # Drift info
@@ -128,7 +128,9 @@ async def get_diagnostics_summary() -> dict:
         summary["source_commit"] = drift.get("source_commit", "unknown")
         summary["remote_commit"] = drift.get("remote_commit", "unknown")
         summary["drift_details"] = drift.get("drift_details", "")
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
         summary["is_drifted"] = False
 
     return summary

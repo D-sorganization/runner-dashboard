@@ -55,7 +55,9 @@ async def _get_recent_org_repos(limit: int = 30) -> list[dict]:
         repos = data if isinstance(data, list) else data.get("items", [])
         cache_set(f"org_repos:{limit}", repos)
         return repos
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
         return []
 
 
@@ -68,7 +70,9 @@ async def _fetch_repo_runs(repo_name: str, per_page: int = 10, status: str | Non
     try:
         data = await gh_api(url)
         return data.get("workflow_runs", [])
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
         return []
 
 
@@ -100,7 +104,9 @@ async def _enrich_run_with_job_placement(run: dict) -> dict:
             }
             for job in (GhJob.from_api_dict(j) for j in data.get("jobs", []))
         ]
-    except Exception:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
         enriched["jobs"] = []
     return enriched
 
@@ -263,7 +269,7 @@ async def list_workflows() -> dict:
         try:
             data = json.loads(out)
             workflows = data.get("workflows", [])
-        except Exception:  # noqa: BLE001
+        except json.JSONDecodeError:
             return []
         result = []
         for wf in workflows:
@@ -287,7 +293,7 @@ async def list_workflows() -> dict:
                             triggers.append("push_pr")
                         if "workflow_run" in content:
                             triggers.append("workflow_run")
-                    except Exception:  # noqa: BLE001
+                    except (json.JSONDecodeError, UnicodeDecodeError, KeyError):
                         pass
             code3, out3, _ = await run_cmd(
                 ["gh", "api", f"/repos/{ORG}/{repo_name}/actions/workflows/{wf_id}/runs?per_page=3"],
@@ -319,7 +325,7 @@ async def list_workflows() -> dict:
                             }
                             for r in all_runs[:3]
                         ]
-                except Exception:  # noqa: BLE001
+                except (json.JSONDecodeError, UnicodeDecodeError, KeyError):
                     pass
             result.append(
                 {

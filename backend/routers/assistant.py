@@ -92,7 +92,7 @@ async def assistant_chat(
     """
     try:
         body = await request.json()
-    except Exception:  # noqa: BLE001
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
     try:
@@ -154,7 +154,7 @@ async def execute_assistant_tool(
     """
     try:
         body = await request.json()
-    except Exception:  # noqa: BLE001
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
     try:
@@ -243,7 +243,7 @@ async def propose_action(
     """Propose an action based on user request, awaiting operator approval."""
     try:
         body = await request.json()
-    except Exception:  # noqa: BLE001
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
     try:
@@ -264,7 +264,7 @@ async def propose_action(
         )
         try:
             proposal_dict = json.loads(response_text)
-        except Exception:  # noqa: BLE001
+        except json.JSONDecodeError:  # noqa: BLE001
             proposal_dict = {
                 "action_type": "custom_response",
                 "description": response_text[:200],
@@ -303,7 +303,7 @@ async def execute_action(
     """Execute a proposed action after operator approval."""
     try:
         body = await request.json()
-    except Exception:  # noqa: BLE001
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid JSON") from None
 
     try:
