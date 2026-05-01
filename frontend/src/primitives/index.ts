@@ -19,3 +19,18 @@ export type {
 
 export { FloatingActionButton } from "./FloatingActionButton";
 export type { FloatingActionButtonProps } from "./FloatingActionButton";
+
+export {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogClose,
+} from "./Dialog";
+export type {
+  DialogProps,
+  DialogTitleProps,
+  DialogContentProps,
+  DialogActionsProps,
+  DialogCloseProps,
+} from "./Dialog";
