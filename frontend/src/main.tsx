@@ -5,6 +5,7 @@ import { PushSettings } from './pages/PushSettings'
 import { Toaster } from './primitives/Toaster'
 import { RootErrorBoundary } from './primitives/RootErrorBoundary'
 import { BreakpointProvider } from './hooks/useBreakpoint'
+import './i18n'
 import './index.css'
 
 // Service Worker Registration
