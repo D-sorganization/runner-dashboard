@@ -98,6 +98,7 @@ from machine_registry import (  # noqa: E402
     merge_registry_with_live_nodes,
 )
 from middleware import add_security_headers, csrf_check, max_body_size_check  # noqa: E402
+from request_context import RequestIdMiddleware, configure_json_logging  # noqa: E402
 from routers import assessments as _assessments_router  # noqa: E402
 
 # parse_report_metrics and sanitize_report_date moved to routers/reports.py (issue #358)
@@ -141,6 +142,9 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 log = logging.getLogger("dashboard")
+# Configure JSON logging and request_id filter (issue #331).
+# Must come after basicConfig so handlers are already attached.
+configure_json_logging()
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 DEFAULT_LLM_MODEL = os.environ.get("DASHBOARD_LLM_MODEL", "claude-haiku-4-5-20251001")
@@ -352,6 +356,10 @@ app = FastAPI(
     version="4.0.0",
     description="Monitor and control self-hosted GitHub Actions runners",
 )
+
+# Issue #331 — request_id correlation middleware (outermost so all subsequent
+# middleware and handlers have access to the request_id context var).
+app.add_middleware(RequestIdMiddleware)
 
 # Issue #350 — early body-size guard (ASGI middleware, runs before routing)
 app.add_middleware(
@@ -2510,12 +2518,16 @@ async def log_requests(request: Request, call_next):
     is_filtered = path.startswith(dashboard_config.LOG_FILTER_PATHS)
 
     if is_error or not is_filtered or random.random() < 0.1:
+        # request_id is injected into the log record by RequestIdLogFilter;
+        # include it explicitly in the message for plain-text log consumers.
+        rid = getattr(request.state, "request_id", "-")
         log.info(
-            "%s %s → %s (%sms)",
+            "%s %s → %s (%sms) [rid=%s]",
             request.method,
             path,
             status,
             elapsed,
+            rid,
         )
     return response
 

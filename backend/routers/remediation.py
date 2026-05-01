@@ -22,6 +22,7 @@ from dashboard_config import ORG
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from identity import Principal, require_scope
+from request_context import current_request_id
 from security import check_dispatch_rate, validate_repo_slug
 from system_utils import run_cmd
 
@@ -543,7 +544,11 @@ async def dispatch_jules_workflow(
     workflow_file = str(body.get("workflow_file", "")).strip()
     ref = str(body.get("ref", "main")).strip()
     inputs = body.get("inputs", {}) or {}
-    correlation_id = request.headers.get("X-Correlation-Id", secrets.token_hex(8))
+    # Issue #331 — use request_id from context var for trusted correlation;
+    # fall back to client-supplied header only when no context is active.
+    correlation_id = current_request_id()
+    if correlation_id == "-":
+        correlation_id = request.headers.get("X-Correlation-Id", secrets.token_hex(8))
     inputs["correlation_id"] = correlation_id
     if not workflow_file:
         raise HTTPException(status_code=422, detail="workflow_file required")
