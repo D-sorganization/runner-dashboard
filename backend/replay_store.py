@@ -14,11 +14,15 @@ import logging
 import sqlite3
 import time
 from pathlib import Path
+from typing import Any, TypeVar
 
 log = logging.getLogger("dashboard.replay_store")
 
 _DEFAULT_TTL_S: int = 86_400  # 24 h
 _DEFAULT_MAX_ENTRIES: int = 100_000
+_SQLITE_BUSY_RETRIES = 8
+_SQLITE_BUSY_SLEEP_S = 0.05
+_T = TypeVar("_T")
 
 
 class ReplayStore:
@@ -34,21 +38,40 @@ class ReplayStore:
         self._ttl_s = ttl_s
         self._max_entries = max_entries
         path.parent.mkdir(parents=True, exist_ok=True)
-        self._db: sqlite3.Connection = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
-        self._db.execute("PRAGMA journal_mode=WAL")
-        self._db.execute("CREATE TABLE IF NOT EXISTS processed (  id TEXT PRIMARY KEY,  expires_at REAL NOT NULL)")
-        self._db.execute("CREATE INDEX IF NOT EXISTS idx_expires ON processed (expires_at)")
+        self._db: sqlite3.Connection = sqlite3.connect(
+            str(path),
+            isolation_level=None,
+            check_same_thread=False,
+            timeout=30.0,
+        )
+        self._execute("PRAGMA busy_timeout=30000")
+        self._execute("PRAGMA journal_mode=WAL")
+        self._execute("CREATE TABLE IF NOT EXISTS processed (  id TEXT PRIMARY KEY,  expires_at REAL NOT NULL)")
+        self._execute("CREATE INDEX IF NOT EXISTS idx_expires ON processed (expires_at)")
+
+    def _retry_sqlite_busy(self, operation: Any) -> _T:
+        for attempt in range(_SQLITE_BUSY_RETRIES):
+            try:
+                return operation()
+            except sqlite3.OperationalError as exc:
+                if "locked" not in str(exc).lower() or attempt == _SQLITE_BUSY_RETRIES - 1:
+                    raise
+                time.sleep(_SQLITE_BUSY_SLEEP_S * (2**attempt))
+        raise AssertionError("unreachable")
+
+    def _execute(self, sql: str, parameters: tuple[Any, ...] = ()) -> sqlite3.Cursor:
+        return self._retry_sqlite_busy(lambda: self._db.execute(sql, parameters))
 
     def is_replay(self, envelope_id: str) -> bool:
         """Return True if *envelope_id* has been recorded and has not expired."""
         now = time.time()
-        row = self._db.execute("SELECT expires_at FROM processed WHERE id = ?", (envelope_id,)).fetchone()
+        row = self._execute("SELECT expires_at FROM processed WHERE id = ?", (envelope_id,)).fetchone()
         return row is not None and row[0] > now
 
     def record(self, envelope_id: str) -> None:
         """Record *envelope_id* as processed; evicts oldest entries if over the cap."""
         expires_at = time.time() + self._ttl_s
-        self._db.execute(
+        self._execute(
             "INSERT INTO processed (id, expires_at) VALUES (?, ?)"
             "  ON CONFLICT(id) DO UPDATE SET expires_at = excluded.expires_at",
             (envelope_id, expires_at),
@@ -58,7 +81,7 @@ class ReplayStore:
     def purge_expired(self) -> int:
         """Delete all rows whose TTL has elapsed.  Returns the count deleted."""
         now = time.time()
-        cur = self._db.execute("DELETE FROM processed WHERE expires_at <= ?", (now,))
+        cur = self._execute("DELETE FROM processed WHERE expires_at <= ?", (now,))
         deleted: int = cur.rowcount
         if deleted:
             log.debug("replay_store: purged %d expired entries", deleted)
@@ -66,11 +89,11 @@ class ReplayStore:
 
     def _evict_if_needed(self) -> None:
         """Evict the oldest entries when the table exceeds *max_entries*."""
-        (count,) = self._db.execute("SELECT COUNT(*) FROM processed").fetchone()
+        (count,) = self._execute("SELECT COUNT(*) FROM processed").fetchone()
         if count <= self._max_entries:
             return
         excess = count - self._max_entries
-        self._db.execute(
+        self._execute(
             "DELETE FROM processed WHERE id IN (  SELECT id FROM processed ORDER BY expires_at ASC LIMIT ?)",
             (excess,),
         )
@@ -108,7 +131,7 @@ def migrate_json_to_sqlite(json_path: Path, store: ReplayStore) -> int:
         except (TypeError, ValueError):
             continue
         if exp > now:  # only import non-expired entries
-            store._db.execute(  # noqa: SLF001
+            store._execute(  # noqa: SLF001
                 "INSERT OR IGNORE INTO processed (id, expires_at) VALUES (?, ?)", (eid, exp)
             )
             count += 1
