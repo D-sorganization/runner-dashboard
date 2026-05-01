@@ -219,13 +219,23 @@ def test_server_references_log_filter_paths() -> None:
 def test_server_does_not_suppress_system_or_repos() -> None:
     """The old hard-coded skip list must not suppress /api/system or /api/repos."""
     server_src = (_BACKEND_DIR / "server.py").read_text(encoding="utf-8")
+    # Scope check to the log_requests middleware only — other unrelated
+    # "skip" strings (e.g. sd_notify debug logs) must not trigger this.
+    func_start = server_src.find("async def log_requests")
+    if func_start == -1:
+        pytest.fail("log_requests function not found in server.py")
+    # Find the end of the function body (next double-newline or end of file).
+    next_def = server_src.find("\n\n", func_start + 1)
+    if next_def == -1:
+        next_def = len(server_src)
+    log_requests_src = server_src[func_start:next_def]
     # These paths must not appear in a skip/filter tuple in the middleware.
     # The old list hard-coded them — confirm they're gone.
-    assert '"/api/system"' not in server_src or "skip" not in server_src, (
-        "/api/system found in a skip-list context in server.py"
+    assert '"/api/system"' not in log_requests_src or "skip" not in log_requests_src, (
+        "/api/system found in a skip-list context in log_requests"
     )
-    assert '"/api/repos"' not in server_src or "skip" not in server_src, (
-        "/api/repos found in a skip-list context in server.py"
+    assert '"/api/repos"' not in log_requests_src or "skip" not in log_requests_src, (
+        "/api/repos found in a skip-list context in log_requests"
     )
 
 
