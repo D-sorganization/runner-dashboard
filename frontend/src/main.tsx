@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import App from './legacy/App'
 import PushSettings from './pages/PushSettings'
+import { QueueMobile } from './pages/Queue'
 import { MaxwellMobile } from './pages/Maxwell'
 import { ReportsMobile } from './pages/Reports'
 import { CredentialsMobile } from './pages/Credentials'
@@ -178,8 +179,9 @@ function AppWithMobileShell({ initialTab }: { initialTab?: string }) {
     initialTab ?? TAB_ID_TO_LEGACY[resolvedInitialTabId] ?? 'overview'
 
   if (isMobile) {
-    // M11, M12, M13: native mobile views registered here.
+    // M09-M13: native mobile views registered here.
     const mobileTabContent = {
+      health: <QueueMobile />,
       maxwell: <MaxwellMobile />,
       reports: <ReportsMobile />,
       credentials: <CredentialsMobile />,

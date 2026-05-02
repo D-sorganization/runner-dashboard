@@ -1291,3 +1291,5 @@ export function QueueTab(p: QueueTabProps) {
     ),
   );
 }
+
+export { QueueMobile } from "./Mobile";
