@@ -1,9 +1,16 @@
 # SPEC.md — D-sorganization Runner Dashboard
 
-**Spec Version:** 2.5.207
+**Spec Version:** 2.5.208
 **Application Version:** 4.9.34 (see `VERSION`)
-**Last Updated:** 2026-09-06T16:17:00-07:00
+**Last Updated:** 2026-09-07T00:01:00-07:00
 **Status:** Active
+
+- **2026-09-07 (2.5.208):** Suppress pytest exit code 5 on empty marker in CI Nightly workflow (#1175).
+  Scheduled integration CI runs (`ci-nightly.yml`) run pytest with `-m integration`.
+  When no tests are marked with `@pytest.mark.integration`, pytest exits with code 5
+  (no tests collected), causing false nightly CI run failures. Added graceful handling
+  for exit status 5 in `ci-nightly.yml` step while preserving non-zero exit for all
+  actual test execution failures. TDD: `tests/test_ci_config.py::test_ci_nightly_suppresses_empty_marker_exit_code`.
 
 - **2026-09-06 (2.5.207):** Orchestrator authentication perimeter hardening (#1173).
   Conductor orchestrator state-changing endpoints (/api/orchestrator/lease, /release,
