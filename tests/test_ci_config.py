@@ -478,3 +478,13 @@ def test_python_gated_jobs_are_known() -> None:
         f"set of detector-gated jobs changed: {sorted(gated)}. Every job added "
         "here inherits the scope detector's blind spots — confirm that is intended"
     )
+
+
+def test_ci_nightly_suppresses_empty_marker_exit_code() -> None:
+    """CI Nightly must handle pytest exit code 5 gracefully when no tests match marker."""
+    nightly_workflow = ROOT / ".github" / "workflows" / "ci-nightly.yml"
+    assert nightly_workflow.exists()
+    content = nightly_workflow.read_text(encoding="utf-8")
+    assert "status=$?" in content
+    assert "if [ $status -eq 5 ]; then" in content
+    assert "exit 0" in content
